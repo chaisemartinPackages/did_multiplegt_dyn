@@ -16,6 +16,6 @@ Author: Diego Ciccia [aut, cre],
 	Doulo Sow [aut],
   	Clément de Chaisemartin [aut]
 Encoding: UTF-8
-Imports: data.table, dplyr, ggplot2, magrittr, matlib, plm, rlang, xlsx, stats
+Imports: data.table, dplyr, ggplot2, magrittr, matlib, plm, rlang, xlsx, stats, car, lmtest, sandwich
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3

@@ -30,7 +30,8 @@ did_multiplegt_dyn(
   date_first_switch = NULL,
   normalized_weights = NULL,
   graph_off = FALSE,
-  by = NULL
+  by = NULL,
+  predict_het = NULL
 )
 }
 \arguments{
@@ -85,6 +86,8 @@ did_multiplegt_dyn(
 \item{graph_off}{graph_off}
 
 \item{by}{by}
+
+\item{predict_het}{predict_het}
 }
 \description{
 Core function for did_multiplegt_dyn

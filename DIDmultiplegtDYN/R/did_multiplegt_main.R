@@ -28,10 +28,10 @@
 #' @importFrom utils write.csv
 #' @importFrom rlang :=
 #' @importFrom rlang .data
-#' @importFrom stats pchisq qnorm sd weighted.mean
+#' @importFrom stats pchisq qnorm sd weighted.mean as.formula df.residual lm nobs qt
 #' @import lmtest
 #' @import sandwich
-#' @import car
+#' @importFrom car linearHypothesis
 #' @noRd 
 did_multiplegt_main <- function(
   df, 
@@ -1158,7 +1158,7 @@ if (length(predict_het_good) > 0) {
       }
     }
     model <- lm(as.formula(het_reg), data = subset(df, df$F_g_XX - 1 + i <= df$T_g_XX))
-    model_r <- matrix(coeftest(model, vcov = vcovHC(model, type = "HC1"))[2:(length(predict_het_good)+1), 1:3], ncol = 3)
+    model_r <- matrix(coeftest(model, vcov. = vcovHC(model, type = "HC1"))[2:(length(predict_het_good)+1), 1:3], ncol = 3)
     f_stat <- linearHypothesis(model,lhyp, vcov = vcovHC(model, type = "HC1"))[["Pr(>F)"]][2]
     t_stat <- qt(0.975, df.residual(model))
     het_res <- rbind(het_res, data.frame(
