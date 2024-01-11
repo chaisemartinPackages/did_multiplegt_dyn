@@ -49,6 +49,7 @@ combine_plot <- function(obj) {
 #' Internal function to retrieve plot colors
 #' @param N Number of colors to retrieve
 #' @import ggplot2
+#' @importFrom grDevices colors
 #' @noRd
 get_colors <- function(N) {
   must_color <- c(552, 26, 81, 68, 450, 640, 24, 498) 

@@ -24,6 +24,7 @@
 #' @importFrom plm pdata.frame make.pbalanced
 #' @importFrom data.table shift setnames
 #' @importFrom magrittr %>%
+#' @importFrom utils write.csv
 #' @importFrom rlang :=
 #' @importFrom rlang .data
 #' @importFrom stats pchisq qnorm sd weighted.mean

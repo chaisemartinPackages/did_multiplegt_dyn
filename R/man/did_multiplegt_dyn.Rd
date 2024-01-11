@@ -83,6 +83,8 @@ did_multiplegt_dyn(
 \item{normalized_weights}{normalized_weights}
 
 \item{graph_off}{graph_off}
+
+\item{by}{by}
 }
 \description{
 Core function for did_multiplegt_dyn

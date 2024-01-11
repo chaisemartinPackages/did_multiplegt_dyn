@@ -25,6 +25,7 @@
 #' @param date_first_switch date_first_switch
 #' @param normalized_weights normalized_weights
 #' @param graph_off graph_off
+#' @param by by
 #' @export 
 did_multiplegt_dyn <- function(
     df, 

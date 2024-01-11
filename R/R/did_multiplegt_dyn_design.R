@@ -9,7 +9,7 @@
 #' @importFrom magrittr %>%
 #' @importFrom rlang :=
 #' @importFrom rlang .data
-#' @importFrom xslx write.xlsx
+#' @importFrom xlsx write.xlsx
 #' @noRd
 did_multiplegt_dyn_design <- function(
     data, 
