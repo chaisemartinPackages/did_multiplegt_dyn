@@ -26,6 +26,7 @@
 #' @param normalized_weights normalized_weights
 #' @param graph_off graph_off
 #' @param by by
+#' @param predict_het predict_het
 #' @export 
 did_multiplegt_dyn <- function(
     df, 
@@ -53,7 +54,8 @@ did_multiplegt_dyn <- function(
     date_first_switch = NULL, 
     normalized_weights = NULL, 
     graph_off = FALSE,
-    by = NULL
+    by = NULL,
+    predict_het = NULL
     ) { 
   
   args <- list()
@@ -91,7 +93,7 @@ did_multiplegt_dyn <- function(
     weight, controls, dont_drop_larger_lower, 
     drop_if_d_miss_before_first_switch, cluster, 
     same_switchers, same_switchers_pl, effects_equal, 
-    save_results, normalized)
+    save_results, normalized, predict_het)
 
     temp_obj <- list(df_est$did_multiplegt_dyn)
     names(temp_obj)[length(temp_obj)] <- "results"

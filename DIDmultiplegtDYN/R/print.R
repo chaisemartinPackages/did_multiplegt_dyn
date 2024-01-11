@@ -117,6 +117,23 @@ print.did_multiplegt_dyn <- function(x, ...) {
             print(ref$normalized_weights$norm_weight_mat)
             cat("\n")
         }
+
+        if (!is.null(ref$results$predict_het)) {
+            cat("\n")
+            cat(noquote(strrep("-", 60)));cat("\n");
+            cat(strrep(" ", 13));cat("Predicting effect heterogeneity");cat("\n");
+            cat(noquote(strrep("-", 60)));cat("\n");
+            for (l in levels(factor(ref$results$predict_het$effect))) {
+                het_tab <- subset(ref$results$predict_het, ref$results$predict_het$effect == l)
+                het_mat <- as.matrix(het_tab[,c(3,4,6,7,8)])
+                rownames(het_mat) <- het_tab$covariate
+                colnames(het_mat) <- c("Estimate", "SE", "LB CI", "UB CI", "N")
+                pval <- mean(het_tab$pF)
+                cat(sprintf("Effect %s:\n", l))
+                mat_print(het_mat)
+                cat(sprintf("Test of joint nullity of the estimates : p-value = %.4f\n", pval));cat("\n")
+            }
+        }
     }
 
     cat("\n")
@@ -129,7 +146,8 @@ mat_print <- function(mat) {
     if (inherits(mat,"matrix")) {
         dis <- matrix(data = 0, nrow = nrow(mat) , ncol = ncol(mat))
         dis[,1:4] <- sprintf("%s", format(round(mat[,1:4], 5), big.mark=",", scientific=FALSE, trim=TRUE))
-        dis[,5:6] <- sprintf("%s", format(round(mat[,5:6], 0), big.mark=",", scientific=FALSE, trim=TRUE))
+        dis[,5:ncol(dis)] <- 
+            sprintf("%s", format(round(mat[,5:ncol(dis)], 0), big.mark=",", scientific=FALSE, trim=TRUE))
         rownames(dis) <- rownames(mat)
         colnames(dis) <- colnames(mat)
         print(noquote(dis[, , drop = FALSE]))

@@ -19,6 +19,7 @@
 #' @param effects_equal effects_equal
 #' @param save_results save_results
 #' @param normalized normalized
+#' @param predict_het predict_het
 #' @import dplyr
 #' @importFrom matlib Ginv 
 #' @importFrom plm pdata.frame make.pbalanced
@@ -28,6 +29,9 @@
 #' @importFrom rlang :=
 #' @importFrom rlang .data
 #' @importFrom stats pchisq qnorm sd weighted.mean
+#' @import lmtest
+#' @import sandwich
+#' @import car
 #' @noRd 
 did_multiplegt_main <- function(
   df, 
@@ -49,12 +53,13 @@ did_multiplegt_main <- function(
   same_switchers_pl,
   effects_equal, 
   save_results, 
-  normalized
+  normalized,
+  predict_het
   ) {
 
   suppressWarnings({
   # Renaming the variables in the dataset 
-  original_names = c(c(Y, G, T, D), trends_nonparam, weight, controls, cluster)
+  original_names = c(c(Y, G, T, D), trends_nonparam, weight, controls, cluster, unlist(predict_het[1]))
   df <- data.frame(df)
   df <- df %>% select_at(original_names)
   df <- data.table::setnames(df, old = c(Y, G, T, D), new = c("Y", "G", "T", "D"))
@@ -90,6 +95,29 @@ did_multiplegt_main <- function(
   df <- df %>% group_by(.data$G) %>% mutate(mean_Y = mean(.data$Y, na.rm = TRUE))
   df <- df %>% filter(!is.na(.data$mean_Y) & !is.na(.data$mean_D))  %>% 
       dplyr::select(-.data$mean_Y, -.data$mean_D) 
+
+  if (!is.null(predict_het)) {
+    if (length(predict_het) != 2 & inherits(predict_het, "list")) {
+      stop("Syntax error in predict_hat option: list with 2 elements required. Set the second element to -1 to include all the effects.")
+    }
+    if (isTRUE(normalized)) {
+      cat("The options normalized and predict_het cannot be specified together. The option predict_het will be ignored\n")
+    } else {
+      pred_het <- unlist(predict_het[1])
+      het_effects <- unlist(predict_het[2])
+
+      predict_het_good <- c()
+      for (v in pred_het) {
+        df <- df %>% group_by(.data$G) %>% mutate(sd_het = sd(.data[[v]], na.rm = TRUE))
+        if (mean(df$sd_het) == 0) {
+          predict_het_good <- c(predict_het_good, v)
+        } else {
+          cat(sprintf("The variable %s specified in the option predict_het is time-varying, the command will therefore ignore it.\n", v))
+        }
+        df$sd_het <- NULL
+      }
+    }     
+  }
 
   # Creating the weight variable 
   if (is.null(weight)) {
@@ -266,6 +294,11 @@ did_multiplegt_main <- function(
   df$outcome_XX[df$F_g_XX == T_max_XX + 1 &df$time_XX > df$max_time_d_nonmiss_XX] <- NA
   df$trunc_control_XX <- ifelse(df$F_g_XX == T_max_XX + 1, df$max_time_d_nonmiss_XX + 1, df$trunc_control_XX)
 
+  # Generation of non FD outcome prior to the trends_lin option
+  if (length(predict_het_good) > 0) {
+    df$outcome_non_diff_XX <- df$outcome_XX
+  }
+
   ### END OF MISSING TREATMENT CONVENTIONS BLOCK ###
 
   # Balancing the panel
@@ -313,6 +346,11 @@ did_multiplegt_main <- function(
   df <- subset(df, !(df$avg_post_switch_treat_XX == df$d_sq_XX & df$F_g_XX != df$T_g_XX + 1))
   df$S_g_XX <- as.numeric(df$avg_post_switch_treat_XX > df$d_sq_XX)
   df$S_g_XX <- ifelse(df$F_g_XX != T_max_XX + 1, df$S_g_XX, NA)
+
+  # Define the version of S_g_XX needed for predict_het
+  if (length(predict_het) > 0) {
+    df$S_g_het_XX <- ifelse(df$S_g_XX == 0, -1, df$S_g_XX)
+  }
 
   # Creating the variable L_g_XX = T_g_XX - F_g_XX
   df$L_g_XX <- df$T_g_XX - df$F_g_XX + 1
@@ -1064,6 +1102,83 @@ if (l_placebo_XX != 0 & l_placebo_XX > 1) {
   }
 }
 
+# Predicting effects heterogeneity
+if (length(predict_het_good) > 0) {
+  if (-1 %in% het_effects) {
+    het_effects <- 1:l_XX
+  }
+  all_effects_XX <- c(1:l_XX)[het_effects]
+  if (NA %in% all_effects_XX) {
+    stop("Error in predict_het second argument: please specify only numbers that are smaller or equal to the number you request in effects()")
+  }
+
+  # Yg,Fg-1
+  df$Yg_Fg_min1_XX <- ifelse(df$time_XX == df$F_g_XX - 1, df$outcome_non_diff_XX, NA)
+  df <- df %>% group_by(.data$group_XX) %>% 
+      mutate(Yg_Fg_min1_XX = mean(.data$Yg_Fg_min1_XX, na.rm = TRUE))
+  df <- df[order(df$group_XX, df$time_XX), ]
+  df <- df %>% group_by(.data$group_XX) %>% mutate(gr_id = row_number())
+
+  # Generation of factor dummies for regressio
+  for (v in c("F_g_XX", "d_sq_XX", "S_g_XX")) {
+    df[paste0(v,"_h")] <- factor(df[[v]])
+    for (l in levels(df[[paste0(v,"_h")]])) {
+      df[[paste0(v,"_h",l)]] <- as.numeric(df[[v]] == l)
+    }
+  }
+  lhyp <- c()
+  for (v in predict_het_good) {
+    lhyp <- c(lhyp, paste0(v, "=0"))
+  }
+
+  het_res <- data.frame()
+  for (i in all_effects_XX) {
+    # Yg,Fg-1 + l
+    df[paste0("Yg_Fg_", i, "_XX")] <- ifelse(df$time_XX == df$F_g_XX - 1 + i, df$outcome_non_diff_XX, NA)
+    df <- df %>% group_by(.data$group_XX) %>% 
+        mutate(!!paste0("Yg_Fg_",i,"_XX") := mean(.data[[paste0("Yg_Fg_",i,"_XX")]], na.rm = TRUE))
+
+    # Now we can generate Sg*(Yg,Fg−1+l − Yg,Fg−1)
+    df[paste0("prod_het_",i,"_XX")] <- df$S_g_het_XX * (df[[paste0("Yg_Fg_",i,"_XX")]] - df$Yg_Fg_min1_XX)
+    df[[paste0("prod_het_",i,"_XX")]] <- ifelse(df$gr_id == 1, df[[paste0("prod_het_",i,"_XX")]], NA) 
+    
+    het_reg <- paste0("prod_het_",i,"_XX ~ ")
+    for (v in predict_het_good) {
+      het_reg <- paste0(het_reg,v," + ")
+    }
+    het_reg <- paste0(het_reg, " F_g_XX_h:d_sq_XX_h:S_g_XX_h")
+    model <- lm(as.formula(het_reg), data = subset(df, df$F_g_XX - 1 + i <= df$T_g_XX))
+
+    het_reg <- gsub("F_g_XX_h:d_sq_XX_h:S_g_XX_h", "", het_reg)
+    for (k in names(model$coefficients)) {
+      if (!(k %in% c("(Intercept)", predict_het_good))) {
+        if (!is.na(model$coefficients[[k]])) {
+          het_reg <- paste0(het_reg, " + ", k)
+        }
+      }
+    }
+    model <- lm(as.formula(het_reg), data = subset(df, df$F_g_XX - 1 + i <= df$T_g_XX))
+    model_r <- matrix(coeftest(model, vcov = vcovHC(model, type = "HC1"))[2:(length(predict_het_good)+1), 1:3], ncol = 3)
+    f_stat <- linearHypothesis(model,lhyp, vcov = vcovHC(model, type = "HC1"))[["Pr(>F)"]][2]
+    t_stat <- qt(0.975, df.residual(model))
+    het_res <- rbind(het_res, data.frame(
+      effect = matrix(i, nrow = length(predict_het_good)),
+      covariate = predict_het_good,
+      Estimate = model_r[1:nrow(model_r),1],
+      SE = model_r[1:nrow(model_r),2],
+      t = model_r[1:nrow(model_r),3],
+      LB = model_r[1:nrow(model_r),1] - t_stat * model_r[1:nrow(model_r),2],
+      UB = model_r[1:nrow(model_r),1] + t_stat * model_r[1:nrow(model_r),2],
+      N = matrix(nobs(model), nrow = length(predict_het_good)),
+      pF = matrix(f_stat, nrow = length(predict_het_good))
+    ))  
+  }
+  for (v in c("F_g_XX", "d_sq_XX", "S_g_XX")) {
+    df[[paste0(v,"_h")]] <- NULL
+  }
+  het_res <- het_res[order(het_res$covariate, het_res$effect), ]
+}
+
 # Performing a test that all the DID_l are equal
 
 if (effects_equal == TRUE & l_XX > 1) {
@@ -1163,12 +1278,18 @@ if (placebo != 0) {
   did_multiplegt_dyn <- append(did_multiplegt_dyn, p_jointplacebo)
   out_names <- c(out_names, "Placebos", "p_jointplacebos")
 }
+if (length(predict_het_good) > 0) {
+  did_multiplegt_dyn <- append(did_multiplegt_dyn, list(het_res))
+  out_names <- c(out_names, "predict_het")
+}
 names(did_multiplegt_dyn) <- out_names
 
 delta <- list() 
-for (i in 1:l_XX) {
-  delta[[paste0("delta_D_",i,"_global_XX")]] <- 
-      get(paste0("delta_D_", i, "_global_XX"))
+if (isTRUE(normalized)) {
+  for (i in 1:l_XX) {
+    delta[[paste0("delta_D_",i,"_global_XX")]] <- 
+        get(paste0("delta_D_", i, "_global_XX"))
+  }
 }
 
 ret <- list(
