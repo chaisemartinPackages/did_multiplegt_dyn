@@ -1,0 +1,21 @@
+Package: DIDmultiplegtDYN
+Title: did_multiplegt_dyn, Estimation in Difference-in-Difference (DID) designs with multiple groups and periods
+Version: 1.0.0
+Authors@R:     
+    c(person("Diego", "Ciccia", role = c("aut", "cre"), email = "diego.ciccia@sciencespo.fr"),
+	person("Felix", "Knau", role = "aut", email = "felix.knau@sciencespo.fr"),
+	person("Mélitine", "Malezieux", role = "aut", email = "melitine.malezieux@sciencespo.fr"),	
+	person("Doulo", "Sow", role = "aut", email = "doulo.sow@ensae.fr"),
+    person("Clément", "de Chaisemartin", role = "aut", email = "clement.dechaisemartin@sciencespo.fr"))
+Maintainer: Diego Ciccia <diego.ciccia@sciencespo.fr>
+Description: Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, and with a potentially non-binary treatment that may increase or decrease multiple times. This is a beta version of the command. New options will be added soon, and some of the options already provided are not fully stabilized yet.
+License: MIT + file LICENSE
+Author: Diego Ciccia [aut, cre],
+	Felix Knau [aut],
+	Mélitine Malezieux [aut],
+	Doulo Sow [aut],
+  	Clément de Chaisemartin [aut]
+Encoding: UTF-8
+Imports: data.table, dplyr, ggplot2, magrittr, matlib, plm, rlang, xlsx, stats
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
