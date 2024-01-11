@@ -11,8 +11,9 @@ library(data.table, include.only = c("shift", "setnames"))
 library(wooldridge)
 library(devtools)
 
-dir0 <- "C:/Users/39380/C DE CHAISEMARTIN Dropbox/RAs De Chaisemartin/RAs Really Credible DID-TWFE/did_multiplegt_dyn/_R_did_multiplegt_dyn"
-devtools::load_all(paste0(dir0,"/DIDmultiplegtDYN"))
+setwd(paste0(dirname(sys.frame(1)$ofile), "/R"))
+dir1 <- paste0(dirname(sys.frame(1)$ofile), "/test files")
+devtools::load_all()
 
 data("wagepan")
 wagepan$over_gr <- as.numeric(wagepan$nr %% 3)
@@ -29,8 +30,8 @@ did_multiplegt_dyn <- did_multiplegt_dyn(
     graph_off = TRUE, 
     normalized = TRUE, 
     normalized_weights = "by_k", 
-    design = c(0.5, paste0(dir0, "/test_des.xlsx")), 
-    date_first_switch = c("by_baseline_treat",paste0(dir0, "/test.xlsx")),
+    design = c(0.5, paste0(dir1, "/test_des.xlsx")), 
+    date_first_switch = c("by_baseline_treat",paste0(dir1, "/test.xlsx")),
     by = "over_gr",
     same_switchers = TRUE
 )
