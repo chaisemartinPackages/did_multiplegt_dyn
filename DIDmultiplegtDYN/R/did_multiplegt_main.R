@@ -295,8 +295,10 @@ did_multiplegt_main <- function(
   df$trunc_control_XX <- ifelse(df$F_g_XX == T_max_XX + 1, df$max_time_d_nonmiss_XX + 1, df$trunc_control_XX)
 
   # Generation of non FD outcome prior to the trends_lin option
-  if (length(predict_het_good) > 0) {
-    df$outcome_non_diff_XX <- df$outcome_XX
+  if (!is.null(predict_het)) {
+    if (length(predict_het_good) > 0) {
+      df$outcome_non_diff_XX <- df$outcome_XX
+    }
   }
 
   ### END OF MISSING TREATMENT CONVENTIONS BLOCK ###
@@ -1096,87 +1098,89 @@ if (l_placebo_XX != 0 & l_placebo_XX > 1) {
     didmgt_Var_Placebo_inv <- Ginv(didmgt_Var_Placebo)
     didmgt_chi2placebo <- t(didmgt_Placebo) %*% didmgt_Var_Placebo_inv  %*% didmgt_Placebo
     p_jointplacebo <- 1 - pchisq(didmgt_chi2placebo[1,1], df = l_placebo_XX)
-    assign("p_jointplacebo", p_jointplacebo, inherits = TRUE)
+    assign("p_jointplacebo", p_jointplacebo)
   } else {
     warning("Some placebos could not be estimated. Therefore, the test of joint nullity of the placebos could not be computed.")
   }
 }
 
 # Predicting effects heterogeneity
-if (length(predict_het_good) > 0) {
-  if (-1 %in% het_effects) {
-    het_effects <- 1:l_XX
-  }
-  all_effects_XX <- c(1:l_XX)[het_effects]
-  if (NA %in% all_effects_XX) {
-    stop("Error in predict_het second argument: please specify only numbers that are smaller or equal to the number you request in effects()")
-  }
-
-  # Yg,Fg-1
-  df$Yg_Fg_min1_XX <- ifelse(df$time_XX == df$F_g_XX - 1, df$outcome_non_diff_XX, NA)
-  df <- df %>% group_by(.data$group_XX) %>% 
-      mutate(Yg_Fg_min1_XX = mean(.data$Yg_Fg_min1_XX, na.rm = TRUE))
-  df <- df[order(df$group_XX, df$time_XX), ]
-  df <- df %>% group_by(.data$group_XX) %>% mutate(gr_id = row_number())
-
-  # Generation of factor dummies for regressio
-  for (v in c("F_g_XX", "d_sq_XX", "S_g_XX")) {
-    df[paste0(v,"_h")] <- factor(df[[v]])
-    for (l in levels(df[[paste0(v,"_h")]])) {
-      df[[paste0(v,"_h",l)]] <- as.numeric(df[[v]] == l)
+if (!is.null(predict_het)) {
+  if (length(predict_het_good) > 0) {
+    if (-1 %in% het_effects) {
+      het_effects <- 1:l_XX
     }
-  }
-  lhyp <- c()
-  for (v in predict_het_good) {
-    lhyp <- c(lhyp, paste0(v, "=0"))
-  }
+    all_effects_XX <- c(1:l_XX)[het_effects]
+    if (NA %in% all_effects_XX) {
+      stop("Error in predict_het second argument: please specify only numbers that are smaller or equal to the number you request in effects()")
+    }
 
-  het_res <- data.frame()
-  for (i in all_effects_XX) {
-    # Yg,Fg-1 + l
-    df[paste0("Yg_Fg_", i, "_XX")] <- ifelse(df$time_XX == df$F_g_XX - 1 + i, df$outcome_non_diff_XX, NA)
+    # Yg,Fg-1
+    df$Yg_Fg_min1_XX <- ifelse(df$time_XX == df$F_g_XX - 1, df$outcome_non_diff_XX, NA)
     df <- df %>% group_by(.data$group_XX) %>% 
-        mutate(!!paste0("Yg_Fg_",i,"_XX") := mean(.data[[paste0("Yg_Fg_",i,"_XX")]], na.rm = TRUE))
+        mutate(Yg_Fg_min1_XX = mean(.data$Yg_Fg_min1_XX, na.rm = TRUE))
+    df <- df[order(df$group_XX, df$time_XX), ]
+    df <- df %>% group_by(.data$group_XX) %>% mutate(gr_id = row_number())
 
-    # Now we can generate Sg*(Yg,Fg−1+l − Yg,Fg−1)
-    df[paste0("prod_het_",i,"_XX")] <- df$S_g_het_XX * (df[[paste0("Yg_Fg_",i,"_XX")]] - df$Yg_Fg_min1_XX)
-    df[[paste0("prod_het_",i,"_XX")]] <- ifelse(df$gr_id == 1, df[[paste0("prod_het_",i,"_XX")]], NA) 
-    
-    het_reg <- paste0("prod_het_",i,"_XX ~ ")
-    for (v in predict_het_good) {
-      het_reg <- paste0(het_reg,v," + ")
-    }
-    het_reg <- paste0(het_reg, " F_g_XX_h:d_sq_XX_h:S_g_XX_h")
-    model <- lm(as.formula(het_reg), data = subset(df, df$F_g_XX - 1 + i <= df$T_g_XX))
-
-    het_reg <- gsub("F_g_XX_h:d_sq_XX_h:S_g_XX_h", "", het_reg)
-    for (k in names(model$coefficients)) {
-      if (!(k %in% c("(Intercept)", predict_het_good))) {
-        if (!is.na(model$coefficients[[k]])) {
-          het_reg <- paste0(het_reg, " + ", k)
-        }
+    # Generation of factor dummies for regressio
+    for (v in c("F_g_XX", "d_sq_XX", "S_g_XX")) {
+      df[paste0(v,"_h")] <- factor(df[[v]])
+      for (l in levels(df[[paste0(v,"_h")]])) {
+        df[[paste0(v,"_h",l)]] <- as.numeric(df[[v]] == l)
       }
     }
-    model <- lm(as.formula(het_reg), data = subset(df, df$F_g_XX - 1 + i <= df$T_g_XX))
-    model_r <- matrix(coeftest(model, vcov. = vcovHC(model, type = "HC1"))[2:(length(predict_het_good)+1), 1:3], ncol = 3)
-    f_stat <- linearHypothesis(model,lhyp, vcov = vcovHC(model, type = "HC1"))[["Pr(>F)"]][2]
-    t_stat <- qt(0.975, df.residual(model))
-    het_res <- rbind(het_res, data.frame(
-      effect = matrix(i, nrow = length(predict_het_good)),
-      covariate = predict_het_good,
-      Estimate = model_r[1:nrow(model_r),1],
-      SE = model_r[1:nrow(model_r),2],
-      t = model_r[1:nrow(model_r),3],
-      LB = model_r[1:nrow(model_r),1] - t_stat * model_r[1:nrow(model_r),2],
-      UB = model_r[1:nrow(model_r),1] + t_stat * model_r[1:nrow(model_r),2],
-      N = matrix(nobs(model), nrow = length(predict_het_good)),
-      pF = matrix(f_stat, nrow = length(predict_het_good))
-    ))  
+    lhyp <- c()
+    for (v in predict_het_good) {
+      lhyp <- c(lhyp, paste0(v, "=0"))
+    }
+
+    het_res <- data.frame()
+    for (i in all_effects_XX) {
+      # Yg,Fg-1 + l
+      df[paste0("Yg_Fg_", i, "_XX")] <- ifelse(df$time_XX == df$F_g_XX - 1 + i, df$outcome_non_diff_XX, NA)
+      df <- df %>% group_by(.data$group_XX) %>% 
+          mutate(!!paste0("Yg_Fg_",i,"_XX") := mean(.data[[paste0("Yg_Fg_",i,"_XX")]], na.rm = TRUE))
+
+      # Now we can generate Sg*(Yg,Fg−1+l − Yg,Fg−1)
+      df[paste0("prod_het_",i,"_XX")] <- df$S_g_het_XX * (df[[paste0("Yg_Fg_",i,"_XX")]] - df$Yg_Fg_min1_XX)
+      df[[paste0("prod_het_",i,"_XX")]] <- ifelse(df$gr_id == 1, df[[paste0("prod_het_",i,"_XX")]], NA) 
+      
+      het_reg <- paste0("prod_het_",i,"_XX ~ ")
+      for (v in predict_het_good) {
+        het_reg <- paste0(het_reg,v," + ")
+      }
+      het_reg <- paste0(het_reg, " F_g_XX_h:d_sq_XX_h:S_g_XX_h")
+      model <- lm(as.formula(het_reg), data = subset(df, df$F_g_XX - 1 + i <= df$T_g_XX))
+
+      het_reg <- gsub("F_g_XX_h:d_sq_XX_h:S_g_XX_h", "", het_reg)
+      for (k in names(model$coefficients)) {
+        if (!(k %in% c("(Intercept)", predict_het_good))) {
+          if (!is.na(model$coefficients[[k]])) {
+            het_reg <- paste0(het_reg, " + ", k)
+          }
+        }
+      }
+      model <- lm(as.formula(het_reg), data = subset(df, df$F_g_XX - 1 + i <= df$T_g_XX))
+      model_r <- matrix(coeftest(model, vcov. = vcovHC(model, type = "HC1"))[2:(length(predict_het_good)+1), 1:3], ncol = 3)
+      f_stat <- linearHypothesis(model,lhyp, vcov = vcovHC(model, type = "HC1"))[["Pr(>F)"]][2]
+      t_stat <- qt(0.975, df.residual(model))
+      het_res <- rbind(het_res, data.frame(
+        effect = matrix(i, nrow = length(predict_het_good)),
+        covariate = predict_het_good,
+        Estimate = model_r[1:nrow(model_r),1],
+        SE = model_r[1:nrow(model_r),2],
+        t = model_r[1:nrow(model_r),3],
+        LB = model_r[1:nrow(model_r),1] - t_stat * model_r[1:nrow(model_r),2],
+        UB = model_r[1:nrow(model_r),1] + t_stat * model_r[1:nrow(model_r),2],
+        N = matrix(nobs(model), nrow = length(predict_het_good)),
+        pF = matrix(f_stat, nrow = length(predict_het_good))
+      ))  
+    }
+    for (v in c("F_g_XX", "d_sq_XX", "S_g_XX")) {
+      df[[paste0(v,"_h")]] <- NULL
+    }
+    het_res <- het_res[order(het_res$covariate, het_res$effect), ]
   }
-  for (v in c("F_g_XX", "d_sq_XX", "S_g_XX")) {
-    df[[paste0(v,"_h")]] <- NULL
-  }
-  het_res <- het_res[order(het_res$covariate, het_res$effect), ]
 }
 
 # Performing a test that all the DID_l are equal
@@ -1278,9 +1282,11 @@ if (placebo != 0) {
   did_multiplegt_dyn <- append(did_multiplegt_dyn, p_jointplacebo)
   out_names <- c(out_names, "Placebos", "p_jointplacebos")
 }
-if (length(predict_het_good) > 0) {
-  did_multiplegt_dyn <- append(did_multiplegt_dyn, list(het_res))
-  out_names <- c(out_names, "predict_het")
+if (!is.null(predict_het)) {
+  if (length(predict_het_good) > 0) {
+    did_multiplegt_dyn <- append(did_multiplegt_dyn, list(het_res))
+    out_names <- c(out_names, "predict_het")
+  }
 }
 names(did_multiplegt_dyn) <- out_names
 
