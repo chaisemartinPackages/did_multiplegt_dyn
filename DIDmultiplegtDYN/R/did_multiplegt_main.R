@@ -379,7 +379,7 @@ did_multiplegt_main <- function(
 
     df <- df %>% group_by(.data$group_XX) %>%
         mutate(cluster_var_g_XX = sd(.data$cluster_XX))
-    if (max(df$cluster_var_g_XX) > 0) {
+    if (max(df$cluster_var_g_XX, na.rm = TRUE) > 0) {
       stop("The group variable should be nested within the clustering variable.")
     }
   }
@@ -988,7 +988,7 @@ did_multiplegt_main <- function(
   #-- Estimating \hat{\sigma}^2_pl ------------------------------------------#
   if (l_placebo_XX != 0) {
     for (i in 1:l_placebo_XX) {
-      if ((switchers == "" & get(paste0("N1_placebo_",i,"_XX_new")) != 0 & get(paste0("N0_placebo_",i,"_XX_new")) != 0) | (switchers == "out" & get(paste0("N0_placebo_",i,"_XX_new")) != 0 ) | (switchers == "in" & get(paste0("N1_placebo_",i,"_XX_new")) != 0 )) {
+      if ((switchers == "" & (get(paste0("N1_placebo_",i,"_XX_new")) != 0 | get(paste0("N0_placebo_",i,"_XX_new")) != 0)) | (switchers == "out" & get(paste0("N0_placebo_",i,"_XX_new")) != 0 ) | (switchers == "in" & get(paste0("N1_placebo_",i,"_XX_new")) != 0 )) {
           
           df[paste0("U_Gg_var_glob_pl_",i,"_XX")] <- df[[paste0("U_Gg_var_pl_",i,"_in_XX")]] * (get(paste0("N1_placebo_",i,"_XX_new")) / (get(paste0("N1_placebo_",i,"_XX_new")) + get(paste0("N0_placebo_",i,"_XX_new")))) + df[[paste0("U_Gg_var_pl_",i,"_out_XX")]] * (get(paste0("N0_placebo_",i,"_XX_new")) / (get(paste0("N1_placebo_",i,"_XX_new")) + get(paste0("N0_placebo_",i,"_XX_new"))))
 
