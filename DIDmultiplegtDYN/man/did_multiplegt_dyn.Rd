@@ -31,7 +31,8 @@ did_multiplegt_dyn(
   normalized_weights = NULL,
   graph_off = FALSE,
   by = NULL,
-  predict_het = NULL
+  predict_het = NULL,
+  trends_lin = FALSE
 )
 }
 \arguments{
@@ -88,6 +89,8 @@ did_multiplegt_dyn(
 \item{by}{(str) when this option is specified, the command estimates all the effects by the different levels of the specified variable. If the variable is a binary variable for example, then the estimation is carried out once for the sample of groups with var=0 and once for the sample of groups with var=1. The major output of interest then is a graph which shows the treatment effect evolution by the different values of the variable which allows to assess if there is heterogeneity by {it:varname}. Please note that this type of analysis is only valid if the variable is constant over time within groups.}
 
 \item{predict_het}{(list with 2 args: str or vector of str, -1 or vector of positive integers)  when this option is specified, the command outputs tables with estimators and tests on the heterogeneity of treatment effects following Appendix Section 1.5 of de Chaisemartin and D'Haultfoeuille (2020a). With the second argument set to -1, with this option you receive l (the number of effects specified in effects()) tables, each displaying the estimate of the effect of your variables defined in the first argument on the treatment effects computed by did_multiplegt_dyn. The p-value of a test on the null hypothesis that all heterogeneity estimates are equal to zero is shown below each table. If you are only interested in the impact of your first-argument variables on a subset of the l estimated treatment effects, you can specify those inside an integer vector and then the estimators and tests on the heterogeneity of treatment effects will only be carried out for those.Please note that the variables you specify in the varlist should be constant over time within groups.}
+
+\item{trends_lin}{trends_lin}
 }
 \description{
 Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods,and with a potentially non-binary treatment that may increase or decrease multiple times.

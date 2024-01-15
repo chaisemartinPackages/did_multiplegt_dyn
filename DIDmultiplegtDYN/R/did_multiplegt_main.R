@@ -20,6 +20,7 @@
 #' @param save_results save_results
 #' @param normalized normalized
 #' @param predict_het predict_het
+#' @param trends_lin trends_lin
 #' @import dplyr
 #' @importFrom matlib Ginv 
 #' @importFrom plm pdata.frame make.pbalanced
@@ -54,7 +55,8 @@ did_multiplegt_main <- function(
   effects_equal, 
   save_results, 
   normalized,
-  predict_het
+  predict_het,
+  trends_lin
   ) {
 
   suppressWarnings({
@@ -301,6 +303,22 @@ did_multiplegt_main <- function(
     }
   }
 
+  # Add the additional restriction for the trends_lin option and define the new outcome as first differences
+  # When the trends_lin option is specified, drop units for which F_g_XX == 2
+
+  if (isTRUE(trends_lin)) {
+    df <- subset(df, !(df$F_g_XX == 2))
+    df <- df[order(df$group_XX, df$time_XX), ]
+    for (v in c("outcome_XX", controls)) {
+      df <- df %>% group_by(.data$group_XX) %>%
+        mutate(!!paste0(v,"_L") := lag(.data[[v]], n = 1, order_by = .data$group_XX)) 
+      df[[v]] <- df[[v]] - df[[paste0(v,"_L")]]
+      df[[paste0(v,"_L")]] <- NULL
+    }
+    df <- subset(df, !(df$time_XX == 1))
+    t_min_XX <- min(df$time_XX)
+  }
+
   ### END OF MISSING TREATMENT CONVENTIONS BLOCK ###
 
   # Balancing the panel
@@ -539,26 +557,34 @@ did_multiplegt_main <- function(
   }
 
   # Initialize L_u_XX/L_a_XX
+  # If the trends_lin option was specified, and we dropped the first time period, L_u_XX should be decreased by 1.
   L_u_XX <- NA
   L_a_XX <- NA
 
   if (switchers == "" | switchers == "in") {
     L_u_XX <- max(df$L_g_XX[df$S_g_XX == 1], na.rm = TRUE)  
-    if (placebo != 0) {
-      L_placebo_u_XX <- max(df$L_g_placebo_XX[df$S_g_XX == 1], na.rm = TRUE)  
-    }
     if (length(df$S_g_XX[df$S_g_XX == 1 & !is.na(df$S_g_XX)]) == 0) {
       L_u_XX <- 0
+    }
+
+    if (placebo != 0) {
+      L_placebo_u_XX <- max(df$L_g_placebo_XX[df$S_g_XX == 1], na.rm = TRUE)  
+      if (isTRUE(trends_lin)) {
+        L_placebo_u_XX <- L_placebo_u_XX - 1
+      }
     }
   }
 
   if (switchers == "" | switchers == "out") {
     L_a_XX <- max(df$L_g_XX[df$S_g_XX == 0], na.rm = TRUE)  
-    if (placebo != 0) {
-      L_placebo_a_XX <- max(df$L_g_placebo_XX[df$S_g_XX == 0], na.rm = TRUE)  
-    }
     if (length(df$L_g_XX[df$S_g_XX == 0 & !is.na(df$S_g_XX)]) == 0) {
       L_a_XX <- 0
+    }
+    if (placebo != 0) {
+      L_placebo_a_XX <- max(df$L_g_placebo_XX[df$S_g_XX == 0], na.rm = TRUE)  
+      if (isTRUE(trends_lin)) {
+        L_placebo_a_XX <- L_placebo_a_XX - 1
+      }
     }
   }
 
@@ -693,6 +719,7 @@ did_multiplegt_main <- function(
   if (placebo != 0) {
     gs <- c(gs, "L_placebo_u_XX", "L_placebo_a_XX")
   }
+  # Add inheritance of controls #
   globals <- NULL
   for (v in gs) {
     globals[[v]] <- get(v)
@@ -700,16 +727,32 @@ did_multiplegt_main <- function(
 
   if (switchers == "" | switchers == "in") {
     if (!is.na(L_u_XX) & L_u_XX != 0) {
-      data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers, same_switchers_pl, normalized, globals = globals, const = const)
 
-      df <- data$df
-      data$df <- NULL
-      for (e in names(data$const)) {
-        const[[e]] <- data$const[[e]]
-        assign(e, const[[e]])
+      if (isFALSE(trends_lin)) {
+        data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers, same_switchers_pl, normalized, globals = globals, const = const, trends_lin = trends_lin)
+
+        df <- data$df
+        data$df <- NULL
+        for (e in names(data$const)) {
+          const[[e]] <- data$const[[e]]
+          assign(e, const[[e]])
+        }
       }
 
+
       for (i in 1:l_XX) {
+
+        if (isTRUE(trends_lin)) {
+          data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = 0, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, normalized, globals = globals, const = const, trends_lin = trends_lin)
+
+          df <- data$df
+          data$df <- NULL
+          for (e in names(data$const)) {
+            const[[e]] <- data$const[[e]]
+            assign(e, const[[e]])
+          }          
+        }
+
         if (get(paste0("N1_",i,"_XX")) != 0) {
           df[[paste0("U_Gg",i,"_plus_XX")]] <- df[[paste0("U_Gg",i,"_XX")]]
           df[[paste0("count",i,"_plus_XX")]] <- df[[paste0("count",i,"_core_XX")]]
@@ -722,10 +765,23 @@ did_multiplegt_main <- function(
             const[[paste0("delta_D_",i,"_in_XX")]] <- get(paste0("delta_D_",i,"_in_XX"))
           }
         }
+
       }
 
       if (l_placebo_XX != 0) {
         for (i in 1:l_placebo_XX) {
+
+          if (isTRUE(trends_lin)) {
+            data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = i, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, normalized, globals = globals, const = const, trends_lin = trends_lin)
+
+            df <- data$df
+            data$df <- NULL
+            for (e in names(data$const)) {
+              const[[e]] <- data$const[[e]]
+              assign(e, const[[e]])
+            }          
+          }
+
           if (get(paste0("N1_placebo_",i,"_XX")) != 0) {
             df[[paste0("U_Gg_pl_",i,"_plus_XX")]] <- df[[paste0("U_Gg_placebo_",i,"_XX")]]
             df[[paste0("count",i,"_pl_plus_XX")]] <- df[[paste0("count",i,"_pl_core_XX")]]
@@ -742,26 +798,43 @@ did_multiplegt_main <- function(
         }
       }
 
-      if (sum_N1_l_XX != 0) {
-        df$U_Gg_plus_XX <- df$U_Gg_XX
-        df$U_Gg_den_plus_XX <- df$U_Gg_den_XX
-        df$U_Gg_var_plus_XX <- df$U_Gg_var_XX
+      if (isFALSE(trends_lin)) {
+        if (sum_N1_l_XX != 0) {
+          df$U_Gg_plus_XX <- df$U_Gg_XX
+          df$U_Gg_den_plus_XX <- df$U_Gg_den_XX
+          df$U_Gg_var_plus_XX <- df$U_Gg_var_XX
+        }
       }
     }
   }
 
   if (switchers == "" | switchers == "out") {
     if (!is.na(L_a_XX) & L_a_XX != 0) {
-      data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers, same_switchers_pl, normalized, globals = globals, const = const)
 
-      df <- data$df
-      data$df <- NULL
-      for (e in names(data$const)) {
-        const[[e]] <- data$const[[e]]
-        assign(e, const[[e]])
+      if (isFALSE(trends_lin)) {
+        data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers, same_switchers_pl, normalized, globals = globals, const = const, trends_lin = trends_lin)
+
+        df <- data$df
+        data$df <- NULL
+        for (e in names(data$const)) {
+          const[[e]] <- data$const[[e]]
+          assign(e, const[[e]])
+        }
       }
 
       for (i in 1:l_XX) {
+
+        if (isTRUE(trends_lin)) {
+          data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = 0, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, normalized, globals = globals, const = const, trends_lin = trends_lin)
+
+          df <- data$df
+          data$df <- NULL
+          for (e in names(data$const)) {
+            const[[e]] <- data$const[[e]]
+            assign(e, const[[e]])
+          }
+        }
+
         if (get(paste0("N0_",i,"_XX")) != 0) {
           df[[paste0("U_Gg",i,"_minus_XX")]] <- - df[[paste0("U_Gg",i,"_XX")]]
           df[[paste0("count",i,"_minus_XX")]] <- df[[paste0("count",i,"_core_XX")]]
@@ -778,6 +851,18 @@ did_multiplegt_main <- function(
 
       if (l_placebo_XX != 0) {
         for (i in 1:l_placebo_XX) {
+
+          if (isTRUE(trends_lin)) {
+            data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = i, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, normalized, globals = globals, const = const, trends_lin = trends_lin)
+
+            df <- data$df
+            data$df <- NULL
+            for (e in names(data$const)) {
+              const[[e]] <- data$const[[e]]
+              assign(e, const[[e]])
+            }
+          }
+
           if (get(paste0("N0_placebo_",i,"_XX")) != 0) {
             df[[paste0("U_Gg_pl_",i,"_minus_XX")]] <- - df[[paste0("U_Gg_placebo_",i,"_XX")]]
             df[[paste0("count",i,"_pl_minus_XX")]] <- df[[paste0("count",i,"_pl_core_XX")]]
@@ -793,10 +878,12 @@ did_multiplegt_main <- function(
         }
       }
 
-      if (sum_N0_l_XX != 0) {
-        df$U_Gg_minus_XX <- - df$U_Gg_XX
-        df$U_Gg_den_minus_XX <- df$U_Gg_den_XX
-        df$U_Gg_var_minus_XX <- df$U_Gg_var_XX
+      if (isFALSE(trends_lin)) {
+        if (sum_N0_l_XX != 0) {
+          df$U_Gg_minus_XX <- - df$U_Gg_XX
+          df$U_Gg_den_minus_XX <- df$U_Gg_den_XX
+          df$U_Gg_var_minus_XX <- df$U_Gg_var_XX
+        }
       }
     }
   }
@@ -858,39 +945,42 @@ did_multiplegt_main <- function(
   U_Gg_den_plus_XX <- ifelse(is.na(mean(df$U_Gg_den_plus_XX, na.rm = TRUE)), 0, mean(df$U_Gg_den_plus_XX, na.rm = TRUE))
   U_Gg_den_minus_XX <- ifelse(is.na(mean(df$U_Gg_den_minus_XX, na.rm = TRUE)), 0, mean(df$U_Gg_den_minus_XX, na.rm = TRUE))
 
-  if (switchers == "") {
-    w_plus_XX <- U_Gg_den_plus_XX * sum_N1_l_XX / (U_Gg_den_plus_XX * sum_N1_l_XX + U_Gg_den_minus_XX * sum_N0_l_XX)
-  }
-  if (switchers == "out") {
-    w_plus_XX <- 0
-  }
-  if (switchers == "in") {
-    w_plus_XX <- 1
-  }
+  if (isFALSE(trends_lin)) {
+    if (switchers == "") {
+      w_plus_XX <- U_Gg_den_plus_XX * sum_N1_l_XX / (U_Gg_den_plus_XX * sum_N1_l_XX + U_Gg_den_minus_XX * sum_N0_l_XX)
+    }
+    if (switchers == "out") {
+      w_plus_XX <- 0
+    }
+    if (switchers == "in") {
+      w_plus_XX <- 1
+    }
 
-  df$U_Gg_global_XX <- w_plus_XX * df$U_Gg_plus_XX + (1 - w_plus_XX) * df$U_Gg_minus_XX
-  df$U_Gg_global_XX[df$first_obs_by_gp == 0] <- NA
+    df$U_Gg_global_XX <- w_plus_XX * df$U_Gg_plus_XX + (1 - w_plus_XX) * df$U_Gg_minus_XX
+    df$U_Gg_global_XX[df$first_obs_by_gp == 0] <- NA
 
-  df$delta_XX <- sum(df$U_Gg_global_XX, na.rm = TRUE) / G_XX
-  delta_XX <- mean(df$delta_XX, na.rm = TRUE)
-  assign("Av_tot_effect", delta_XX)
-  mat_res_XX[l_XX+1,1] <- delta_XX
-  N_switchers_effect_XX <- 0
-  for (i in 1:l_XX) {
-    N_switchers_effect_XX <- N_switchers_effect_XX + get(paste0("N_switchers_effect_",i,"_XX"))
+    df$delta_XX <- sum(df$U_Gg_global_XX, na.rm = TRUE) / G_XX
+    delta_XX <- mean(df$delta_XX, na.rm = TRUE)
+    assign("Av_tot_effect", delta_XX)
+    mat_res_XX[l_XX+1,1] <- delta_XX
+    N_switchers_effect_XX <- 0
+    for (i in 1:l_XX) {
+      N_switchers_effect_XX <- N_switchers_effect_XX + get(paste0("N_switchers_effect_",i,"_XX"))
+    }
+    mat_res_XX[l_XX+1,6] <- N_switchers_effect_XX
+    mat_res_XX[l_XX+1,7] <- 0
+    assign("N_switchers_effect_average", N_switchers_effect_XX)
+    df$count_global_XX <- 0
+    for (i in 1:l_XX) {
+      df <- df %>% rowwise() %>% 
+      mutate(count_global_XX = max(.data$count_global_XX, .data[[paste0("count",i,"_global_XX")]], na.rm = TRUE))
+    }
+    N_effect_XX <- sum(df$count_global_XX, na.rm = TRUE)
+    mat_res_XX[l_XX+1,5] <- N_effect_XX
+    assign("N_avg_total_effect", N_effect_XX)
   }
-  mat_res_XX[l_XX+1,6] <- N_switchers_effect_XX
-  mat_res_XX[l_XX+1,7] <- 0
-  assign("N_switchers_effect_average", N_switchers_effect_XX)
-  df$count_global_XX <- 0
-  for (i in 1:l_XX) {
-    df <- df %>% rowwise() %>% 
-    mutate(count_global_XX = max(.data$count_global_XX, .data[[paste0("count",i,"_global_XX")]], na.rm = TRUE))
-  }
-  N_effect_XX <- sum(df$count_global_XX, na.rm = TRUE)
-  mat_res_XX[l_XX+1,5] <- N_effect_XX
-  assign("N_avg_total_effect", N_effect_XX)
   rownames <- append(rownames, paste0("Av_tot_eff", strrep(" ",(12 - nchar("Av_tot_eff")))))
+  mat_res_XX[l_XX+1,7] <- 0
 
   #-- Placebos ---------------------------------------------#
 
@@ -1025,31 +1115,34 @@ did_multiplegt_main <- function(
   }
 
   #-- Estimating \hat{\sigma}^2 __------------------------------------------#
-if ((switchers=="" & (sum_N1_l_XX!=0|sum_N0_l_XX!=0))|(switchers =="out" & sum_N0_l_XX!=0)|(switchers=="in" & sum_N1_l_XX !=0)) {
 
-  df$U_Gg_var_global_XX <- w_plus_XX * df$U_Gg_var_plus_XX + (1 - w_plus_XX) * df$U_Gg_var_minus_XX
+  if (isFALSE(trends_lin)) {
+    if ((switchers=="" & (sum_N1_l_XX!=0|sum_N0_l_XX!=0))|(switchers =="out" & sum_N0_l_XX!=0)|(switchers=="in" & sum_N1_l_XX !=0)) {
 
-  if (is.null(cluster)) {
-  df$U_Gg_var_global_2_XX <- df$U_Gg_var_global_XX^2 * df$first_obs_by_gp_XX
-  assign("sum_for_var_XX", sum(df$U_Gg_var_global_2_XX, na.rm = TRUE) / G_XX^2) 
-  } else {
-    df$U_Gg_var_global_XX <- df$U_Gg_var_global_XX * df$first_obs_by_gp_XX
-    df <- df %>% group_by(.data$cluster_XX) %>%
-        mutate(clust_U_Gg_var_global_XX = sum(.data$U_Gg_var_global_XX, na.rm = TRUE))
-    df$clust_U_Gg_var_global_XX <- df$clust_U_Gg_var_global_XX^2 * df$first_obs_by_clust_XX
-    assign("sum_for_var_XX", sum(df$clust_U_Gg_var_global_XX)/G_XX^2)
+      df$U_Gg_var_global_XX <- w_plus_XX * df$U_Gg_var_plus_XX + (1 - w_plus_XX) * df$U_Gg_var_minus_XX
+
+      if (is.null(cluster)) {
+      df$U_Gg_var_global_2_XX <- df$U_Gg_var_global_XX^2 * df$first_obs_by_gp_XX
+      assign("sum_for_var_XX", sum(df$U_Gg_var_global_2_XX, na.rm = TRUE) / G_XX^2) 
+      } else {
+        df$U_Gg_var_global_XX <- df$U_Gg_var_global_XX * df$first_obs_by_gp_XX
+        df <- df %>% group_by(.data$cluster_XX) %>%
+            mutate(clust_U_Gg_var_global_XX = sum(.data$U_Gg_var_global_XX, na.rm = TRUE))
+        df$clust_U_Gg_var_global_XX <- df$clust_U_Gg_var_global_XX^2 * df$first_obs_by_clust_XX
+        assign("sum_for_var_XX", sum(df$clust_U_Gg_var_global_XX)/G_XX^2)
+      }
+
+      assign("se_XX", sqrt(sum_for_var_XX))
+      mat_res_XX[l_XX + 1,2] <- se_XX
+      assign("se_avg_total_effect",se_XX)
+
+      # CI level
+      LB_CI_XX <- delta_XX - z_level * se_XX
+      mat_res_XX[l_XX + 1,3] <- LB_CI_XX
+      UB_CI_XX <- delta_XX + z_level * se_XX
+      mat_res_XX[l_XX + 1,4] <- UB_CI_XX
+    }
   }
-
-  assign("se_XX", sqrt(sum_for_var_XX))
-  mat_res_XX[l_XX + 1,2] <- se_XX
-  assign("se_avg_total_effect",se_XX)
-
-  # CI level
-  LB_CI_XX <- delta_XX - z_level * se_XX
-  mat_res_XX[l_XX + 1,3] <- LB_CI_XX
-  UB_CI_XX <- delta_XX + z_level * se_XX
-  mat_res_XX[l_XX + 1,4] <- UB_CI_XX
-}
 
 #-- F tests ---------------------------------------------------#
 # If the option cluster is specified, we have previously replaced U_Gg_var_glob_pl_`i'_XX by clust_U_Gg_var_glob_pl_`i'_XX, and U_Gg_var_glob_`i'_XX by clust_U_Gg_var_glob_`i'_XX. 
@@ -1288,6 +1381,8 @@ if (!is.null(predict_het)) {
     out_names <- c(out_names, "predict_het")
   }
 }
+did_multiplegt_dyn <- append(did_multiplegt_dyn, list(df))
+out_names <- c(out_names, "debug")
 names(did_multiplegt_dyn) <- out_names
 
 delta <- list() 

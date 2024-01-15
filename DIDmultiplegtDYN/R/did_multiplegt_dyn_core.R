@@ -14,6 +14,7 @@
 #' @param normalized normalized
 #' @param globals globals
 #' @param const constants
+#' @param trends_lin trends_lin
 #' @import dplyr
 #' @importFrom magrittr %>%
 #' @importFrom rlang := 
@@ -34,7 +35,8 @@ did_multiplegt_dyn_core <- function(
     same_switchers_pl, 
     normalized,
     globals,
-    const
+    const,
+    trends_lin
     ) {
   
   # Inherited Globals #
@@ -44,6 +46,8 @@ did_multiplegt_dyn_core <- function(
   t_min_XX <- globals$t_min_XX
   T_max_XX <- globals$T_max_XX
   G_XX <- globals$G_XX
+  t_min_XX <- globals$t_min_XX
+  T_max_XX <- globals$T_max_XX
 
   for (e in names(const)) {
     assign(e, const[[e]])
@@ -81,16 +85,17 @@ did_multiplegt_dyn_core <- function(
       paste0("N_gt_control_",i,"_XX"), paste0("diff_y_",i,"_XX"),
       paste0("diff_y_",i,"_XX_temp"), paste0("dummy_U_Gg",i,"_XX"),
       paste0("U_Gg",i,"_temp_XX"), paste0("U_Gg",i,"_XX"),
-      paste0("count",i,"_core_XX"), paste0("mean_diff_y_",i,"nd_sq_t_XX"),
-      paste0("mean_diff_y_",i,"d_sq_t_XX"), paste0("U_Gg",i,"_temp_var_XX"),
-      paste0("U_Gg",i,"var_XX"),paste0("U_Gg",i,"var_2_XX"),
-      paste0("count_var_",i,"_ntreat_XX_temp"), paste0("count_var_",i,"ntreat_XX"),
-      paste0("count_var_",i,"_treat_XX_temp"), paste0("count_var_",i,"treat_XX"),
-      paste0("avg_diff_y_",i,"tnp_XX"), paste0("count_diff_y_",i,"_nd_sq_t_XX"),
+      paste0("count",i,"_core_XX"), paste0("mean_diff_y_",i,"_nd_sq_t_XX"),
+      paste0("mean_diff_y_",i,"_d_sq_t_XX"), paste0("U_Gg",i,"_temp_var_XX"),
+      paste0("U_Gg",i,"_var_XX"),paste0("U_Gg",i,"_var_2_XX"),
+      paste0("count_var_",i,"_ntreat_XX_temp"), paste0("count_var_",i,"_ntreat_XX"),
+      paste0("count_var_",i,"_treat_XX_temp"), paste0("count_var_",i,"_treat_XX"),
+      paste0("avg_diff_y_",i,"_tnp_XX"), paste0("count_diff_y_",i,"_nd_sq_t_XX"),
       paste0("count_diff_y_",i,"_d_sq_t_XX"), paste0("never_change_d_",i,"_wXX"),
       paste0("distance_to_switch_",i,"_wXX")
      ))) 
 
+    df <- df[order(df$group_XX, df$time_XX), ]
     df <- df %>% 
       group_by(.data$group_XX) %>% 
       mutate(!!paste0("diff_y_", i, "_XX") := .data$outcome_XX - lag(.data$outcome_XX, i)) %>% 
@@ -178,7 +183,6 @@ did_multiplegt_dyn_core <- function(
       assign(paste0("N",increase_XX,"_",i,"_XX"), 
         get(paste0("N",increase_XX,"_",i,"_XX")) + mean(df[[paste0("N", increase_XX,"_t_", i, "_XX")]][df$time_XX == t], na.rm = TRUE))
     }
-    assign(paste0("N",increase_XX,"_",i,"_XX"), get(paste0("N",increase_XX,"_",i,"_XX")))
 
     # Computing N^0_{t,l,g} and N^1_{t,l,g}
     df <- joint_trends(df, c("time_XX", "d_sq_XX"), trends_nonparam)
@@ -294,6 +298,31 @@ did_multiplegt_dyn_core <- function(
         ), NA)
       assign(paste0("delta_norm_",i,"_XX"), sum(df[[paste0("delta_D_",i,"_cum_temp_XX")]], na.rm = TRUE))    
     }
+  }
+
+  ### Trends_lin option #
+  Ntrendslin <- 1
+  for (i in 1:l_u_a_XX) {
+    Ntrendslin <- min(Ntrendslin, get(paste0("N", increase_XX, "_",i,"_XX")), na.rm = TRUE)
+  }
+
+  if (isTRUE(trends_lin) & Ntrendslin != 0) {
+    df[paste0("U_Gg",l_u_a_XX,"_TL")] <- 0
+    df[paste0("U_Gg",l_u_a_XX,"_var_TL")] <- 0
+    for (i in 1:l_u_a_XX) {
+      df[[paste0("U_Gg",l_u_a_XX,"_TL")]] <- ifelse(!is.na(df[[paste0("U_Gg",i,"_XX")]]),
+      df[[paste0("U_Gg",l_u_a_XX,"_TL")]] + df[[paste0("U_Gg",i,"_XX")]],
+      df[[paste0("U_Gg",l_u_a_XX,"_TL")]])
+      df[[paste0("U_Gg",l_u_a_XX,"_var_TL")]] <- ifelse(!is.na(df[[paste0("U_Gg",i,"_var_XX")]]),
+      df[[paste0("U_Gg",l_u_a_XX,"_var_TL")]] + df[[paste0("U_Gg",i,"_var_XX")]],
+      df[[paste0("U_Gg",l_u_a_XX,"_var_TL")]])
+
+    }
+
+    df[[paste0("U_Gg",l_u_a_XX,"_XX")]] <- df[[paste0("U_Gg",l_u_a_XX,"_TL")]] 
+    df[[paste0("U_Gg",l_u_a_XX,"_var_XX")]] <- df[[paste0("U_Gg",l_u_a_XX,"_var_TL")]] 
+    df[[paste0("U_Gg",l_u_a_XX,"_TL")]] <- NULL
+    df[[paste0("U_Gg",l_u_a_XX,"_var_TL")]] <- NULL
   }
 
   ## Computation of the Placebos 
@@ -482,50 +511,83 @@ did_multiplegt_dyn_core <- function(
         }
       }
     }
-  }
 
+    Ntrendslin_pl <- 1
+    for (i in 1:l_placebo_u_a_XX) {
+      Ntrendslin_pl <- min(Ntrendslin_pl, get(paste0("N",increase_XX,"_placebo_",i,"_XX")), na.rm = TRUE)
+    }
+
+    if (isTRUE(trends_lin) & Ntrendslin_pl == 0) {
+      assign(paste0("N",increase_XX,"_placebo_",l_placebo_u_a_XX), 0)
+    }
+
+    if (isTRUE(trends_lin) & Ntrendslin_pl != 0) {
+      df[[paste0("U_Gg_pl_",l_u_a_XX,"_TL")]] <- 0
+      df[[paste0("U_Gg_pl_",l_u_a_XX,"_var_TL")]] <- 0
+      for (i in 1:l_u_a_XX) {
+        df[[paste0("U_Gg_pl_",l_u_a_XX,"_TL")]] <- ifelse(!is.na(df[[paste0("U_Gg_placebo_",i,"_XX")]]),
+        df[[paste0("U_Gg_pl_",l_u_a_XX,"_TL")]] + df[[paste0("U_Gg_placebo_",i,"_XX")]],
+        df[[paste0("U_Gg_pl_",l_u_a_XX,"_TL")]])
+        
+        df[[paste0("U_Gg_pl_",l_u_a_XX,"_var_TL")]] <- ifelse(!is.na(df[[paste0("U_Gg_pl_",i,"_var_XX")]]),
+        df[[paste0("U_Gg_pl_",l_u_a_XX,"_var_TL")]] + df[[paste0("U_Gg_pl_",i,"_var_XX")]],
+        df[[paste0("U_Gg_pl_",l_u_a_XX,"_var_TL")]])
+
+      }
+
+      df[[paste0("U_Gg_placebo_",l_u_a_XX,"_XX")]] <- df[[paste0("U_Gg_pl_",l_u_a_XX,"_TL")]] 
+      df[[paste0("U_Gg_pl_",l_u_a_XX,"_var_XX")]] <- df[[paste0("U_Gg_pl_",l_u_a_XX,"_var_TL")]] 
+      df[[paste0("U_Gg_pl_",l_u_a_XX,"_TL")]] <- NULL
+      df[[paste0("U_Gg_pl_",l_u_a_XX,"_var_TL")]] <- NULL
+    }
+
+  }
   # End of the Placebo computation 
 
-  assign(paste0("sum_N",increase_XX,"_l_XX"), 0)
-  for (i in 1:l_u_a_XX) {
-    assign(paste0("sum_N",increase_XX,"_l_XX"), get(paste0("sum_N",increase_XX,"_l_XX"))+
-    get(paste0("N",increase_XX,"_",i,"_XX")))
-  }
+  # For the estimation of \hat{\delta}
 
-  df <- df %>% dplyr::select(-any_of(c(
-    "U_Gg_XX", "U_Gg_num_XX", "U_Gg_den_XX", "U_Gg_num_var_XX", "U_Gg_var_XX"
-  )))
-
-  df$U_Gg_num_XX <- 0
-  df$U_Gg_den_XX <- 0
-  df$U_Gg_num_var_XX <- 0
-  for (i in 1:l_u_a_XX) {
-    if (get(paste0("N",increase_XX,"_",i,"_XX")) != 0) {
-
-      df <- df %>% dplyr::select(-any_of(c(
-        paste0("delta_D_",i,"_temp_XX"), paste0("delta_D_",i,"_XX")
-        )))
-
-      assign(paste0("w_",i,"_XX"), get(paste0("N",increase_XX,"_",i,"_XX")) / get(paste0("sum_N",increase_XX,"_l_XX")))
-
-      df[paste0("delta_D_",i,"_temp_XX")] <- df$N_gt_XX/get(paste0("N",increase_XX,"_",i,"_XX")) * ((df$treatment_XX - df$d_sq_XX) * df$S_g_XX + (1 - df$S_g_XX) * (df$d_sq_XX - df$treatment_XX))
-      df[[paste0("delta_D_",i,"_temp_XX")]] <- ifelse(df[[paste0("distance_to_switch_",i,"_XX")]] == 1, 
-          df[[paste0("delta_D_",i,"_temp_XX")]], NA)
-      df[[paste0("delta_D_",i,"_temp_XX")]][is.na(
-        df[[paste0("delta_D_",i,"_temp_XX")]])] <- 0
-
-      df[paste0("delta_D_",i,"_XX")] <- sum(df[[paste0("delta_D_",i,"_temp_XX")]], na.rm = TRUE)
-      df <- df %>% dplyr::select(-.data[[paste0("delta_D_",i,"_temp_XX")]])
-
-      df$U_Gg_num_XX <- df$U_Gg_num_XX + get(paste0("w_",i,"_XX")) * df[[paste0("U_Gg",i,"_XX")]]
-      df$U_Gg_num_var_XX <- df$U_Gg_num_var_XX + get(paste0("w_",i,"_XX")) * df[[paste0("U_Gg",i,"_var_XX")]]
-      df$U_Gg_den_XX <- df$U_Gg_den_XX + get(paste0("w_",i,"_XX")) * df[[paste0("delta_D_",i,"_XX")]]
+  if (isFALSE(trends_lin)) {
+    assign(paste0("sum_N",increase_XX,"_l_XX"), 0)
+    for (i in 1:l_u_a_XX) {
+      assign(paste0("sum_N",increase_XX,"_l_XX"), get(paste0("sum_N",increase_XX,"_l_XX"))+
+      get(paste0("N",increase_XX,"_",i,"_XX")))
     }
-  }
 
-  # Computing the U^+_{G,g}s.
-  df$U_Gg_XX <- df$U_Gg_num_XX/df$U_Gg_den_XX
-  df$U_Gg_var_XX <- df$U_Gg_num_var_XX/df$U_Gg_den_XX
+    df <- df %>% dplyr::select(-any_of(c(
+      "U_Gg_XX", "U_Gg_num_XX", "U_Gg_den_XX", "U_Gg_num_var_XX", "U_Gg_var_XX"
+    )))
+
+    df$U_Gg_num_XX <- 0
+    df$U_Gg_den_XX <- 0
+    df$U_Gg_num_var_XX <- 0
+    for (i in 1:l_u_a_XX) {
+      if (get(paste0("N",increase_XX,"_",i,"_XX")) != 0) {
+
+        df <- df %>% dplyr::select(-any_of(c(
+          paste0("delta_D_",i,"_temp_XX"), paste0("delta_D_",i,"_XX")
+          )))
+
+        assign(paste0("w_",i,"_XX"), get(paste0("N",increase_XX,"_",i,"_XX")) / get(paste0("sum_N",increase_XX,"_l_XX")))
+
+        df[paste0("delta_D_",i,"_temp_XX")] <- df$N_gt_XX/get(paste0("N",increase_XX,"_",i,"_XX")) * ((df$treatment_XX - df$d_sq_XX) * df$S_g_XX + (1 - df$S_g_XX) * (df$d_sq_XX - df$treatment_XX))
+        df[[paste0("delta_D_",i,"_temp_XX")]] <- ifelse(df[[paste0("distance_to_switch_",i,"_XX")]] == 1, 
+            df[[paste0("delta_D_",i,"_temp_XX")]], NA)
+        df[[paste0("delta_D_",i,"_temp_XX")]][is.na(
+          df[[paste0("delta_D_",i,"_temp_XX")]])] <- 0
+
+        df[paste0("delta_D_",i,"_XX")] <- sum(df[[paste0("delta_D_",i,"_temp_XX")]], na.rm = TRUE)
+        df <- df %>% dplyr::select(-.data[[paste0("delta_D_",i,"_temp_XX")]])
+
+        df$U_Gg_num_XX <- df$U_Gg_num_XX + get(paste0("w_",i,"_XX")) * df[[paste0("U_Gg",i,"_XX")]]
+        df$U_Gg_num_var_XX <- df$U_Gg_num_var_XX + get(paste0("w_",i,"_XX")) * df[[paste0("U_Gg",i,"_var_XX")]]
+        df$U_Gg_den_XX <- df$U_Gg_den_XX + get(paste0("w_",i,"_XX")) * df[[paste0("delta_D_",i,"_XX")]]
+      }
+    }
+
+    # Computing the U^+_{G,g}s.
+    df$U_Gg_XX <- df$U_Gg_num_XX/df$U_Gg_den_XX
+    df$U_Gg_var_XX <- df$U_Gg_num_var_XX/df$U_Gg_den_XX
+  }
 
   # Update passthrough constants
   for (e in names(const)) {
