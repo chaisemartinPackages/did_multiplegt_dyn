@@ -5,6 +5,17 @@ Estimation in Difference-in-Difference (DID) designs with multiple groups and pe
 
 [Options](#Options) | [Example](#Example) | [FAQ](#FAQ) | [References](#References ) | [Authors](#Authors)
 
+# Setup
+```s
+```
+
+### Stata
+
+### R
+```s
+```
+[![R-CMD-check](https://github.com/DiegoCiccia/did_multiplegt_dyn/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/DiegoCiccia/did_multiplegt_dyn/actions/workflows/R-CMD-check.yaml)
+
 ## Short description
 
 Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, and with a potentially non-binary treatment that may increase 
