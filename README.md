@@ -5,11 +5,10 @@ Estimation in Difference-in-Difference (DID) designs with multiple groups and pe
 
 [Options](#Options) | [Example](#Example) | [FAQ](#FAQ) | [References](#References ) | [Authors](#Authors)
 
-# Setup
+## Setup
+### Stata
 ```s
 ```
-
-### Stata
 
 ### R
 ```s
