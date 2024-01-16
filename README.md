@@ -1,33 +1,25 @@
 # did_multiplegt_dyn
 Estimation in Difference-in-Difference (DID) designs with multiple groups and periods.
 
-[Short description](#Short-description) | [Installation](#Installation) | [Syntax](#Syntax) | [Description](#Description)
+[Short description](#Short-description) | [Setup](#Setup) | [Syntax](#Syntax) | [Description](#Description)
 
 [Options](#Options) | [Example](#Example) | [FAQ](#FAQ) | [References](#References ) | [Authors](#Authors)
-
-## Setup
-### Stata
-```s
-```
-
-### R
-```s
-```
-[![R-CMD-check](https://github.com/DiegoCiccia/did_multiplegt_dyn/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/DiegoCiccia/did_multiplegt_dyn/actions/workflows/R-CMD-check.yaml)
 
 ## Short description
 
 Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, and with a potentially non-binary treatment that may increase 
 or decrease multiple times.  This is a beta version of the command. New options will be added soon, and some of the options already provided are not fully stabilized yet.
 
-
-## Installation
-
-Check out the command in Stata for more details.
-
-```applescript
+## Setup
+### Stata
+```s
 ssc install did_multiplegt_dyn, replace
 ```
+
+### R
+```s
+```
+[![R-CMD-check](https://github.com/DiegoCiccia/did_multiplegt_dyn/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/DiegoCiccia/did_multiplegt_dyn/actions/workflows/R-CMD-check.yaml)
 
 ## Syntax
 
