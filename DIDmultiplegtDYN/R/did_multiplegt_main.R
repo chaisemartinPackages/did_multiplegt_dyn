@@ -725,11 +725,22 @@ did_multiplegt_main <- function(
     globals[[v]] <- get(v)
   }
 
+  controls_globals <- NULL
+  if (!is.null(controls)) {
+    controls_globals <- list()
+    for (l in levels_d_sq_XX) {
+      controls_globals <- append(controls_globals, get(paste0("useful_res_", l, "_XX")))
+      names(controls_globals)[length(controls_globals)] <- paste0("useful_res_", l, "_XX")
+      controls_globals <- append(controls_globals, list(get(paste0("coefs_sq_", l, "_XX"))))
+      names(controls_globals)[length(controls_globals)] <- paste0("coefs_sq_", l, "_XX")
+    }
+  }
+
   if (switchers == "" | switchers == "in") {
     if (!is.na(L_u_XX) & L_u_XX != 0) {
 
       if (isFALSE(trends_lin)) {
-        data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers, same_switchers_pl, normalized, globals = globals, const = const, trends_lin = trends_lin)
+        data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers, same_switchers_pl, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals)
 
         df <- data$df
         data$df <- NULL
@@ -743,7 +754,7 @@ did_multiplegt_main <- function(
       for (i in 1:l_XX) {
 
         if (isTRUE(trends_lin)) {
-          data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = 0, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, normalized, globals = globals, const = const, trends_lin = trends_lin)
+          data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = 0, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals)
 
           df <- data$df
           data$df <- NULL
@@ -772,7 +783,7 @@ did_multiplegt_main <- function(
         for (i in 1:l_placebo_XX) {
 
           if (isTRUE(trends_lin)) {
-            data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = i, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, normalized, globals = globals, const = const, trends_lin = trends_lin)
+            data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = i, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals)
 
             df <- data$df
             data$df <- NULL
@@ -812,7 +823,7 @@ did_multiplegt_main <- function(
     if (!is.na(L_a_XX) & L_a_XX != 0) {
 
       if (isFALSE(trends_lin)) {
-        data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers, same_switchers_pl, normalized, globals = globals, const = const, trends_lin = trends_lin)
+        data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers, same_switchers_pl, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals)
 
         df <- data$df
         data$df <- NULL
@@ -825,7 +836,7 @@ did_multiplegt_main <- function(
       for (i in 1:l_XX) {
 
         if (isTRUE(trends_lin)) {
-          data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = 0, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, normalized, globals = globals, const = const, trends_lin = trends_lin)
+          data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = 0, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals)
 
           df <- data$df
           data$df <- NULL
@@ -853,7 +864,7 @@ did_multiplegt_main <- function(
         for (i in 1:l_placebo_XX) {
 
           if (isTRUE(trends_lin)) {
-            data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = i, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, normalized, globals = globals, const = const, trends_lin = trends_lin)
+            data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = i, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals)
 
             df <- data$df
             data$df <- NULL

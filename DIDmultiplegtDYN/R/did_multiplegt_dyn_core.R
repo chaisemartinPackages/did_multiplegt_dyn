@@ -15,6 +15,7 @@
 #' @param globals globals
 #' @param const constants
 #' @param trends_lin trends_lin
+#' @param controls_globals controls_globals
 #' @import dplyr
 #' @importFrom magrittr %>%
 #' @importFrom rlang := 
@@ -36,7 +37,8 @@ did_multiplegt_dyn_core <- function(
     normalized,
     globals,
     const,
-    trends_lin
+    trends_lin,
+    controls_globals
     ) {
   
   # Inherited Globals #
@@ -51,6 +53,12 @@ did_multiplegt_dyn_core <- function(
 
   for (e in names(const)) {
     assign(e, const[[e]])
+  }
+
+  if (!is.null(controls)) {
+    for (e in names(controls_globals)) {
+      assign(e, controls_globals[[e]])
+    }
   }
 
   suppressWarnings({
