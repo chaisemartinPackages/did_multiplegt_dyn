@@ -34,10 +34,17 @@ print.did_multiplegt_dyn <- function(x, ...) {
             cat("\n");cat("\n")
         }
 
-        cat(noquote(strrep("-", 70)));cat("\n");
-        cat(strrep(" ", 4));cat("Estimation of treatment effects: ATE per treatment unit");cat("\n");
-        cat(noquote(strrep("-", 70)));cat("\n");
-        mat_print(ref$results$ATE)
+        if (isTRUE(x$args$trends_lin)) {
+            cat(noquote(strrep("-", 70)));cat("\n");
+            cat(strrep(" ", 4));cat("When the trends_lin is specified no average effects are reported");cat("\n");
+            cat(noquote(strrep("-", 70)));cat("\n");
+
+        } else {
+            cat(noquote(strrep("-", 70)));cat("\n");
+            cat(strrep(" ", 4));cat("Estimation of treatment effects: ATE per treatment unit");cat("\n");
+            cat(noquote(strrep("-", 70)));cat("\n");
+            mat_print(ref$results$ATE)
+        }
         cat("\n")
 
         if (ref$results$N_Placebos != 0) {
@@ -47,7 +54,7 @@ print.did_multiplegt_dyn <- function(x, ...) {
             mat_print(ref$results$Placebos)
             cat("\n")
             cat(sprintf("Test of joint nullity of the placebos : p-value = %.4f", ref$results$p_jointplacebo))
-            cat("\n")
+            cat("\n");cat("\n")
         }
 
         if (!is.null(ref$design)) {
