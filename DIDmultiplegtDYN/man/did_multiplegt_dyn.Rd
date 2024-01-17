@@ -32,7 +32,8 @@ did_multiplegt_dyn(
   graph_off = FALSE,
   by = NULL,
   predict_het = NULL,
-  trends_lin = FALSE
+  trends_lin = FALSE,
+  less_conservative_se = FALSE
 )
 }
 \arguments{
@@ -91,6 +92,8 @@ did_multiplegt_dyn(
 \item{predict_het}{(list with 2 args: str or vector of str, -1 or vector of positive integers)  when this option is specified, the command outputs tables with estimators and tests on the heterogeneity of treatment effects following Appendix Section 1.5 of de Chaisemartin and D'Haultfoeuille (2020a). With the second argument set to -1, with this option you receive l (the number of effects specified in effects()) tables, each displaying the estimate of the effect of your variables defined in the first argument on the treatment effects computed by did_multiplegt_dyn. The p-value of a test on the null hypothesis that all heterogeneity estimates are equal to zero is shown below each table. If you are only interested in the impact of your first-argument variables on a subset of the l estimated treatment effects, you can specify those inside an integer vector and then the estimators and tests on the heterogeneity of treatment effects will only be carried out for those.Please note that the variables you specify in the varlist should be constant over time within groups.}
 
 \item{trends_lin}{trends_lin}
+
+\item{less_conservative_se}{less_conservative_se}
 }
 \description{
 Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods,and with a potentially non-binary treatment that may increase or decrease multiple times.
