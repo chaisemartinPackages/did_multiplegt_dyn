@@ -16,6 +16,7 @@
 #' @param const constants
 #' @param trends_lin trends_lin
 #' @param controls_globals controls_globals
+#' @param less_conservative_se less_conservative_se
 #' @import dplyr
 #' @importFrom magrittr %>%
 #' @importFrom rlang := 
@@ -38,7 +39,8 @@ did_multiplegt_dyn_core <- function(
     globals,
     const,
     trends_lin,
-    controls_globals
+    controls_globals,
+    less_conservative_se
     ) {
   
   # Inherited Globals #
@@ -114,6 +116,17 @@ did_multiplegt_dyn_core <- function(
       group_by(.data$group_XX) %>% 
       mutate(!!paste0("diff_y_", i, "_XX") := .data$outcome_XX - lag(.data$outcome_XX, i)) %>% 
       ungroup()
+
+    if (isTRUE(less_conservative_se)) {
+      df$d_fg0_XX <- df$d_sq_XX
+      df <- df %>% group_by(.data$group_XX) %>% 
+          mutate(!!paste0("d_fg",i,"_XX") := mean(
+            .data$outcome_XX[.data$time_XX == .data$F_g_XX -1 + i], na.rm = TRUE))
+      df[[paste0("d_fg",i,"_XX")]] <- ifelse(is.na(df[[paste0("d_fg",i,"_XX")]]),
+          df[[paste0("d_fg",i-1,"_XX")]], df[[paste0("d_fg",i,"_XX")]])
+
+      
+    }
 
     if (!is.null(controls)) {
       count_controls <- 0

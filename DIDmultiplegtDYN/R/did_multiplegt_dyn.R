@@ -71,7 +71,8 @@ did_multiplegt_dyn <- function(
     graph_off = FALSE,
     by = NULL,
     predict_het = NULL,
-    trends_lin = FALSE
+    trends_lin = FALSE,
+    less_conservative_se = FALSE
     ) { 
   
   args <- list()
@@ -109,7 +110,7 @@ did_multiplegt_dyn <- function(
     weight, controls, dont_drop_larger_lower, 
     drop_if_d_miss_before_first_switch, cluster, 
     same_switchers, same_switchers_pl, effects_equal, 
-    save_results, normalized, predict_het, trends_lin)
+    save_results, normalized, predict_het, trends_lin, less_conservative_se)
 
     temp_obj <- list(df_est$did_multiplegt_dyn)
     names(temp_obj)[length(temp_obj)] <- "results"
