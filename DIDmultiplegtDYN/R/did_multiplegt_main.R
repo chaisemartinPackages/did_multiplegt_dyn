@@ -372,6 +372,10 @@ did_multiplegt_main <- function(
     df$S_g_het_XX <- ifelse(df$S_g_XX == 0, -1, df$S_g_XX)
   }
 
+  df$d_fg_XX <- ifelse(df$time_XX == df$F_g_XX, df$treatment_XX, NA)
+  df <- df %>% group_by(.data$group_XX) %>% mutate(d_fg_XX = mean(.data$d_fg_XX, na.rm = TRUE))
+  df$d_fg_XX <- ifelse(is.na(df$d_fg_XX) & df$F_g_XX == T_max_XX + 1, df$d_sq_XX, df$d_fg_XX)
+
   # Creating the variable L_g_XX = T_g_XX - F_g_XX
   df$L_g_XX <- df$T_g_XX - df$F_g_XX + 1
 
