@@ -31,6 +31,7 @@
 #' @param predict_het (list with 2 args: str or vector of str, -1 or vector of positive integers)  when this option is specified, the command outputs tables with estimators and tests on the heterogeneity of treatment effects following Appendix Section 1.5 of de Chaisemartin and D'Haultfoeuille (2020a). With the second argument set to -1, with this option you receive l (the number of effects specified in effects()) tables, each displaying the estimate of the effect of your variables defined in the first argument on the treatment effects computed by did_multiplegt_dyn. The p-value of a test on the null hypothesis that all heterogeneity estimates are equal to zero is shown below each table. If you are only interested in the impact of your first-argument variables on a subset of the l estimated treatment effects, you can specify those inside an integer vector and then the estimators and tests on the heterogeneity of treatment effects will only be carried out for those.Please note that the variables you specify in the varlist should be constant over time within groups.  
 #' @param trends_lin trends_lin
 #' @param less_conservative_se less_conservative_se
+#' @param continuous continuous
 #' @section Overview:
 #' did_multiplegt_dyn estimates the effect of a treatment on an outcome, using group-(e.g. county- or state-) level panel data with multiple groups and periods. It computes the DID event-study estimators introduced in de Chaisemartin and D'Haultfoeuille (2020a).did_multiplegt_dyn can be used with a binary and absorbing (staggered) treatment but it can also be used with a non-binary treatment (discrete or continuous) that can increase or decrease multiple times, even if lagged treatments affect the outcome, and if the current and lagged treatments have heterogeneous effects, across space and/or over time. The event-study estimators computed by the command rely on a no-anticipation and parallel trends assumptions.
 #' 
@@ -73,7 +74,8 @@ did_multiplegt_dyn <- function(
     by = NULL,
     predict_het = NULL,
     trends_lin = FALSE,
-    less_conservative_se = FALSE
+    less_conservative_se = FALSE,
+    continuous = NULL
     ) { 
   
   args <- list()
@@ -111,7 +113,8 @@ did_multiplegt_dyn <- function(
     weight, controls, dont_drop_larger_lower, 
     drop_if_d_miss_before_first_switch, cluster, 
     same_switchers, same_switchers_pl, effects_equal, 
-    save_results, normalized, predict_het, trends_lin, less_conservative_se)
+    save_results, normalized, predict_het, trends_lin, 
+    less_conservative_se, continuous)
 
     temp_obj <- list(df_est$did_multiplegt_dyn)
     names(temp_obj)[length(temp_obj)] <- "results"
@@ -130,7 +133,7 @@ did_multiplegt_dyn <- function(
 
     if (!is.null(normalized_weights)) {
       temp_obj <- append(temp_obj, 
-          list(did_multiplegt_dyn_normweights(df_est, normalized, normalized_weights, same_switchers)))
+          list(did_multiplegt_dyn_normweights(df_est, normalized, normalized_weights, same_switchers, continuous)))
       names(temp_obj)[length(temp_obj)] <- "normalized_weights"
     }
 

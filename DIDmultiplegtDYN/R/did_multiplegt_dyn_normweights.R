@@ -3,6 +3,7 @@
 #' @param normalized normalized
 #' @param normopt normopt
 #' @param same_switchers same_switchers
+#' @param continuous continuous
 #' @import dplyr
 #' @importFrom magrittr %>%
 #' @noRd
@@ -10,7 +11,8 @@ did_multiplegt_dyn_normweights <- function(
   data, 
   normalized, 
   normopt, 
-  same_switchers
+  same_switchers,
+  continuous
   ) {
     # Inherited Globals #
     df <- data$df
@@ -41,7 +43,11 @@ did_multiplegt_dyn_normweights <- function(
         row <- i - k # Visualization by F_g - 1 + (l - k)
       }
 
-      df[paste0("delta_",i,"_",k)] <- ifelse(df$time_XX == df$F_g_XX - 1 + i - k & df$F_g_XX - 1 + i <= df$T_g_XX, abs(df$treatment_XX - df$d_sq_XX), NA)
+      if (is.null(continuous)) {
+        df[paste0("delta_",i,"_",k)] <- ifelse(df$time_XX == df$F_g_XX - 1 + i - k & df$F_g_XX - 1 + i <= df$T_g_XX, abs(df$treatment_XX - df$d_sq_XX), NA)
+      } else {
+        df[paste0("delta_",i,"_",k)] <- ifelse(df$time_XX == df$F_g_XX - 1 + i - k & df$F_g_XX - 1 + i <= df$T_g_XX, abs(df$treatment_XX_orig - df$d_sq_XX_orig), NA)
+      }
 
       if (same_switchers == TRUE) {
         df[[paste0("delta_",i,"_",k)]] <- ifelse(df$F_g_XX - 1 + l_XX > df$T_g_XX, 0, df[[paste0("delta_",i,"_",k)]])        

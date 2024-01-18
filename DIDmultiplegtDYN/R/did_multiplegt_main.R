@@ -22,6 +22,7 @@
 #' @param predict_het predict_het
 #' @param trends_lin trends_lin
 #' @param less_conservative_se less_conservative_se
+#' @param continuous continuous
 #' @import dplyr
 #' @importFrom matlib Ginv 
 #' @importFrom plm pdata.frame make.pbalanced
@@ -58,7 +59,8 @@ did_multiplegt_main <- function(
   normalized,
   predict_het,
   trends_lin,
-  less_conservative_se
+  less_conservative_se,
+  continuous
   ) {
 
   suppressWarnings({
@@ -74,6 +76,17 @@ did_multiplegt_main <- function(
 
   if (same_switchers == FALSE & same_switchers_pl == TRUE) {
     stop("The same_switchers_pl option only works if same_switchers is specified as well!")
+  }
+
+  if (!is.null(continuous)) {
+    msg <- "The argument for the continuous option is a list of length 2: the first element (string) indicates the class of the functional form and the second element (integer) specifies its degree or other parameters of the function."
+    if (!inherits(continuous, "list")) {
+      stop(msg)
+    }
+    if (!(length(continuous) == 2 & continuous[[1]] %in% c("pol") & inherits(continuous[[2]], "numeric"))) {
+      stop(msg)
+    }
+    degree_pol <- continuous[[2]]
   }
 
   # Patching the cluster variable
@@ -225,6 +238,18 @@ did_multiplegt_main <- function(
   df <- df  %>% group_by(.data$group_XX)  %>% mutate(F_g_XX = max(.data$temp_F_g_XX, na.rm = TRUE))  %>% 
       dplyr::select(-.data$temp_F_g_XX)
 
+  if (!is.null(continuous)) {
+    # generating polynomials of the baseline treatment
+    for (pol_level in 1:degree_pol) {
+      df[paste0("d_sq_",pol_level,"_XX")] <- df$d_sq_XX^pol_level
+    }
+
+    # redefine d_sq_XX such that it matches the new treatment ->
+    # always 0 because with the new treatement definition all periods with no treatement change are 0 and therefore the first period always has to be 0.
+    df$d_sq_XX_orig <- df$d_sq_XX
+    df$d_sq_XX <- 0
+  }
+
   # Create a new value with integer levels of d_sq_XX
   df <- df %>% group_by(.data$d_sq_XX) %>% mutate(d_sq_int_XX = cur_group_id()) %>% ungroup()
   df$d_sq_int_XX <- as.numeric(as.character(df$d_sq_int_XX))
@@ -365,13 +390,35 @@ did_multiplegt_main <- function(
 
   # When a group is a switching group, but its average post-treatment treatment value is exactly equal to its baseline treatment, we cannnot classify it as a swicher in or a switcher out, but it is not a control either. As such, we drop it from the estimation. Those groups are referred to as no-first-stage-switchers.
 
-  df <- subset(df, !(df$avg_post_switch_treat_XX == df$d_sq_XX & df$F_g_XX != df$T_g_XX + 1))
-  df$S_g_XX <- as.numeric(df$avg_post_switch_treat_XX > df$d_sq_XX)
-  df$S_g_XX <- ifelse(df$F_g_XX != T_max_XX + 1, df$S_g_XX, NA)
+  if (is.null(continuous)) {
+    df <- subset(df, !(df$avg_post_switch_treat_XX == df$d_sq_XX & df$F_g_XX != df$T_g_XX + 1))
+    df$S_g_XX <- as.numeric(df$avg_post_switch_treat_XX > df$d_sq_XX)
+    df$S_g_XX <- ifelse(df$F_g_XX != T_max_XX + 1, df$S_g_XX, NA)
+  } else {
+    df <- subset(df, !(df$avg_post_switch_treat_XX == df$d_sq_XX_orig & df$F_g_XX != df$T_g_XX + 1))
+    df$S_g_XX <- as.numeric(df$avg_post_switch_treat_XX > df$d_sq_XX_orig)
+    df$S_g_XX <- ifelse(df$F_g_XX != T_max_XX + 1, df$S_g_XX, NA)
+  }
 
   # Define the version of S_g_XX needed for predict_het
-  if (length(predict_het) > 0) {
+  if (length(predict_het) > 0 | !is.null(continuous)) {
     df$S_g_het_XX <- ifelse(df$S_g_XX == 0, -1, df$S_g_XX)
+  }
+
+  if (!is.null(continuous)) {
+    df$treatment_temp_XX <- ifelse(!is.na(df$S_g_het_XX), 
+       as.numeric((df$F_g_XX <= df$time_XX) * df$S_g_het_XX), NA)
+    df$treatment_XX_orig <- df$treatment_XX
+    df$treatment_XX <- df$treatment_temp_XX
+
+    time_fe_XX <- levels(factor(df$time_XX))
+    for (j in 2:length(time_fe_XX)) { 
+      for (k in 1:degree_pol) {
+        df[paste0("time_fe_XX_",j,"_bt",k,"_XX")] <- (df$time_XX == time_fe_XX[j]) * 
+            df[[paste0("d_sq_",k,"_XX")]]
+        controls <- c(controls, paste0("time_fe_XX_",j,"_bt",k,"_XX"))
+      }
+    }
   }
 
   df$d_fg_XX <- ifelse(df$time_XX == df$F_g_XX, df$treatment_XX, NA)
@@ -754,7 +801,7 @@ did_multiplegt_main <- function(
     if (!is.na(L_u_XX) & L_u_XX != 0) {
 
       if (isFALSE(trends_lin)) {
-        data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers, same_switchers_pl, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se)
+        data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers, same_switchers_pl, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se, continuous = continuous)
 
         df <- data$df
         data$df <- NULL
@@ -768,7 +815,7 @@ did_multiplegt_main <- function(
       for (i in 1:l_XX) {
 
         if (isTRUE(trends_lin)) {
-          data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = 0, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se)
+          data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = 0, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se, continuous = continuous)
 
           df <- data$df
           data$df <- NULL
@@ -797,7 +844,7 @@ did_multiplegt_main <- function(
         for (i in 1:l_placebo_XX) {
 
           if (isTRUE(trends_lin)) {
-            data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = i, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se)
+            data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = i, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se, continuous = continuous)
 
             df <- data$df
             data$df <- NULL
@@ -837,7 +884,7 @@ did_multiplegt_main <- function(
     if (!is.na(L_a_XX) & L_a_XX != 0) {
 
       if (isFALSE(trends_lin)) {
-        data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers, same_switchers_pl, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se)
+        data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers, same_switchers_pl, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se, continuous = continuous)
 
         df <- data$df
         data$df <- NULL
@@ -850,7 +897,7 @@ did_multiplegt_main <- function(
       for (i in 1:l_XX) {
 
         if (isTRUE(trends_lin)) {
-          data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = 0, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se)
+          data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = 0, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se, continuous = continuous)
 
           df <- data$df
           data$df <- NULL
@@ -878,7 +925,7 @@ did_multiplegt_main <- function(
         for (i in 1:l_placebo_XX) {
 
           if (isTRUE(trends_lin)) {
-            data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = i, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se)
+            data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = i, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se, continuous = continuous)
 
             df <- data$df
             data$df <- NULL

@@ -17,6 +17,7 @@
 #' @param trends_lin trends_lin
 #' @param controls_globals controls_globals
 #' @param less_conservative_se less_conservative_se
+#' @param continuous continuous
 #' @import dplyr
 #' @importFrom magrittr %>%
 #' @importFrom rlang := 
@@ -40,7 +41,8 @@ did_multiplegt_dyn_core <- function(
     const,
     trends_lin,
     controls_globals,
-    less_conservative_se
+    less_conservative_se,
+    continuous
     ) {
   
   # Inherited Globals #
@@ -659,9 +661,11 @@ did_multiplegt_dyn_core <- function(
     }
 
     if (normalized == TRUE) {
-      #if (continuous == TRUE){
+      if (is.null(continuous)){
         df$sum_temp_XX <- ifelse(df$time_XX >= df$F_g_XX & df$time_XX <= df$F_g_XX - 1 + i & df$S_g_XX == increase_XX, df$treatment_XX - df$d_sq_XX, NA)
-      #} else {}
+      } else {
+        df$sum_temp_XX <- ifelse(df$time_XX >= df$F_g_XX & df$time_XX <= df$F_g_XX - 1 + i & df$S_g_XX == increase_XX, df$treatment_XX_orig - df$d_sq_XX_orig, NA)
+      }
       df <- df %>% group_by(.data$group_XX) %>% 
           mutate(!!paste0("sum_treat_until_",i,"_XX") := sum(.data$sum_temp_XX, na.rm = TRUE)) %>%
           dplyr::select(-.data$sum_temp_XX)
@@ -1149,11 +1153,14 @@ did_multiplegt_dyn_core <- function(
           # Summing the U_{G,g,l} over time periods for each group
           df <- df %>% group_by(.data$group_XX) %>% 
               mutate(!!paste0("U_Gg_pl_",i,"_var_XX"):= sum(.data[[paste0("U_Gg_pl_", i,"_temp_var_XX")]], na.rm = TRUE))
-
         }
 
         if (normalized == TRUE) {
-          df$sum_temp_pl_XX <- ifelse(df$time_XX >= df$F_g_XX & df$time_XX <= df$F_g_XX - 1 + i & !is.na(df[[paste0("diff_y_pl_",i,"_XX")]]) & df$S_g_XX == increase_XX, df$treatment_XX - df$d_sq_XX, NA)
+          if (is.null(continuous)) {
+            df$sum_temp_pl_XX <- ifelse(df$time_XX >= df$F_g_XX & df$time_XX <= df$F_g_XX - 1 + i & !is.na(df[[paste0("diff_y_pl_",i,"_XX")]]) & df$S_g_XX == increase_XX, df$treatment_XX - df$d_sq_XX, NA)
+          } else {
+            df$sum_temp_pl_XX <- ifelse(df$time_XX >= df$F_g_XX & df$time_XX <= df$F_g_XX - 1 + i & !is.na(df[[paste0("diff_y_pl_",i,"_XX")]]) & df$S_g_XX == increase_XX, df$treatment_XX_orig - df$d_sq_XX_orig, NA)
+          }
           df <- df %>% group_by(.data$group_XX) %>% 
               mutate(!!paste0("sum_treat_until_",i,"_pl_XX") := sum(.data$sum_temp_pl_XX, na.rm = TRUE)) %>%
               dplyr::select(-.data$sum_temp_pl_XX)
@@ -1225,7 +1232,12 @@ did_multiplegt_dyn_core <- function(
 
         assign(paste0("w_",i,"_XX"), get(paste0("N",increase_XX,"_",i,"_XX")) / get(paste0("sum_N",increase_XX,"_l_XX")))
 
-        df[paste0("delta_D_",i,"_temp_XX")] <- df$N_gt_XX/get(paste0("N",increase_XX,"_",i,"_XX")) * ((df$treatment_XX - df$d_sq_XX) * df$S_g_XX + (1 - df$S_g_XX) * (df$d_sq_XX - df$treatment_XX))
+        if (is.null(continuous)) {
+          df[paste0("delta_D_",i,"_temp_XX")] <- df$N_gt_XX/get(paste0("N",increase_XX,"_",i,"_XX")) * ((df$treatment_XX - df$d_sq_XX) * df$S_g_XX + (1 - df$S_g_XX) * (df$d_sq_XX - df$treatment_XX))
+        } else {
+          df[paste0("delta_D_",i,"_temp_XX")] <- df$N_gt_XX/get(paste0("N",increase_XX,"_",i,"_XX")) * ((df$treatment_XX_orig - df$d_sq_XX_orig) * df$S_g_XX + (1 - df$S_g_XX) * (df$d_sq_XX_orig - df$treatment_XX_orig))
+        }
+
         df[[paste0("delta_D_",i,"_temp_XX")]] <- ifelse(df[[paste0("distance_to_switch_",i,"_XX")]] == 1, 
             df[[paste0("delta_D_",i,"_temp_XX")]], NA)
         df[[paste0("delta_D_",i,"_temp_XX")]][is.na(

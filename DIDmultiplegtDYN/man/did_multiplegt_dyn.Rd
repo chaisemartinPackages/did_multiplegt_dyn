@@ -33,7 +33,8 @@ did_multiplegt_dyn(
   by = NULL,
   predict_het = NULL,
   trends_lin = FALSE,
-  less_conservative_se = FALSE
+  less_conservative_se = FALSE,
+  continuous = NULL
 )
 }
 \arguments{
@@ -94,6 +95,8 @@ did_multiplegt_dyn(
 \item{trends_lin}{trends_lin}
 
 \item{less_conservative_se}{less_conservative_se}
+
+\item{continuous}{continuous}
 }
 \description{
 Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods,and with a potentially non-binary treatment that may increase or decrease multiple times.
