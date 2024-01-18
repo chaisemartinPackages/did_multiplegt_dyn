@@ -481,6 +481,12 @@ did_multiplegt_main <- function(
       df <- df %>% group_by(.data$group_XX) %>% 
           mutate(!!paste0("prod_X",count_controls,"_diff_y_XX") := 
             sum(.data[[paste0("prod_X", count_controls,"_diff_y_temp_XX")]]))
+
+      df[paste0("prod_X",count_controls,"_diff_y_int_XX")] <- df[[paste0("resid_X",count_controls,"_time_FE_XX")]] * df$diff_y_wXX
+      df[[paste0("prod_X",count_controls,"_diff_y_int_XX")]] <- ifelse(
+        is.na(df[[paste0("prod_X",count_controls,"_diff_y_int_XX")]]),0,
+        df[[paste0("prod_X",count_controls,"_diff_y_int_XX")]])
+      
     }
 
     store_singular_XX <- ""
@@ -739,6 +745,8 @@ did_multiplegt_main <- function(
       names(controls_globals)[length(controls_globals)] <- paste0("useful_res_", l, "_XX")
       controls_globals <- append(controls_globals, list(get(paste0("coefs_sq_", l, "_XX"))))
       names(controls_globals)[length(controls_globals)] <- paste0("coefs_sq_", l, "_XX")
+      controls_globals <- append(controls_globals, list(get(paste0("inv_Denom_",l,"_XX"))))
+      names(controls_globals)[length(controls_globals)] <- paste0("inv_Denom_", l, "_XX")
     }
   }
 
