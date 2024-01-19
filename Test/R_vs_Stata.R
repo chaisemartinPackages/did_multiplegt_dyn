@@ -2,6 +2,19 @@ library(devtools)
 #devtools::install_github('lbraglia/RStata')
 library(RStata)
 
+diff_print <- function(robj, sobj) {
+    stata_effects <- subset(sobj, sobj$time_to_treat > 0)
+    stata_effects <- stata_effects[order(stata_effects$time_to_treat), ]
+    stata_effects$time_to_treat <- NULL
+    print(abs(stata_effects - robj$results$Effects))
+
+    stata_placebo <- subset(sobj, sobj$time_to_treat < 0)
+    stata_placebo$time_to_treat <- -stata_placebo$time_to_treat
+    stata_placebo <- stata_placebo[order(stata_placebo$time_to_treat), ]
+    stata_placebo$time_to_treat <- NULL
+    print(abs(stata_placebo - robj$results$Placebo))
+}
+
 setwd(gsub("Test", "DIDmultiplegtDYN", dirname(sys.frame(1)$ofile)))
 devtools::load_all()
 
@@ -11,23 +24,18 @@ if (is.null(options("RStata.StataPath")[[1]])) {
 options("RStata.StataVersion" = 18)
 
 ## Test 1: Example from Favara-Imbs
-#setwd(gsub("/DIDmultiplegtDYN", "", getwd()))
-#data =  haven::read_dta("favara_imbs_did_multiplegt_dyn.dta")
-#did_multiplegt_dyn <- did_multiplegt_dyn(
-    #df = data, Y = "Dl_vloans_b", G = "county", T = "year", D = "inter_bra",
-    #effects = 8, placebo = 3, graph_off = TRUE)
-##print(did_multiplegt_dyn)
-#setwd(paste0(getwd(), "/Stata"))
-#stata <- stata("qui do did_multiplegt_dyn_new_path_option.do
-       #qui did_multiplegt_dyn Dl_vloans_b county year inter_bra, effects(8) placebo(3) save_results(res) graph_off
-       #qui use res.dta, clear
-       #"
-#, data.in = data, data.out = TRUE)                         
-
-#stata_effects <- subset(stata, stata$time_to_treat > 0)
-#stata_effects <- stata_effects[order(stata_effects$time_to_treat), ]
-#stata_effects$time_to_treat <- NULL
-#cat("Mean abs. diff, Effects: ", mean(abs(unlist(stata_effects - did_multiplegt_dyn$results$Effects))), "\n")
+setwd(gsub("/DIDmultiplegtDYN", "", getwd()))
+data =  haven::read_dta("favara_imbs_did_multiplegt_dyn.dta")
+did_multiplegt_dyn <- did_multiplegt_dyn(
+    df = data, Y = "Dl_vloans_b", G = "county", T = "year", D = "inter_bra",
+    effects = 8, placebo = 3, graph_off = TRUE)
+#print(did_multiplegt_dyn)
+setwd(paste0(getwd(), "/Stata"))
+stata <- stata("qui do did_multiplegt_dyn_new_path_option.do
+       qui did_multiplegt_dyn Dl_vloans_b county year inter_bra, effects(8) placebo(3) save_results(res) graph_off
+       qui use res.dta, clear", data.in = data, data.out = TRUE)                         
+diff_print(did_multiplegt_dyn, stata)
+setwd(gsub("/Stata", "", getwd()))
 
 # Test 2: Example from WAGEPAN data
 library(wooldridge)
@@ -41,19 +49,8 @@ did_multiplegt_dyn <- did_multiplegt_dyn(
 setwd(paste0(getwd(), "/Stata"))
 stata <- stata("qui do did_multiplegt_dyn_new_path_option.do
        qui did_multiplegt_dyn lwage nr year union, effects(5) placebo(2) save_results(res) graph_off cluster(over_gr)
-       qui use res.dta, clear
-       "
-, data.in = wagepan, data.out = TRUE)                         
-
-stata_effects <- subset(stata, stata$time_to_treat > 0)
-stata_effects <- stata_effects[order(stata_effects$time_to_treat), ]
-stata_effects$time_to_treat <- NULL
-cat("Mean abs. diff, Effects: ", mean(abs(unlist(stata_effects - did_multiplegt_dyn$results$Effects))), "\n")
-stata_placebo <- subset(stata, stata$time_to_treat < 0)
-stata_placebo$time_to_treat <- -stata_placebo$time_to_treat
-stata_placebo <- stata_placebo[order(stata_placebo$time_to_treat), ]
-stata_placebo$time_to_treat <- NULL
-cat("Mean abs. diff, Placebo: ", mean(abs(unlist(stata_placebo - did_multiplegt_dyn$results$Placebo))), "\n")
+       qui use res.dta, clear", data.in = wagepan, data.out = TRUE)                         
+diff_print(did_multiplegt_dyn, stata)
 
 unlink("res.dta")
 
