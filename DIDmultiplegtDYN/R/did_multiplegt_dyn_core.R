@@ -275,11 +275,11 @@ did_multiplegt_dyn_core <- function(
           df[[paste0("E_hat_denom_", count_controls,"_", l, "_XX")]] <- ifelse(
             df$d_sq_int_XX == l, df[[paste0("E_hat_denom_", count_controls,"_", l, "_XX")]], NA)
 
-          df[paste0("E_hat_t",count_controls,"_",l, "_temp")] <- (df[[paste0("prod_X",count_controls,"_diff_y_int_XX")]] * df$dummy_XX) / df[[paste0("E_hat_denom_", count_controls, "_", l, "_XX")]]
-          df <- df %>% group_by(.data$d_sq_int_XX, .data$time_XX) %>% 
-              mutate(!!paste0("E_hat_t",count_controls,"_",l, "_XX") := 
-              sum(.data[[paste0("E_hat_t",count_controls,"_",l,"_temp")]], na.rm = TRUE))
-          df[[paste0("E_hat_t",count_controls,"_",l, "_temp")]] <- NULL
+          #df[paste0("E_hat_t",count_controls,"_",l, "_temp")] <- (df[[paste0("prod_X",count_controls,"_diff_y_int_XX")]] * df$dummy_XX) / df[[paste0("E_hat_denom_", count_controls, "_", l, "_XX")]]
+          #df <- df %>% group_by(.data$d_sq_int_XX, .data$time_XX) %>% 
+              #mutate(!!paste0("E_hat_t",count_controls,"_",l, "_XX") := 
+              #sum(.data[[paste0("E_hat_t",count_controls,"_",l,"_temp")]], na.rm = TRUE))
+          #df[[paste0("E_hat_t",count_controls,"_",l, "_temp")]] <- NULL
           
           df <- df %>% dplyr::select(-dplyr::any_of(c(
             paste0("N_c_",l,"_temp_XX"), paste0("N_c_",l,"_XX"),
@@ -288,13 +288,14 @@ did_multiplegt_dyn_core <- function(
           df[paste0("N_c_",l,"_temp_XX")] <- df$d_sq_int_XX == l & df$time_XX >= 2 &
               df$time_XX <= df$T_d_XX & df$time_XX < df$F_g_XX 
           df[paste0("N_c_",l,"_XX")] <- sum(df[[paste0("N_c_",l,"_temp_XX")]], na.rm = TRUE)
+
           df[paste0("in_sum_temp_",count_controls,"_",l,"_XX")] <- 
-            (df[[paste0("prod_X",count_controls,"_diff_y_int_XX")]] - (
+            (df[[paste0("prod_X",count_controls,"_Ngt_XX")]] * (df$diff_y_XX - (
               (df[[paste0("E_hat_denom_", count_controls,"_",l,"_XX")]] >= 2) *
               (sqrt(df[[paste0("E_hat_denom_", count_controls,"_",l,"_XX")]]) / 
               (sqrt(df[[paste0("E_hat_denom_", count_controls,"_",l,"_XX")]]) - 1)) *
-              df[[paste0("E_hat_t",count_controls,"_",l,"_XX")]] * (df$time_XX >= 2 &
-              df$time_XX <= df$F_g_XX - 1))) / df[[paste0("N_c_",l,"_XX")]]
+              df[[paste0("E_y_gt_",l,"_XX")]])) * (df$time_XX >= 2 &
+              df$time_XX <= df$F_g_XX - 1)) / df[[paste0("N_c_",l,"_XX")]]
 
           df <- df %>% group_by(.data$group_XX) %>% 
               mutate(!!paste0("in_sum_",count_controls,"_",l,"_XX") := 

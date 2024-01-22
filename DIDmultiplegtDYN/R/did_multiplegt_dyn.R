@@ -87,10 +87,16 @@ did_multiplegt_dyn <- function(
   did_multiplegt_dyn <- list(args)
   f_names <- c("args")
 
+  #### The continous and the design option(s) should not be specified simulataneously
+  if (!is.null(design) & !is.null(continuous)) {
+    stop("The design option can not be specified together with the continuous option!")
+  }
+  #### By option block: checks on the variable specified and initializes the did_multiplegt_dyn object with the by shape (that is, there will be one subobject for each level of the by option)
   by_levels <- c("_no_by")
   if (!is.null(by)) {
+    ## checking that by variable is time-invariant
     if (!did_multiplegt_dyn_by_check(df, G, by)) {
-      cat(sprintf("The variable %s is time-variant. The command will ignore the by option", by));cat("\n");
+      stop(sprintf("The variable %s specified in the by option is time-varying. That variable should be time-invariant.", by))
     } else {
       by_levels <- levels(factor(df[[by]]))
       did_multiplegt_dyn <- append(did_multiplegt_dyn, list(by_levels))
