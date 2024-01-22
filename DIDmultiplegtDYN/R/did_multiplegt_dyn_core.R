@@ -118,11 +118,7 @@ did_multiplegt_dyn_core <- function(
       paste0("total_cohort_",i,"_s2_t_XX"),
       paste0("mean_cohort_",i,"_ns_t_XX"), paste0("mean_cohort_",i,"_s_t_XX"),
       paste0("mean_cohort_",i,"_s0_t_XX"), paste0("mean_cohort_",i,"_s1_t_XX"),
-      paste0("mean_cohort_",i,"_s2_t_XX"),
-
-      "d_fg0_XX", "path_0_XX", paste0("d_fg",i,"_XX"), paste0("path_",i,"_XX"),
-      paste0("num_g_paths_",i,"_XX"), paste0("cohort_fullpath_",i,"_XX")
-
+      paste0("mean_cohort_",i,"_s2_t_XX")
      ))) 
 
     df <- df[order(df$group_XX, df$time_XX), ]
@@ -133,21 +129,24 @@ did_multiplegt_dyn_core <- function(
 
     if (isTRUE(less_conservative_se)) {
 
-      df$d_fg0_XX <- df$d_sq_XX
+      df$d_fg_XX_temp <- ifelse(df$time_XX == df$F_g_XX +i-1,
+          df$treatment_XX, NA)
       df <- df %>% group_by(.data$group_XX) %>% 
-          mutate(!!paste0("d_fg",i,"_XX") := mean(
-            .data$treatment_XX[.data$time_XX == .data$F_g_XX -1 + i], na.rm = TRUE))
+          mutate(!!paste0("d_fg",i,"_XX") := mean(.data$d_fg_XX_temp, na.rm = TRUE))
+      
+      if (i == 1) {
+        df$d_fg0_XX <- df$d_sq_XX
+        df <- df %>% group_by(.data$d_fg0_XX, .data$F_g_XX) %>%
+          mutate(path_0_XX = cur_group_id()) %>% ungroup()
+      }
+
       df[[paste0("d_fg",i,"_XX")]] <- ifelse(is.na(df[[paste0("d_fg",i,"_XX")]]),
           df[[paste0("d_fg",i-1,"_XX")]], df[[paste0("d_fg",i,"_XX")]])
-      
-      df <- df %>% group_by(.data$d_fg0_XX, .data$F_g_XX) %>%
-          mutate(path_0_XX = cur_group_id()) %>% ungroup()
-
       df <- df %>% group_by(.data[[paste0("path_",i-1,"_XX")]],
           .data[[paste0("d_fg",i,"_XX")]]) %>%
           mutate(!!paste0("path_",i,"_XX") := cur_group_id()) %>% ungroup()
-      df[[paste0("path_",i,"_XX")]] <- ifelse(is.na(df[[paste0("path_",i-1,"_XX")]]),
-          NA, df[[paste0("path_",i,"_XX")]])
+      
+      df$d_fg_XX_temp <- NULL
 
       if (i == 1) {
         df <- df %>% group_by(.data$path_0_XX) %>% 
@@ -319,22 +318,7 @@ did_multiplegt_dyn_core <- function(
     df[paste0("dof_y_", i,"_N_gt_XX")]  <- as.numeric(df$N_gt_XX != 0 & !is.na(df[[paste0("diff_y_", i,"_XX")]]))
 
     ## Cohort never switchers
-    # DOF
     df <- joint_trends(df, "d_sq_XX", trends_nonparam)
-    df <- df %>% group_by(.data$joint_trends_XX) %>% 
-        mutate(!!paste0("dof_cohort_",i,"_ns_t_XX") := 
-        sum(.data[[paste0("dof_y_",i,"_N_gt_XX")]][
-          !is.na(.data[[paste0("diff_y_",i,"_XX")]]) &
-          .data[[paste0("never_change_d_",i,"_XX")]] == 1 &
-          .data[[paste0("N",increase_XX,"_t_",i,"_XX")]] > 0 &
-          !is.na(.data[[paste0("N",increase_XX,"_t_",i,"_XX")]])
-        ],na.rm = TRUE)) %>% ungroup()
-    df[[paste0("dof_cohort_",i,"_ns_t_XX")]] <- ifelse(
-          !is.na(df[[paste0("diff_y_",i,"_XX")]]) &
-          df[[paste0("never_change_d_",i,"_XX")]] == 1 &
-          df[[paste0("N",increase_XX,"_t_",i,"_XX")]] > 0 &
-          !is.na(df[[paste0("N",increase_XX,"_t_",i,"_XX")]]),
-          df[[paste0("dof_cohort_",i,"_ns_t_XX")]], NA)
 
     # Denominator
     df <- df %>% group_by(.data$joint_trends_XX) %>% 
@@ -370,16 +354,25 @@ did_multiplegt_dyn_core <- function(
     df[[paste0("mean_cohort_",i,"_ns_t_XX")]] <- df[[paste0("total_cohort_",i,"_ns_t_XX")]] /
        df[[paste0("count_cohort_",i,"_ns_t_XX")]]
 
+    # Counting number of groups for DOF adjustment
+    df <- df %>% group_by(.data$joint_trends_XX) %>% 
+        mutate(!!paste0("dof_cohort_",i,"_ns_t_XX") := 
+        sum(.data[[paste0("dof_y_",i,"_N_gt_XX")]][
+          !is.na(.data[[paste0("diff_y_",i,"_XX")]]) &
+          .data[[paste0("never_change_d_",i,"_XX")]] == 1 &
+          .data[[paste0("N",increase_XX,"_t_",i,"_XX")]] > 0 &
+          !is.na(.data[[paste0("N",increase_XX,"_t_",i,"_XX")]])
+        ],na.rm = TRUE)) %>% ungroup()
+    df[[paste0("dof_cohort_",i,"_ns_t_XX")]] <- ifelse(
+          !is.na(df[[paste0("diff_y_",i,"_XX")]]) &
+          df[[paste0("never_change_d_",i,"_XX")]] == 1 &
+          df[[paste0("N",increase_XX,"_t_",i,"_XX")]] > 0 &
+          !is.na(df[[paste0("N",increase_XX,"_t_",i,"_XX")]]),
+          df[[paste0("dof_cohort_",i,"_ns_t_XX")]], NA)
+
     if (isFALSE(less_conservative_se)) {
 
-    # DOF
     df <- joint_trends(df, c("d_sq_XX", "F_g_XX", "d_fg_XX", paste0("distance_to_switch_",i,"_XX")), trends_nonparam)
-    df <- df %>% group_by(.data$joint_trends_XX) %>% 
-        mutate(!!paste0("dof_cohort_",i,"_s_t_XX") := 
-        sum(.data[[paste0("dof_y_",i,"_N_gt_XX")]],na.rm = TRUE)) %>% ungroup()
-    df[[paste0("dof_cohort_",i,"_s_t_XX")]] <- ifelse(
-          df[[paste0("distance_to_switch_",i,"_XX")]] == 1,
-          df[[paste0("dof_cohort_",i,"_s_t_XX")]], NA)
 
     # Denominator
     df <- df %>% group_by(.data$joint_trends_XX) %>% 
@@ -400,147 +393,123 @@ did_multiplegt_dyn_core <- function(
     df[paste0("mean_cohort_",i,"_s_t_XX")] <- df[[paste0("total_cohort_",i,"_s_t_XX")]] /
          df[[paste0("count_cohort_",i,"_s_t_XX")]]
 
+    # Counting number of groups for DOF adjustment
+    df <- df %>% group_by(.data$joint_trends_XX) %>% 
+        mutate(!!paste0("dof_cohort_",i,"_s_t_XX") := 
+        sum(.data[[paste0("dof_y_",i,"_N_gt_XX")]],na.rm = TRUE)) %>% ungroup()
+    df[[paste0("dof_cohort_",i,"_s_t_XX")]] <- ifelse(
+          df[[paste0("distance_to_switch_",i,"_XX")]] == 1,
+          df[[paste0("dof_cohort_",i,"_s_t_XX")]], NA)
+
     } else {
 
-      # Switchers Path0
+      # by D_{g,1}, F_g, `trends_nonparam':
       df <- joint_trends(df, "path_0_XX", trends_nonparam)
 
-      # DOF
-      df <- df %>% group_by(.data$joint_trends_XX) %>% 
-          mutate(!!paste0("dof_cohort_",i,"_s0_t_XX") := 
-          sum(.data[[paste0("dof_y_",i,"_N_gt_XX")]][
-            .data[[paste0("distance_to_switch_",i,"_XX")]] == 1 &
-            .data$cohort_fullpath_0_XX == 1 &
-            .data$cohort_fullpath_1_XX == 0          
-          ],na.rm = TRUE))
-      df[[paste0("dof_cohort_",i,"_s0_t_XX")]] <- ifelse(
-            df[[paste0("distance_to_switch_",i,"_XX")]] == 1 &
-            df$cohort_fullpath_0_XX == 1 &
-            df$cohort_fullpath_1_XX == 0,
-        df[[paste0("dof_cohort_",i,"_s0_t_XX")]], NA)
-
-      # Denominator
+      ### Denominator
       df <- df %>% group_by(.data$joint_trends_XX) %>% 
           mutate(!!paste0("count_cohort_",i,"_s0_t_XX") := 
           sum(.data[["N_gt_XX"]][
-            .data[[paste0("distance_to_switch_",i,"_XX")]] == 1 & 
-            .data$cohort_fullpath_0_XX == 1 &
-            .data$cohort_fullpath_1_XX == 0
+            .data[[paste0("distance_to_switch_",i,"_XX")]] == 1
           ],na.rm = TRUE)) %>% ungroup()
       df[[paste0("count_cohort_",i,"_s0_t_XX")]] <- ifelse(
-            df[[paste0("distance_to_switch_",i,"_XX")]] == 1 & 
-            df$cohort_fullpath_0_XX == 1 &
-            df$cohort_fullpath_1_XX == 0,
+            df[[paste0("distance_to_switch_",i,"_XX")]] == 1,
             df[[paste0("count_cohort_",i,"_s0_t_XX")]], NA)
 
-      # Numerator
+      ### Numerator
       df <- df %>% group_by(.data$joint_trends_XX) %>% 
           mutate(!!paste0("total_cohort_",i,"_s0_t_XX") := 
           sum(.data[[paste0("diff_y_",i,"_N_gt_XX")]][
-            .data[[paste0("distance_to_switch_",i,"_XX")]] == 1 & 
-            .data$cohort_fullpath_0_XX == 1 &
-            .data$cohort_fullpath_1_XX == 0
+            .data[[paste0("distance_to_switch_",i,"_XX")]] == 1
           ],na.rm = TRUE)) %>% ungroup()
       df[[paste0("total_cohort_",i,"_s0_t_XX")]] <- ifelse(
-            df[[paste0("distance_to_switch_",i,"_XX")]] == 1 & 
-            df$cohort_fullpath_0_XX == 1 &
-            df$cohort_fullpath_1_XX == 0,
+            df[[paste0("distance_to_switch_",i,"_XX")]] == 1,
             df[[paste0("total_cohort_",i,"_s0_t_XX")]], NA)
 
-      df[paste0("mean_cohort_",i,"_s0_t_XX")] <- df[[paste0("total_cohort_",i,"_s0_t_XX")]] /
-          df[[paste0("count_cohort_",i,"_s0_t_XX")]]
+      ### DOF
+      df <- df %>% group_by(.data$joint_trends_XX) %>% 
+          mutate(!!paste0("dof_cohort_",i,"_s0_t_XX") := 
+          sum(.data[[paste0("dof_y_",i,"_N_gt_XX")]][
+            .data[[paste0("distance_to_switch_",i,"_XX")]] == 1
+          ],na.rm = TRUE)) %>% ungroup()
+      df[[paste0("dof_cohort_",i,"_s0_t_XX")]] <- ifelse(
+            df[[paste0("distance_to_switch_",i,"_XX")]] == 1,
+        df[[paste0("dof_cohort_",i,"_s0_t_XX")]], NA)
 
-      if (i > 1) {
-        # Switchers Path1
-        df <- joint_trends(df, "path_1_XX", trends_nonparam)
+      # by D_{g,1}, F_g, D_{g,F_g}, `trends_nonparam':
+      df <- joint_trends(df, "path_1_XX", trends_nonparam)
 
-        # DOF
-        df <- df %>% group_by(.data$joint_trends_XX) %>% 
-            mutate(!!paste0("dof_cohort_",i,"_s1_t_XX") := 
-            sum(.data[[paste0("dof_y_",i,"_N_gt_XX")]][
-              .data[[paste0("distance_to_switch_",i,"_XX")]] == 1 &
-              .data$cohort_fullpath_1_XX == 1 &
-              .data[[paste0("cohort_fullpath_",i,"_XX")]] == 0          
-            ],na.rm = TRUE))
-        df[[paste0("dof_cohort_",i,"_s1_t_XX")]] <- ifelse(
-              df[[paste0("distance_to_switch_",i,"_XX")]] == 1 &
-              df$cohort_fullpath_1_XX == 1 &
-              df[[paste0("cohort_fullpath_",i,"_XX")]] == 0,
-          df[[paste0("dof_cohort_",i,"_s1_t_XX")]], NA)
+      ### Denominator
+      df <- df %>% group_by(.data$joint_trends_XX) %>% 
+          mutate(!!paste0("count_cohort_",i,"_s1_t_XX") := 
+          sum(.data[["N_gt_XX"]][
+            .data[[paste0("distance_to_switch_",i,"_XX")]] == 1
+          ],na.rm = TRUE))
+      df[[paste0("count_cohort_",i,"_s1_t_XX")]] <- ifelse(
+            df[[paste0("distance_to_switch_",i,"_XX")]] == 1,
+            df[[paste0("count_cohort_",i,"_s1_t_XX")]], NA)
 
-        # Denominator
-        df <- df %>% group_by(.data$joint_trends_XX) %>% 
-            mutate(!!paste0("count_cohort_",i,"_s1_t_XX") := 
-            sum(.data[["N_gt_XX"]][
-              .data[[paste0("distance_to_switch_",i,"_XX")]] == 1 & 
-              .data$cohort_fullpath_1_XX == 1 &
-              .data[[paste0("cohort_fullpath_",i,"_XX")]] == 0          
-            ],na.rm = TRUE))
-        df[[paste0("count_cohort_",i,"_s1_t_XX")]] <- ifelse(
-              df[[paste0("distance_to_switch_",i,"_XX")]] == 1 & 
-              df$cohort_fullpath_1_XX == 1 &
-              df[[paste0("cohort_fullpath_",i,"_XX")]] == 0,
-              df[[paste0("count_cohort_",i,"_s1_t_XX")]], NA)
+      ### Numerator
+      df <- df %>% group_by(.data$joint_trends_XX) %>% 
+          mutate(!!paste0("total_cohort_",i,"_s1_t_XX") := 
+          sum(.data[[paste0("diff_y_",i,"_N_gt_XX")]][
+            .data[[paste0("distance_to_switch_",i,"_XX")]] == 1
+          ],na.rm = TRUE)) %>% ungroup()
+      df[[paste0("total_cohort_",i,"_s1_t_XX")]] <- ifelse(
+            df[[paste0("distance_to_switch_",i,"_XX")]] == 1,
+            df[[paste0("total_cohort_",i,"_s1_t_XX")]], NA)
 
-        # Numerator
-        df <- df %>% group_by(.data$joint_trends_XX) %>% 
-            mutate(!!paste0("total_cohort_",i,"_s1_t_XX") := 
-            sum(.data[[paste0("diff_y_",i,"_N_gt_XX")]][
-              .data[[paste0("distance_to_switch_",i,"_XX")]] == 1 & 
-              .data$cohort_fullpath_1_XX == 1 &
-              .data[[paste0("cohort_fullpath_",i,"_XX")]] == 0
-            ],na.rm = TRUE)) %>% ungroup()
-        df[[paste0("total_cohort_",i,"_s1_t_XX")]] <- ifelse(
-              df[[paste0("distance_to_switch_",i,"_XX")]] == 1 & 
-              df$cohort_fullpath_1_XX == 1 &
-              df[[paste0("cohort_fullpath_",i,"_XX")]] == 0,
-              df[[paste0("total_cohort_",i,"_s1_t_XX")]], NA)
+      ### DOF
+      df <- df %>% group_by(.data$joint_trends_XX) %>% 
+          mutate(!!paste0("dof_cohort_",i,"_s1_t_XX") := 
+          sum(.data[[paste0("dof_y_",i,"_N_gt_XX")]][
+            .data[[paste0("distance_to_switch_",i,"_XX")]] == 1
+          ],na.rm = TRUE)) %>% ungroup()
+      df[[paste0("dof_cohort_",i,"_s1_t_XX")]] <- ifelse(
+            df[[paste0("distance_to_switch_",i,"_XX")]] == 1,
+        df[[paste0("dof_cohort_",i,"_s1_t_XX")]], NA)
 
-        df[paste0("mean_cohort_",i,"_s1_t_XX")] <- df[[paste0("total_cohort_",i,"_s1_t_XX")]] /
-            df[[paste0("count_cohort_",i,"_s1_t_XX")]]
-      }
-
-      # Switchers Fullpath (s2)
+      # by D_{g,1}, F_g, D_{g,F_g},..., D_{g,F_g+\ell}, `trends_nonparam':
       df <- joint_trends(df, paste0("path_",i,"_XX"), trends_nonparam)
 
-      # DOF
-      df <- df %>% group_by(.data$joint_trends_XX) %>% 
-          mutate(!!paste0("dof_cohort_",i,"_s2_t_XX") := 
-          sum(.data[[paste0("dof_y_",i,"_N_gt_XX")]][
-            .data[[paste0("distance_to_switch_",i,"_XX")]] == 1 &
-            .data[[paste0("cohort_fullpath_",i,"_XX")]] == 1
-          ],na.rm = TRUE))
-      df[[paste0("dof_cohort_",i,"_s2_t_XX")]] <- ifelse(
-            df[[paste0("distance_to_switch_",i,"_XX")]] == 1 &
-            df[[paste0("cohort_fullpath_",i,"_XX")]] == 1,
-        df[[paste0("dof_cohort_",i,"_s2_t_XX")]], NA)
-
-      # Denominator
+      ### Denominator
       df <- df %>% group_by(.data$joint_trends_XX) %>% 
           mutate(!!paste0("count_cohort_",i,"_s2_t_XX") := 
           sum(.data[["N_gt_XX"]][
-            .data[[paste0("distance_to_switch_",i,"_XX")]] == 1 & 
-            .data[[paste0("cohort_fullpath_",i,"_XX")]] == 1 
+            .data[[paste0("distance_to_switch_",i,"_XX")]] == 1
           ],na.rm = TRUE)) %>% ungroup()
       df[[paste0("count_cohort_",i,"_s2_t_XX")]] <- ifelse(
-            df[[paste0("distance_to_switch_",i,"_XX")]] == 1 & 
-            df[[paste0("cohort_fullpath_",i,"_XX")]] == 1,
+            df[[paste0("distance_to_switch_",i,"_XX")]] == 1,
             df[[paste0("count_cohort_",i,"_s2_t_XX")]], NA)
 
-      # Numerator
+      ### Numerator
       df <- df %>% group_by(.data$joint_trends_XX) %>% 
           mutate(!!paste0("total_cohort_",i,"_s2_t_XX") := 
           sum(.data[[paste0("diff_y_",i,"_N_gt_XX")]][
-            .data[[paste0("distance_to_switch_",i,"_XX")]] == 1 & 
-            .data[[paste0("cohort_fullpath_",i,"_XX")]] == 1 
+            .data[[paste0("distance_to_switch_",i,"_XX")]] == 1
           ],na.rm = TRUE)) %>% ungroup()
       df[[paste0("total_cohort_",i,"_s2_t_XX")]] <- ifelse(
-            df[[paste0("distance_to_switch_",i,"_XX")]] == 1 & 
-            df[[paste0("cohort_fullpath_",i,"_XX")]] == 1,
+            df[[paste0("distance_to_switch_",i,"_XX")]] == 1,
             df[[paste0("total_cohort_",i,"_s2_t_XX")]], NA)
 
-      df[paste0("mean_cohort_",i,"_s2_t_XX")] <- df[[paste0("total_cohort_",i,"_s2_t_XX")]] /
-          df[[paste0("count_cohort_",i,"_s2_t_XX")]]
+      ### DOF
+      df <- df %>% group_by(.data$joint_trends_XX) %>% 
+          mutate(!!paste0("dof_cohort_",i,"_s2_t_XX") := 
+          sum(.data[[paste0("dof_y_",i,"_N_gt_XX")]][
+            .data[[paste0("distance_to_switch_",i,"_XX")]] == 1
+          ],na.rm = TRUE)) %>% ungroup()
+      df[[paste0("dof_cohort_",i,"_s2_t_XX")]] <- ifelse(
+            df[[paste0("distance_to_switch_",i,"_XX")]] == 1,
+        df[[paste0("dof_cohort_",i,"_s2_t_XX")]], NA)
+
+      df[paste0("mean_cohort_",i,"_s_t_XX")] <- ifelse( df[[paste0("cohort_fullpath_",i,"_XX")]] == 1, df[[paste0("total_cohort_",i,"_s2_t_XX")]] / df[[paste0("count_cohort_",i,"_s2_t_XX")]], NA)
+      df[[paste0("mean_cohort_",i,"_s_t_XX")]] <- ifelse(df[[paste0("cohort_fullpath_",i,"_XX")]] == 0 & df$cohort_fullpath_1_XX == 1, df[[paste0("total_cohort_",i,"_s1_t_XX")]] /df[[paste0("count_cohort_",i,"_s1_t_XX")]], df[[paste0("mean_cohort_",i,"_s_t_XX")]])
+      df[[paste0("mean_cohort_",i,"_s_t_XX")]] <- ifelse(df$cohort_fullpath_1_XX == 0, df[[paste0("total_cohort_",i,"_s0_t_XX")]] /df[[paste0("count_cohort_",i,"_s0_t_XX")]], df[[paste0("mean_cohort_",i,"_s_t_XX")]])
+
+      df[paste0("dof_cohort_",i,"_s_t_XX")] <- ifelse( df[[paste0("cohort_fullpath_",i,"_XX")]] == 1, df[[paste0("dof_cohort_",i,"_s2_t_XX")]], NA)
+      df[[paste0("dof_cohort_",i,"_s_t_XX")]] <- ifelse(df[[paste0("cohort_fullpath_",i,"_XX")]] == 0 & df$cohort_fullpath_1_XX == 1, df[[paste0("dof_cohort_",i,"_s1_t_XX")]], df[[paste0("dof_cohort_",i,"_s_t_XX")]])
+      df[[paste0("dof_cohort_",i,"_s_t_XX")]] <- ifelse(df$cohort_fullpath_1_XX == 0, df[[paste0("dof_cohort_",i,"_s0_t_XX")]], df[[paste0("dof_cohort_",i,"_s_t_XX")]])
+
     }
 
 
@@ -564,65 +533,31 @@ did_multiplegt_dyn_core <- function(
 
       df[paste0("U_Gg",i,"_temp_var_XX")] <- 0
 
-      # For controls
+      # For controls, if no demeaning
       df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(
         df[[paste0("never_change_d_",i,"_XX")]] == 1 & df[[paste0("dof_cohort_",i,"_ns_t_XX")]] == 1, 
       df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) * (df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df[[paste0("diff_y_",i,"_N_gt_XX")]], 
       df[[paste0("U_Gg",i,"_temp_var_XX")]])
 
+      # For controls, if demeaning
       df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(
       df[[paste0("never_change_d_",i,"_XX")]] == 1 & df[[paste0("dof_cohort_",i,"_ns_t_XX")]] > 1 & 
         !is.na(df[[paste0("dof_cohort_",i,"_ns_t_XX")]]), 
       df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) *(df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * (df[[paste0("diff_y_",i,"_XX")]] - (df[[paste0("mean_cohort_",i,"_ns_t_XX")]] * (sqrt(df[[paste0("dof_cohort_",i,"_ns_t_XX")]] /(df[[paste0("dof_cohort_",i,"_ns_t_XX")]]-1))) * df[[paste0("never_change_d_",i,"_XX")]])), 
       df[[paste0("U_Gg",i,"_temp_var_XX")]])
 
-      # For switchers
-      if (isFALSE(less_conservative_se)) {
-
+      # For switchers, if not demeaning
       df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(
         df[[paste0("distance_to_switch_",i,"_XX")]] == 1 & df[[paste0("dof_cohort_",i,"_s_t_XX")]] == 1, 
       df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) *(df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df[[paste0("diff_y_",i,"_N_gt_XX")]], 
       df[[paste0("U_Gg",i,"_temp_var_XX")]])
 
+      # For switchers, if demeaning
       df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(
         df[[paste0("distance_to_switch_",i,"_XX")]] == 1 & df[[paste0("dof_cohort_",i,"_s_t_XX")]] > 1 & 
             !is.na(df[[paste0("dof_cohort_",i,"_s_t_XX")]]), 
-      df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) *(df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * (df[[paste0("diff_y_",i,"_XX")]] - df[[paste0("mean_cohort_",i,"_s_t_XX")]] * sqrt(df[[paste0("dof_cohort_",i,"_s_t_XX")]] /(df[[paste0("dof_cohort_",i,"_s_t_XX")]]-1) * df[[paste0("distance_to_switch_",i,"_XX")]])), 
+      df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) *(df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * (df[[paste0("diff_y_",i,"_XX")]] - df[[paste0("mean_cohort_",i,"_s_t_XX")]] * (sqrt(df[[paste0("dof_cohort_",i,"_s_t_XX")]] /(df[[paste0("dof_cohort_",i,"_s_t_XX")]]-1)) * df[[paste0("distance_to_switch_",i,"_XX")]])), 
       df[[paste0("U_Gg",i,"_temp_var_XX")]])
-
-      } else {
-        # Case where we only have one group in a pathway, even with the least strict definition -> no demeaning
-        if (i == 1) {
-        df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(df[[paste0("distance_to_switch_",i,"_XX")]] == 1 & 
-        is.na(df[[paste0("dof_cohort_",i,"_s0_t_XX")]]) & is.na(df[[paste0("dof_cohort_",i,"_s2_t_XX")]]), 
-        df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) *(df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df[[paste0("diff_y_",i,"_N_gt_XX")]], 
-        df[[paste0("U_Gg",i,"_temp_var_XX")]])
-        } else {
-        df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(df[[paste0("distance_to_switch_",i,"_XX")]] == 1 & 
-        is.na(df[[paste0("dof_cohort_",i,"_s0_t_XX")]]) & is.na(df[[paste0("dof_cohort_",i,"_s1_t_XX")]]) &
-        is.na(df[[paste0("dof_cohort_",i,"_s2_t_XX")]]), 
-        df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) *(df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df[[paste0("diff_y_",i,"_N_gt_XX")]], 
-        df[[paste0("U_Gg",i,"_temp_var_XX")]])
-        }
-
-        # Case where we have multiple groups per pathways when conditioning on D_{g,1},F_g
-        df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(df[[paste0("distance_to_switch_",i,"_XX")]] == 1 & 
-        df[[paste0("dof_cohort_",i,"_s0_t_XX")]] > 1 & !is.na(df[[paste0("dof_cohort_",i,"_s0_t_XX")]]), 
-        df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) *(df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * (df[[paste0("diff_y_",i,"_XX")]] - df[[paste0("mean_cohort_",i,"_s0_t_XX")]] * sqrt(df[[paste0("dof_cohort_",i,"_s0_t_XX")]] /(df[[paste0("dof_cohort_",i,"_s0_t_XX")]]-1) * df[[paste0("distance_to_switch_",i,"_XX")]])), 
-        df[[paste0("U_Gg",i,"_temp_var_XX")]])
-
-        # Case where we have multiple groups per pathways when conditioning on D_{g,1},F_g, D_{g,F_g}
-        if (i > 1) {
-          df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(df[[paste0("distance_to_switch_",i,"_XX")]] == 1 & 
-          df[[paste0("dof_cohort_",i,"_s1_t_XX")]] > 1 & !is.na(df[[paste0("dof_cohort_",i,"_s1_t_XX")]]), 
-          df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) *(df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * (df[[paste0("diff_y_",i,"_XX")]] - df[[paste0("mean_cohort_",i,"_s1_t_XX")]] * sqrt(df[[paste0("dof_cohort_",i,"_s1_t_XX")]] /(df[[paste0("dof_cohort_",i,"_s1_t_XX")]]-1) * df[[paste0("distance_to_switch_",i,"_XX")]])), 
-          df[[paste0("U_Gg",i,"_temp_var_XX")]])
-        }
-
-        df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(df[[paste0("distance_to_switch_",i,"_XX")]] == 1 & df[[paste0("dof_cohort_",i,"_s2_t_XX")]] > 1 & !is.na(df[[paste0("dof_cohort_",i,"_s2_t_XX")]]), 
-        df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) *(df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * (df[[paste0("diff_y_",i,"_XX")]] - df[[paste0("mean_cohort_",i,"_s2_t_XX")]] * sqrt(df[[paste0("dof_cohort_",i,"_s2_t_XX")]] /(df[[paste0("dof_cohort_",i,"_s2_t_XX")]]-1) * df[[paste0("distance_to_switch_",i,"_XX")]])), 
-        df[[paste0("U_Gg",i,"_temp_var_XX")]])
-      }
 
       df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(is.na(df[[paste0("U_Gg",i,"_temp_var_XX")]]), 0, 
           df[[paste0("U_Gg",i,"_temp_var_XX")]])
@@ -826,23 +761,8 @@ did_multiplegt_dyn_core <- function(
         df[paste0("dof_y_pl_", i,"_N_gt_XX")]  <- as.numeric(df$N_gt_XX != 0 & !is.na(df[[paste0("diff_y_pl_", i,"_XX")]]))
 
         ## Cohort never switchers
-        # DOF
-        df <- joint_trends(df, "d_sq_XX", trends_nonparam)
-        df <- df %>% group_by(.data$joint_trends_XX) %>% 
-            mutate(!!paste0("dof_cohort_pl_",i,"_ns_t_XX") := 
-            sum(.data[[paste0("dof_y_pl_",i,"_N_gt_XX")]][
-              !is.na(.data[[paste0("diff_y_pl_",i,"_XX")]]) &
-              .data[[paste0("never_change_d_pl_",i,"_XX")]] == 1 &
-              .data[[paste0("N",increase_XX,"_t_placebo_",i,"_XX")]] > 0 &
-              !is.na(.data[[paste0("N",increase_XX,"_t_placebo_",i,"_XX")]])
-            ],na.rm = TRUE)) %>% ungroup()
-        df[[paste0("dof_cohort_pl_",i,"_ns_t_XX")]] <- ifelse(
-              !is.na(df[[paste0("diff_y_pl_",i,"_XX")]]) &
-              df[[paste0("never_change_d_pl_",i,"_XX")]] == 1 &
-              df[[paste0("N",increase_XX,"_t_placebo_",i,"_XX")]] > 0 &
-              !is.na(df[[paste0("N",increase_XX,"_t_placebo_",i,"_XX")]]),
-              df[[paste0("dof_cohort_pl_",i,"_ns_t_XX")]], NA)
 
+        df <- joint_trends(df, "d_sq_XX", trends_nonparam)
         # Denominator
         df <- df %>% group_by(.data$joint_trends_XX) %>% 
             mutate(!!paste0("count_cohort_pl_",i,"_ns_t_XX") := 
@@ -873,18 +793,28 @@ did_multiplegt_dyn_core <- function(
               !is.na(df[[paste0("N",increase_XX,"_t_placebo_",i,"_XX")]]),
               df[[paste0("total_cohort_pl_",i,"_ns_t_XX")]], NA)
 
-        # Estimator for the expectation (no need for bysort or any conditioning as the Numerator and denominator are generated along the same set of conditions)
+        # Estimator for the expectation
         df[[paste0("mean_cohort_pl_",i,"_ns_t_XX")]] <- df[[paste0("total_cohort_pl_",i,"_ns_t_XX")]] /
           df[[paste0("count_cohort_pl_",i,"_ns_t_XX")]]
 
+        # DOF
+        df <- df %>% group_by(.data$joint_trends_XX) %>% 
+            mutate(!!paste0("dof_cohort_pl_",i,"_ns_t_XX") := 
+            sum(.data[[paste0("dof_y_pl_",i,"_N_gt_XX")]][
+              !is.na(.data[[paste0("diff_y_pl_",i,"_XX")]]) &
+              .data[[paste0("never_change_d_pl_",i,"_XX")]] == 1 &
+              .data[[paste0("N",increase_XX,"_t_placebo_",i,"_XX")]] > 0 &
+              !is.na(.data[[paste0("N",increase_XX,"_t_placebo_",i,"_XX")]])
+            ],na.rm = TRUE)) %>% ungroup()
+        df[[paste0("dof_cohort_pl_",i,"_ns_t_XX")]] <- ifelse(
+              !is.na(df[[paste0("diff_y_pl_",i,"_XX")]]) &
+              df[[paste0("never_change_d_pl_",i,"_XX")]] == 1 &
+              df[[paste0("N",increase_XX,"_t_placebo_",i,"_XX")]] > 0 &
+              !is.na(df[[paste0("N",increase_XX,"_t_placebo_",i,"_XX")]]),
+              df[[paste0("dof_cohort_pl_",i,"_ns_t_XX")]], NA)
+
         if (isFALSE(less_conservative_se)) {
         df <- joint_trends(df, c("d_sq_XX", "F_g_XX", "d_fg_XX", paste0("dist_to_switch_pl_",i,"_XX")), trends_nonparam)
-        df <- df %>% group_by(.data$joint_trends_XX) %>% 
-            mutate(!!paste0("dof_cohort_pl_",i,"_s_t_XX") := 
-            sum(.data[[paste0("dof_y_pl_",i,"_N_gt_XX")]],na.rm = TRUE)) %>% ungroup()
-        df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]] <- ifelse(
-              df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1,
-              df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]], NA)
 
         # Denominator
         df <- df %>% group_by(.data$joint_trends_XX) %>% 
@@ -904,148 +834,127 @@ did_multiplegt_dyn_core <- function(
 
         df[paste0("mean_cohort_pl_",i,"_s_t_XX")] <- df[[paste0("total_cohort_pl_",i,"_s_t_XX")]] /
             df[[paste0("count_cohort_pl_",i,"_s_t_XX")]]
+
+        # DOF
+        df <- df %>% group_by(.data$joint_trends_XX) %>% 
+            mutate(!!paste0("dof_cohort_pl_",i,"_s_t_XX") := 
+            sum(.data[[paste0("dof_y_pl_",i,"_N_gt_XX")]],na.rm = TRUE)) %>% ungroup()
+        df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]] <- ifelse(
+              df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1,
+              df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]], NA)
+
         } else {
 
-          # Switchers Path0
+          # by D_{g,1}, F_g, `trends_nonparam':
           df <- joint_trends(df, "path_0_XX", trends_nonparam)
-
-          # DOF
-          df <- df %>% group_by(.data$joint_trends_XX) %>% 
-              mutate(!!paste0("dof_cohort_pl_",i,"_s0_t_XX") := 
-              sum(.data[[paste0("dof_y_pl_",i,"_N_gt_XX")]][
-                .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 &
-                .data$cohort_fullpath_0_XX == 1 &
-                .data$cohort_fullpath_1_XX == 0          
-              ],na.rm = TRUE))
-          df[[paste0("dof_cohort_pl_",i,"_s0_t_XX")]] <- ifelse(
-                df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 &
-                df$cohort_fullpath_0_XX == 1 &
-                df$cohort_fullpath_1_XX == 0,
-            df[[paste0("dof_cohort_pl_",i,"_s0_t_XX")]], NA)
 
           # Denominator
           df <- df %>% group_by(.data$joint_trends_XX) %>% 
               mutate(!!paste0("count_cohort_pl_",i,"_s0_t_XX") := 
               sum(.data[["N_gt_XX"]][
-                .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & 
-                .data$cohort_fullpath_0_XX == 1 &
-                .data$cohort_fullpath_1_XX == 0
+                .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1
               ],na.rm = TRUE)) %>% ungroup()
           df[[paste0("count_cohort_pl_",i,"_s0_t_XX")]] <- ifelse(
-                df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & 
-                df$cohort_fullpath_0_XX == 1 &
-                df$cohort_fullpath_1_XX == 0,
+                df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1,
                 df[[paste0("count_cohort_pl_",i,"_s0_t_XX")]], NA)
 
           # Numerator
           df <- df %>% group_by(.data$joint_trends_XX) %>% 
               mutate(!!paste0("total_cohort_pl_",i,"_s0_t_XX") := 
               sum(.data[[paste0("diff_y_pl_",i,"_N_gt_XX")]][
-                .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & 
-                .data$cohort_fullpath_0_XX == 1 &
-                .data$cohort_fullpath_1_XX == 0
+                .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1
               ],na.rm = TRUE)) %>% ungroup()
           df[[paste0("total_cohort_pl_",i,"_s0_t_XX")]] <- ifelse(
-                df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & 
-                df$cohort_fullpath_0_XX == 1 &
-                df$cohort_fullpath_1_XX == 0,
+                df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1,
                 df[[paste0("total_cohort_pl_",i,"_s0_t_XX")]], NA)
-
-          df[paste0("mean_cohort_pl_",i,"_s0_t_XX")] <- df[[paste0("total_cohort_pl_",i,"_s0_t_XX")]] /
-              df[[paste0("count_cohort_pl_",i,"_s0_t_XX")]]
-
-          if (i > 1) {
-            # Switchers Path1
-            df <- joint_trends(df, "path_1_XX", trends_nonparam)
-
-            # DOF
-            df <- df %>% group_by(.data$joint_trends_XX) %>% 
-                mutate(!!paste0("dof_cohort_pl_",i,"_s1_t_XX") := 
-                sum(.data[[paste0("dof_y_pl_",i,"_N_gt_XX")]][
-                  .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 &
-                  .data$cohort_fullpath_1_XX == 1 &
-                  .data[[paste0("cohort_fullpath_",i,"_XX")]] == 0          
-                ],na.rm = TRUE))
-            df[[paste0("dof_cohort_pl_",i,"_s1_t_XX")]] <- ifelse(
-                  df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 &
-                  df$cohort_fullpath_1_XX == 1 &
-                  df[[paste0("cohort_fullpath_",i,"_XX")]] == 0,
-              df[[paste0("dof_cohort_pl_",i,"_s1_t_XX")]], NA)
-
-            # Denominator
-            df <- df %>% group_by(.data$joint_trends_XX) %>% 
-                mutate(!!paste0("count_cohort_pl_",i,"_s1_t_XX") := 
-                sum(.data[["N_gt_XX"]][
-                  .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & 
-                  .data$cohort_fullpath_1_XX == 1 &
-                  .data[[paste0("cohort_fullpath_",i,"_XX")]] == 0          
-                ],na.rm = TRUE))
-            df[[paste0("count_cohort_pl_",i,"_s1_t_XX")]] <- ifelse(
-                  df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & 
-                  df$cohort_fullpath_1_XX == 1 &
-                  df[[paste0("cohort_fullpath_",i,"_XX")]] == 0,
-                  df[[paste0("count_cohort_pl_",i,"_s1_t_XX")]], NA)
-
-            # Numerator
-            df <- df %>% group_by(.data$joint_trends_XX) %>% 
-                mutate(!!paste0("total_cohort_pl_",i,"_s1_t_XX") := 
-                sum(.data[[paste0("diff_y_pl_",i,"_N_gt_XX")]][
-                  .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & 
-                  .data$cohort_fullpath_1_XX == 1 &
-                  .data[[paste0("cohort_fullpath_",i,"_XX")]] == 0
-                ],na.rm = TRUE)) %>% ungroup()
-            df[[paste0("total_cohort_pl_",i,"_s1_t_XX")]] <- ifelse(
-                  df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & 
-                  df$cohort_fullpath_1_XX == 1 &
-                  df[[paste0("cohort_fullpath_",i,"_XX")]] == 0,
-                  df[[paste0("total_cohort_pl_",i,"_s1_t_XX")]], NA)
-
-            df[paste0("mean_cohort_pl_",i,"_s1_t_XX")] <- df[[paste0("total_cohort_pl_",i,"_s1_t_XX")]] /
-                df[[paste0("count_cohort_pl_",i,"_s1_t_XX")]]
-          }
-
-          # Switchers Fullpath (s2)
-          df <- joint_trends(df, paste0("path_",i,"_XX"), trends_nonparam)
 
           # DOF
           df <- df %>% group_by(.data$joint_trends_XX) %>% 
-              mutate(!!paste0("dof_cohort_pl_",i,"_s2_t_XX") := 
+              mutate(!!paste0("dof_cohort_pl_",i,"_s0_t_XX") := 
               sum(.data[[paste0("dof_y_pl_",i,"_N_gt_XX")]][
-                .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 &
-                .data[[paste0("cohort_fullpath_",i,"_XX")]] == 1
-              ],na.rm = TRUE))
-          df[[paste0("dof_cohort_pl_",i,"_s2_t_XX")]] <- ifelse(
-                df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 &
-                df[[paste0("cohort_fullpath_",i,"_XX")]] == 1,
-            df[[paste0("dof_cohort_pl_",i,"_s2_t_XX")]], NA)
+                .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1
+              ],na.rm = TRUE)) %>% ungroup()
+          df[[paste0("dof_cohort_pl_",i,"_s0_t_XX")]] <- ifelse(
+                df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1,
+            df[[paste0("dof_cohort_pl_",i,"_s0_t_XX")]], NA)
+
+          # by D_{g,1}, F_g, D_{g,F_g}, `trends_nonparam':
+          df <- joint_trends(df, "path_1_XX", trends_nonparam)
+
+          # Denominator
+          df <- df %>% group_by(.data$joint_trends_XX) %>% 
+              mutate(!!paste0("count_cohort_pl_",i,"_s1_t_XX") := 
+              sum(.data[["N_gt_XX"]][
+                .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1
+              ],na.rm = TRUE)) %>% ungroup()
+          df[[paste0("count_cohort_pl_",i,"_s1_t_XX")]] <- ifelse(
+                df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1,
+                df[[paste0("count_cohort_pl_",i,"_s1_t_XX")]], NA)
+
+          # Numerator
+          df <- df %>% group_by(.data$joint_trends_XX) %>% 
+              mutate(!!paste0("total_cohort_pl_",i,"_s1_t_XX") := 
+              sum(.data[[paste0("diff_y_pl_",i,"_N_gt_XX")]][
+                .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1
+              ],na.rm = TRUE)) %>% ungroup()
+          df[[paste0("total_cohort_pl_",i,"_s1_t_XX")]] <- ifelse(
+                df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1,
+                df[[paste0("total_cohort_pl_",i,"_s1_t_XX")]], NA)
+
+          # DOF
+          df <- df %>% group_by(.data$joint_trends_XX) %>% 
+              mutate(!!paste0("dof_cohort_pl_",i,"_s1_t_XX") := 
+              sum(.data[[paste0("dof_y_pl_",i,"_N_gt_XX")]][
+                .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1
+              ],na.rm = TRUE)) %>% ungroup()
+          df[[paste0("dof_cohort_pl_",i,"_s1_t_XX")]] <- ifelse(
+                df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1,
+            df[[paste0("dof_cohort_pl_",i,"_s1_t_XX")]], NA)
+
+          # by D_{g,1}, F_g, D_{g,F_g},..., D_{g,F_g+\ell}, `trends_nonparam':
+          df <- joint_trends(df, paste0("path_",i,"_XX"), trends_nonparam)
 
           # Denominator
           df <- df %>% group_by(.data$joint_trends_XX) %>% 
               mutate(!!paste0("count_cohort_pl_",i,"_s2_t_XX") := 
               sum(.data[["N_gt_XX"]][
-                .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & 
-                .data[[paste0("cohort_fullpath_",i,"_XX")]] == 1 
+                .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1
               ],na.rm = TRUE)) %>% ungroup()
           df[[paste0("count_cohort_pl_",i,"_s2_t_XX")]] <- ifelse(
-                df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & 
-                df[[paste0("cohort_fullpath_",i,"_XX")]] == 1,
+                df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1,
                 df[[paste0("count_cohort_pl_",i,"_s2_t_XX")]], NA)
 
           # Numerator
           df <- df %>% group_by(.data$joint_trends_XX) %>% 
               mutate(!!paste0("total_cohort_pl_",i,"_s2_t_XX") := 
               sum(.data[[paste0("diff_y_pl_",i,"_N_gt_XX")]][
-                .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & 
-                .data[[paste0("cohort_fullpath_",i,"_XX")]] == 1 
+                .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1
               ],na.rm = TRUE)) %>% ungroup()
           df[[paste0("total_cohort_pl_",i,"_s2_t_XX")]] <- ifelse(
-                df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & 
-                df[[paste0("cohort_fullpath_",i,"_XX")]] == 1,
+                df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1,
                 df[[paste0("total_cohort_pl_",i,"_s2_t_XX")]], NA)
 
-          df[paste0("mean_cohort_pl_",i,"_s2_t_XX")] <- df[[paste0("total_cohort_pl_",i,"_s2_t_XX")]] /
-              df[[paste0("count_cohort_pl_",i,"_s2_t_XX")]]
+          # DOF
+          df <- df %>% group_by(.data$joint_trends_XX) %>% 
+              mutate(!!paste0("dof_cohort_pl_",i,"_s2_t_XX") := 
+              sum(.data[[paste0("dof_y_pl_",i,"_N_gt_XX")]][
+                .data[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1
+              ],na.rm = TRUE)) %>% ungroup()
+          df[[paste0("dof_cohort_pl_",i,"_s2_t_XX")]] <- ifelse(
+                df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1,
+            df[[paste0("dof_cohort_pl_",i,"_s2_t_XX")]], NA)
 
+          df[paste0("mean_cohort_pl_",i,"_s_t_XX")] <- ifelse(df[[paste0("cohort_fullpath_",i,"_XX")]]==1,
+          df[[paste0("total_cohort_pl_",i,"_s2_t_XX")]] / df[[paste0("count_cohort_pl_",i,"_s2_t_XX")]], NA)
+
+          df[[paste0("mean_cohort_pl_",i,"_s_t_XX")]] <- ifelse(df[[paste0("cohort_fullpath_",i,"_XX")]] == 0 & df$cohort_fullpath_1_XX == 1, df[[paste0("total_cohort_pl_",i,"_s1_t_XX")]] / df[[paste0("count_cohort_pl_",i,"_s1_t_XX")]], df[[paste0("mean_cohort_pl_",i,"_s_t_XX")]])
+
+          df[[paste0("mean_cohort_pl_",i,"_s_t_XX")]] <- ifelse(df$cohort_fullpath_1_XX == 0, df[[paste0("total_cohort_pl_",i,"_s0_t_XX")]] / df[[paste0("count_cohort_pl_",i,"_s0_t_XX")]], df[[paste0("mean_cohort_pl_",i,"_s_t_XX")]])
+
+          df[paste0("dof_cohort_pl_",i,"_s_t_XX")] <- ifelse(df[[paste0("cohort_fullpath_",i,"_XX")]]==1,
+          df[[paste0("dof_cohort_pl_",i,"_s2_t_XX")]], NA)
+          df[paste0("dof_cohort_pl_",i,"_s_t_XX")] <- ifelse(df[[paste0("cohort_fullpath_",i,"_XX")]] == 0 & df$cohort_fullpath_1_XX == 1, df[[paste0("dof_cohort_pl_",i,"_s1_t_XX")]], df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]])
+          df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]] <- ifelse(df$cohort_fullpath_1_XX == 0, df[[paste0("dof_cohort_pl_",i,"_s0_t_XX")]], df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]])
         }
 
         df[[paste0("dummy_U_Gg_pl_",i,"_XX")]] <- i <= df$T_g_XX - 1
@@ -1067,62 +976,29 @@ did_multiplegt_dyn_core <- function(
 
           df[paste0("U_Gg_pl_",i,"_temp_var_XX")] <- 0
 
-          # For controls
+          # For controls, if no demeaning
           df[paste0("U_Gg_pl_",i,"_temp_var_XX")] <- ifelse(
             df[[paste0("never_change_d_pl_",i,"_XX")]] == 1 & df[[paste0("dof_cohort_pl_",i,"_ns_t_XX")]] == 1, 
           df[[paste0("dummy_U_Gg_pl_",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_placebo_",i,"_XX"))) * (df[[paste0("dist_to_switch_pl_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_placebo_",i,"_g_XX")]]/df[[paste0("N_gt_control_placebo_",i,"_XX")]]) * df[[paste0("never_change_d_pl_",i,"_XX")]]) * (df$time_XX >= i + 2 & df$time_XX <= df$T_g_XX) * df[[paste0("diff_y_pl_",i,"_N_gt_XX")]], 
           df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]])
 
+          # For controls, if demeaning
           df[paste0("U_Gg_pl_",i,"_temp_var_XX")] <- ifelse(
             df[[paste0("never_change_d_pl_",i,"_XX")]] == 1 & df[[paste0("dof_cohort_pl_",i,"_ns_t_XX")]] > 1 & !is.na(df[[paste0("dof_cohort_pl_",i,"_ns_t_XX")]]), 
           df[[paste0("dummy_U_Gg_pl_",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_placebo_",i,"_XX"))) *(df[[paste0("dist_to_switch_pl_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_placebo_",i,"_g_XX")]]/df[[paste0("N_gt_control_placebo_",i,"_XX")]]) * df[[paste0("never_change_d_pl_",i,"_XX")]]) * (df$time_XX >= i + 2 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * (df[[paste0("diff_y_pl_",i,"_XX")]] - (df[[paste0("mean_cohort_pl_",i,"_ns_t_XX")]] * sqrt(df[[paste0("dof_cohort_pl_",i,"_ns_t_XX")]] /(df[[paste0("dof_cohort_pl_",i,"_ns_t_XX")]]-1)) * df[[paste0("never_change_d_pl_",i,"_XX")]])), 
           df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]])
 
-          if (isFALSE(less_conservative_se)) {
+          # For switchers, if no demeaning
           df[paste0("U_Gg_pl_",i,"_temp_var_XX")] <- ifelse(
             df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]] == 1, 
           df[[paste0("dummy_U_Gg_pl_",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_placebo_",i,"_XX"))) *(df[[paste0("dist_to_switch_pl_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_placebo_",i,"_g_XX")]]/df[[paste0("N_gt_control_placebo_",i,"_XX")]]) * df[[paste0("never_change_d_pl_",i,"_XX")]]) * (df$time_XX >= i + 2 & df$time_XX <= df$T_g_XX) * df[[paste0("diff_y_pl_",i,"_N_gt_XX")]], 
           df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]])
 
+          # For switchers, if demeaning
           df[paste0("U_Gg_pl_",i,"_temp_var_XX")] <- ifelse(
             df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]] > 1 & !is.na(df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]]), 
-          df[[paste0("dummy_U_Gg_pl_",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_placebo_",i,"_XX"))) *(df[[paste0("dist_to_switch_pl_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_placebo_",i,"_g_XX")]]/df[[paste0("N_gt_control_placebo_",i,"_XX")]]) * df[[paste0("never_change_d_pl_",i,"_XX")]]) * (df$time_XX >= i + 2 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * (df[[paste0("diff_y_pl_",i,"_XX")]] - (df[[paste0("mean_cohort_pl_",i,"_s_t_XX")]] * sqrt(df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]] /(df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]]-1)) * df[[paste0("dist_to_switch_pl_",i,"_XX")]])), 
+          df[[paste0("dummy_U_Gg_pl_",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_placebo_",i,"_XX"))) *(df[[paste0("dist_to_switch_pl_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_placebo_",i,"_g_XX")]]/df[[paste0("N_gt_control_placebo_",i,"_XX")]]) * df[[paste0("never_change_d_pl_",i,"_XX")]]) * (df$time_XX >= i + 2 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * (df[[paste0("diff_y_pl_",i,"_XX")]] - (df[[paste0("mean_cohort_pl_",i,"_s_t_XX")]] * (sqrt(df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]] /(df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]]-1))) * df[[paste0("dist_to_switch_pl_",i,"_XX")]])), 
           df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]])
-          } else {
-
-            # Case where we only have one group in a pathway, even with the least strict definition -> no demeaning
-            if (i == 1) {
-              df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]] <- ifelse(df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & 
-              is.na(df[[paste0("dof_cohort_pl_",i,"_s0_t_XX")]]) & is.na(df[[paste0("dof_cohort_pl_",i,"_s2_t_XX")]]), 
-              df[[paste0("dummy_U_Gg_pl_",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_placebo_",i,"_XX"))) *(df[[paste0("dist_to_switch_pl_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_placebo_",i,"_g_XX")]]/df[[paste0("N_gt_control_placebo_",i,"_XX")]]) * df[[paste0("never_change_d_pl_",i,"_XX")]]) * (df$time_XX >= i + 2 & df$time_XX <= df$T_g_XX) * df[[paste0("diff_y_pl_",i,"_N_gt_XX")]], 
-              df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]])
-            } else {
-              df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]] <- ifelse(df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & 
-              is.na(df[[paste0("dof_cohort_pl_",i,"_s0_t_XX")]]) & is.na(df[[paste0("dof_cohort_pl_",i,"_s1_t_XX")]]) &
-              is.na(df[[paste0("dof_cohort_pl_",i,"_s2_t_XX")]]), 
-              df[[paste0("dummy_U_Gg_pl_",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_placebo_",i,"_XX"))) *(df[[paste0("dist_to_switch_pl_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_placebo_",i,"_g_XX")]]/df[[paste0("N_gt_control_placebo_",i,"_XX")]]) * df[[paste0("never_change_d_pl_",i,"_XX")]]) * (df$time_XX >= i + 2 & df$time_XX <= df$T_g_XX) * df[[paste0("diff_y_pl_",i,"_N_gt_XX")]], 
-              df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]])
-            }
-
-            # Case where we have multiple groups per pathways when conditioning on D_{g,1},F_g
-            df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]] <- ifelse(df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & 
-            df[[paste0("dof_cohort_pl_",i,"_s0_t_XX")]] > 1 & !is.na(df[[paste0("dof_cohort_pl_",i,"_s0_t_XX")]]), 
-            df[[paste0("dummy_U_Gg_pl_",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_placebo_",i,"_XX"))) *(df[[paste0("dist_to_switch_pl_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_placebo_",i,"_g_XX")]]/df[[paste0("N_gt_control_placebo_",i,"_XX")]]) * df[[paste0("never_change_d_pl_",i,"_XX")]]) * (df$time_XX >= i + 2 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * (df[[paste0("diff_y_pl_",i,"_XX")]] - df[[paste0("mean_cohort_pl_",i,"_s0_t_XX")]] * sqrt(df[[paste0("dof_cohort_pl_",i,"_s0_t_XX")]] /(df[[paste0("dof_cohort_pl_",i,"_s0_t_XX")]]-1) * df[[paste0("dist_to_switch_pl_",i,"_XX")]])), 
-            df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]])
-
-            # Case where we have multiple groups per pathways when conditioning on D_{g,1},F_g, D_{g,F_g}
-            if (i > 1) {
-              df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]] <- ifelse(df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & 
-              df[[paste0("dof_cohort_pl_",i,"_s1_t_XX")]] > 1 & !is.na(df[[paste0("dof_cohort_pl_",i,"_s1_t_XX")]]), 
-              df[[paste0("dummy_U_Gg_pl_",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_placebo_",i,"_XX"))) *(df[[paste0("dist_to_switch_pl_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_placebo_",i,"_g_XX")]]/df[[paste0("N_gt_control_placebo_",i,"_XX")]]) * df[[paste0("never_change_d_pl_",i,"_XX")]]) * (df$time_XX >= i + 2 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * (df[[paste0("diff_y_pl_",i,"_XX")]] - df[[paste0("mean_cohort_pl_",i,"_s1_t_XX")]] * sqrt(df[[paste0("dof_cohort_pl_",i,"_s1_t_XX")]] /(df[[paste0("dof_cohort_pl_",i,"_s1_t_XX")]]-1) * df[[paste0("dist_to_switch_pl_",i,"_XX")]])), 
-              df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]])
-            }
-
-            df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]] <- ifelse(df[[paste0("dist_to_switch_pl_",i,"_XX")]] == 1 & 
-            df[[paste0("dof_cohort_pl_",i,"_s2_t_XX")]] > 1 & !is.na(df[[paste0("dof_cohort_pl_",i,"_s2_t_XX")]]), 
-            df[[paste0("dummy_U_Gg_pl_",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_placebo_",i,"_XX"))) *(df[[paste0("dist_to_switch_pl_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_placebo_",i,"_g_XX")]]/df[[paste0("N_gt_control_placebo_",i,"_XX")]]) * df[[paste0("never_change_d_pl_",i,"_XX")]]) * (df$time_XX >= i + 2 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * (df[[paste0("diff_y_pl_",i,"_XX")]] - df[[paste0("mean_cohort_pl_",i,"_s2_t_XX")]] * sqrt(df[[paste0("dof_cohort_pl_",i,"_s2_t_XX")]] /(df[[paste0("dof_cohort_pl_",i,"_s2_t_XX")]]-1) * df[[paste0("dist_to_switch_pl_",i,"_XX")]])), 
-            df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]])
-          }
 
           df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]] <- ifelse(is.na(df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]]), 0, df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]])
 

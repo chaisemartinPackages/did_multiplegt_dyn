@@ -235,8 +235,7 @@ did_multiplegt_main <- function(
   df <- df[order(df$group_XX, df$time_XX), ]
   df$temp_F_g_XX <- ifelse(df$ever_change_d_XX == 1 & shift(df$ever_change_d_XX) == 0,
      df$time_XX, 0)
-  df <- df  %>% group_by(.data$group_XX)  %>% mutate(F_g_XX = max(.data$temp_F_g_XX, na.rm = TRUE))  %>% 
-      dplyr::select(-.data$temp_F_g_XX)
+  df <- df  %>% group_by(.data$group_XX)  %>% mutate(F_g_XX = max(.data$temp_F_g_XX, na.rm = TRUE))  %>% dplyr::select(-.data$temp_F_g_XX)
 
   if (!is.null(continuous)) {
     # generating polynomials of the baseline treatment
