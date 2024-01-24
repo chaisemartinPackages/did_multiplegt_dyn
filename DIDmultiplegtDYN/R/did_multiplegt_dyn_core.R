@@ -275,6 +275,9 @@ did_multiplegt_dyn_core <- function(
           df[[paste0("E_hat_denom_", count_controls,"_", l, "_XX")]] <- ifelse(
             df$d_sq_int_XX == l, df[[paste0("E_hat_denom_", count_controls,"_", l, "_XX")]], NA)
 
+          df[[paste0("E_y_hat_gt_",l,"_XX")]] <- df[[paste0("E_y_hat_gt_",l,"_XX")]] *
+              (df[[paste0("E_hat_denom_",count_controls,"_",l,"_XX")]] >= 2)
+
           #df[paste0("E_hat_t",count_controls,"_",l, "_temp")] <- (df[[paste0("prod_X",count_controls,"_diff_y_int_XX")]] * df$dummy_XX) / df[[paste0("E_hat_denom_", count_controls, "_", l, "_XX")]]
           #df <- df %>% group_by(.data$d_sq_int_XX, .data$time_XX) %>% 
               #mutate(!!paste0("E_hat_t",count_controls,"_",l, "_XX") := 
@@ -290,17 +293,16 @@ did_multiplegt_dyn_core <- function(
           df[paste0("N_c_",l,"_XX")] <- sum(df[[paste0("N_c_",l,"_temp_XX")]], na.rm = TRUE)
 
           df[paste0("in_sum_temp_",count_controls,"_",l,"_XX")] <- 
-            (df[[paste0("prod_X",count_controls,"_Ngt_XX")]] * (df$diff_y_XX - (
+            (df[[paste0("prod_X",count_controls,"_Ngt_XX")]] * (1 + 
               (df[[paste0("E_hat_denom_", count_controls,"_",l,"_XX")]] >= 2) *
-              (sqrt(df[[paste0("E_hat_denom_", count_controls,"_",l,"_XX")]]) / 
-              (sqrt(df[[paste0("E_hat_denom_", count_controls,"_",l,"_XX")]]) - 1)) *
-              df[[paste0("E_y_gt_",l,"_XX")]])) * (df$time_XX >= 2 &
-              df$time_XX <= df$F_g_XX - 1)) / df[[paste0("N_c_",l,"_XX")]]
+              (sqrt(df[[paste0("E_hat_denom_", count_controls,"_",l,"_XX")]] / 
+              (df[[paste0("E_hat_denom_", count_controls,"_",l,"_XX")]] - 1)) -1)) *
+              (df$diff_y_XX - df[[paste0("E_y_hat_gt_",l,"_XX")]]) *
+              (df$time_XX >= 2 & df$time_XX <= df$F_g_XX - 1)) / df[[paste0("N_c_",l,"_XX")]]
 
           df <- df %>% group_by(.data$group_XX) %>% 
               mutate(!!paste0("in_sum_",count_controls,"_",l,"_XX") := 
               sum(.data[[paste0("in_sum_temp_",count_controls,"_",l,"_XX")]], na.rm=TRUE))
-
 
           if (get(paste0("useful_res_", l, "_XX")) > 1) {
             df[[paste0("diff_y_", i, "_XX")]] <- ifelse(df$d_sq_int_XX == l,              
@@ -515,10 +517,20 @@ did_multiplegt_dyn_core <- function(
 
 
     if (get(paste0("N",increase_XX,"_",i,"_XX")) != 0) {
+
+      ## Preparation of E_hat_g_t_l and DOF_g_t_l
+      df[[paste0("E_hat_g_t_",i,"_XX")]] <- ifelse(df$F_g_XX > df$time_XX, df[[paste0("mean_cohort_",i,"_ns_t_XX")]] * (df[[paste0("dof_cohort_",i,"_ns_t_XX")]] >= 2), NA)
+      df[[paste0("E_hat_g_t_",i,"_XX")]] <- ifelse(df$time_XX == df$F_g_XX -1 + i,  df[[paste0("mean_cohort_",i,"_s_t_XX")]] * (df[[paste0("dof_cohort_",i,"_s_t_XX")]] >= 2), df[[paste0("E_hat_g_t_",i,"_XX")]])
+
+      df[[paste0("DOF_g_t_",i,"_XX")]] <- ifelse(df$F_g_XX-1+i==df$time_XX,1+(df[[paste0("dof_cohort_",i,"_s_t_XX")]] >= 2) * ((sqrt( df[[paste0("dof_cohort_",i,"_s_t_XX")]]/(df[[paste0("dof_cohort_",i,"_s_t_XX")]] -1)))-1), NA)
+      df[[paste0("DOF_g_t_",i,"_XX")]] <- ifelse(df$F_g_XX > df$time_XX, 1 + (df[[paste0("dof_cohort_",i,"_ns_t_XX")]] >= 2) * ((sqrt( df[[paste0("dof_cohort_",i,"_ns_t_XX")]]/(df[[paste0("dof_cohort_",i,"_ns_t_XX")]] -1)))-1), df[[paste0("DOF_g_t_",i,"_XX")]])
+
+
       df[paste0("dummy_U_Gg",i,"_XX")] <- as.numeric(i <= df$T_g_XX - 1)
     
       df[paste0("U_Gg",i,"_temp_XX")] <- df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) * as.numeric(df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * (df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]])
       df[paste0("U_Gg",i,"_temp_XX")] <- df[[paste0("U_Gg",i,"_temp_XX")]] *  df[[paste0("diff_y_",i,"_XX")]]
+
       df <- df %>% group_by(.data$group_XX) %>% 
           mutate(!!paste0("U_Gg",i,"_XX") := sum(.data[[paste0("U_Gg",i,"_temp_XX")]], na.rm = TRUE))
       df[[paste0("U_Gg",i,"_XX")]] <- df[[paste0("U_Gg",i,"_XX")]] * df$first_obs_by_gp_XX
@@ -534,34 +546,33 @@ did_multiplegt_dyn_core <- function(
 
       df[paste0("U_Gg",i,"_temp_var_XX")] <- 0
 
-      # For controls, if no demeaning
-      df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(
-        df[[paste0("never_change_d_",i,"_XX")]] == 1 & df[[paste0("dof_cohort_",i,"_ns_t_XX")]] == 1, 
-      df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) * (df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df[[paste0("diff_y_",i,"_N_gt_XX")]], 
-      df[[paste0("U_Gg",i,"_temp_var_XX")]])
+      df[[paste0("U_Gg",i,"_temp_var_XX")]] <- df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) * (df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * df[[paste0("DOF_g_t_",i,"_XX")]] * (df[[paste0("diff_y_",i,"_N_gt_XX")]] - df[[paste0("E_hat_g_t_",i,"_XX")]])
 
-      # For controls, if demeaning
-      df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(
-      df[[paste0("never_change_d_",i,"_XX")]] == 1 & df[[paste0("dof_cohort_",i,"_ns_t_XX")]] > 1 & 
-        !is.na(df[[paste0("dof_cohort_",i,"_ns_t_XX")]]), 
-      df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) *(df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * (df[[paste0("diff_y_",i,"_XX")]] - (df[[paste0("mean_cohort_",i,"_ns_t_XX")]] * (sqrt(df[[paste0("dof_cohort_",i,"_ns_t_XX")]] /(df[[paste0("dof_cohort_",i,"_ns_t_XX")]]-1))) * df[[paste0("never_change_d_",i,"_XX")]])), 
-      df[[paste0("U_Gg",i,"_temp_var_XX")]])
+      ## For controls, if no demeaning
+      #df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(
+        #df[[paste0("never_change_d_",i,"_XX")]] == 1 & df[[paste0("dof_cohort_",i,"_ns_t_XX")]] == 1, 
+      #df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) * (df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df[[paste0("diff_y_",i,"_N_gt_XX")]], 
+      #df[[paste0("U_Gg",i,"_temp_var_XX")]])
 
-      # For switchers, if not demeaning
-      df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(
-        df[[paste0("distance_to_switch_",i,"_XX")]] == 1 & df[[paste0("dof_cohort_",i,"_s_t_XX")]] == 1, 
-      df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) *(df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df[[paste0("diff_y_",i,"_N_gt_XX")]], 
-      df[[paste0("U_Gg",i,"_temp_var_XX")]])
+      ## For controls, if demeaning
+      #df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(
+      #df[[paste0("never_change_d_",i,"_XX")]] == 1 & df[[paste0("dof_cohort_",i,"_ns_t_XX")]] > 1 & 
+        #!is.na(df[[paste0("dof_cohort_",i,"_ns_t_XX")]]), 
+      #df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) *(df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * (df[[paste0("diff_y_",i,"_XX")]] - (df[[paste0("mean_cohort_",i,"_ns_t_XX")]] * (sqrt(df[[paste0("dof_cohort_",i,"_ns_t_XX")]] /(df[[paste0("dof_cohort_",i,"_ns_t_XX")]]-1))) * df[[paste0("never_change_d_",i,"_XX")]])), 
+      #df[[paste0("U_Gg",i,"_temp_var_XX")]])
 
-      # For switchers, if demeaning
-      df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(
-        df[[paste0("distance_to_switch_",i,"_XX")]] == 1 & df[[paste0("dof_cohort_",i,"_s_t_XX")]] > 1 & 
-            !is.na(df[[paste0("dof_cohort_",i,"_s_t_XX")]]), 
-      df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) *(df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * (df[[paste0("diff_y_",i,"_XX")]] - df[[paste0("mean_cohort_",i,"_s_t_XX")]] * (sqrt(df[[paste0("dof_cohort_",i,"_s_t_XX")]] /(df[[paste0("dof_cohort_",i,"_s_t_XX")]]-1)) * df[[paste0("distance_to_switch_",i,"_XX")]])), 
-      df[[paste0("U_Gg",i,"_temp_var_XX")]])
+      ## For switchers, if not demeaning
+      #df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(
+        #df[[paste0("distance_to_switch_",i,"_XX")]] == 1 & df[[paste0("dof_cohort_",i,"_s_t_XX")]] == 1, 
+      #df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) *(df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df[[paste0("diff_y_",i,"_N_gt_XX")]], 
+      #df[[paste0("U_Gg",i,"_temp_var_XX")]])
 
-      df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(is.na(df[[paste0("U_Gg",i,"_temp_var_XX")]]), 0, 
-          df[[paste0("U_Gg",i,"_temp_var_XX")]])
+      ## For switchers, if demeaning
+      #df[[paste0("U_Gg",i,"_temp_var_XX")]] <- ifelse(
+        #df[[paste0("distance_to_switch_",i,"_XX")]] == 1 & df[[paste0("dof_cohort_",i,"_s_t_XX")]] > 1 & 
+            #!is.na(df[[paste0("dof_cohort_",i,"_s_t_XX")]]), 
+      #df[[paste0("dummy_U_Gg",i,"_XX")]] * (G_XX / get(paste0("N",increase_XX,"_",i,"_XX"))) *(df[[paste0("distance_to_switch_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_",i,"_g_XX")]]/df[[paste0("N_gt_control_",i,"_XX")]]) * df[[paste0("never_change_d_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * df$N_gt_XX * (df[[paste0("diff_y_",i,"_XX")]] - df[[paste0("mean_cohort_",i,"_s_t_XX")]] * (sqrt(df[[paste0("dof_cohort_",i,"_s_t_XX")]] /(df[[paste0("dof_cohort_",i,"_s_t_XX")]]-1)) * df[[paste0("distance_to_switch_",i,"_XX")]])), 
+      #df[[paste0("U_Gg",i,"_temp_var_XX")]])
 
       if (!is.null(controls)) {
         for (l in levels_d_sq_XX) {
@@ -574,18 +585,15 @@ did_multiplegt_dyn_core <- function(
             }
             df[[paste0("in_brackets_",l,"_",j,"_XX")]] <- df[[paste0("in_brackets_",l,"_",j,"_XX")]] - 
                 get(paste0("coefs_sq_",l,"_XX"))[j,1]
-          df[[paste0("combined",increase_XX,"_temp_",l,"_",i,"_XX")]] <-  df[[paste0("combined",increase_XX,"_temp_",l,"_",i,"_XX")]] + df[[paste0("M",increase_XX,"_",l,"_",j,"_",i,"_XX")]] * 
-              df[[paste0("in_brackets_",l,"_",j,"_XX")]]
+          df[[paste0("combined",increase_XX,"_temp_",l,"_",i,"_XX")]] <-  df[[paste0("combined",increase_XX,"_temp_",l,"_",i,"_XX")]] + df[[paste0("M",increase_XX,"_",l,"_",j,"_",i,"_XX")]] * df[[paste0("in_brackets_",l,"_",j,"_XX")]]
           }
           df[[paste0("part2_switch",increase_XX,"_",i,"_XX")]] <- as.numeric(df[[paste0("part2_switch",increase_XX,"_",i,"_XX")]] + df[[paste0("combined",increase_XX,"_temp_",l,"_",i,"_XX")]] * (df$d_sq_int_XX == l))
         }
-        if (increase_XX == 1) {
 
-          df[[paste0("U_Gg",i,"_temp_var_XX")]] <- df[[paste0("U_Gg",i,"_temp_var_XX")]] - 
-              df[[paste0("part2_switch1_",i,"_XX")]]
+        if (increase_XX == 1) {
+          df[[paste0("U_Gg",i,"_temp_var_XX")]] <- df[[paste0("U_Gg",i,"_temp_var_XX")]] - df[[paste0("part2_switch1_",i,"_XX")]]
         } else {
-          df[[paste0("U_Gg",i,"_temp_var_XX")]] <- df[[paste0("U_Gg",i,"_temp_var_XX")]] + 
-              df[[paste0("part2_switch0_",i,"_XX")]]
+          df[[paste0("U_Gg",i,"_temp_var_XX")]] <- df[[paste0("U_Gg",i,"_temp_var_XX")]] + df[[paste0("part2_switch0_",i,"_XX")]]
         }
       }
 

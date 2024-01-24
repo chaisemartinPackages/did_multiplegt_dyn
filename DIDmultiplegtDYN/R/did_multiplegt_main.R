@@ -660,40 +660,37 @@ suppressWarnings({
       df <- subset(df, df$d_sq_int_XX != l)
     }
 
-    ####  estimation of e(dy_gt|d,x) = j_t + dx_gt th
-    #### step 1: from e(e(dy_gt|d,x)|x) = e(dy_gt | d) = j_t + e(dx_gt) to compute time fe
-    #### step 2: add the estimated coefficients to estimate e(dy_gt|d,x)
-
+    fe_reg <- "diff_y_XX ~ "
+    indep_var <- c()
     for (c in 1:count_controls) {
-      df <- df %>% group_by(.data$d_sq_XX) %>%
-          mutate(!!paste0("E_diff_X",c,"_d_sq_XX") := mean(
-            .data[[paste0("diff_X",c,"_XX")]][
-              .data$ever_change_d_XX == 0 &
-              .data$fd_X_all_non_missing_XX == 1 &
-              !is.na(.data$diff_y_XX)
-            ], na.rm = TRUE)) %>%ungroup()
-      df[[paste0("E_diff_X",c,"_d_sq_XX")]] <- ifelse(
-              df$ever_change_d_XX == 0 &
-              df$fd_X_all_non_missing_XX == 1 &
-              !is.na(df$diff_y_XX),
-               df[[paste0("E_diff_X",c,"_d_sq_XX")]], NA)
+      fe_reg <- paste(fe_reg,"+",paste0("diff_X",c,"_XX")) 
+      indep_var <- c(indep_var, paste0("diff_X",c,"_XX"))
     }
+    for (t in 2:T_max_XX) {
+      df[[paste0("time_FE_XX", t)]] <- as.numeric(df$time_XX == t)
+      indep_var <- c(indep_var, paste0("time_FE_XX", t))
+    }
+    fe_reg <- paste(fe_reg,"+ time_FE_XX -1") 
     for (l in levels_d_sq_XX_final) {
-      df <- df %>% group_by(.data$d_sq_XX) %>%
-          mutate(!!paste0("E_y_gt_",l,"_XX") := mean(
-            .data$diff_y_XX[
-              .data$ever_change_d_XX == 0 &
-              .data$fd_X_all_non_missing_XX == 1 &
-              .data$d_sq_int_XX == l
-            ], na.rm = TRUE)) %>%ungroup()
-      df[[paste0("E_y_gt_",l,"_XX")]] <- ifelse(
-              df$ever_change_d_XX == 0 &
-              df$fd_X_all_non_missing_XX == 1 &
-              df$d_sq_int_XX == l,
-               df[[paste0("E_y_gt_",c,"_XX")]], NA)
-      for (c in 1:count_controls) {
-       df[[paste0("E_y_gt_",l,"_XX")]]  <- df[[paste0("E_y_gt_",l,"_XX")]] + (df[[paste0("diff_X",c,"_XX")]] - df[[paste0("E_diff_X",c,"_d_sq_XX")]]) * get(paste0("coefs_sq_",l,"_XX"))[c,1]
+      df[[paste0("E_y_hat_gt_",l,"_XX")]] <- 0
+
+      data_reg <- subset(df, df$d_sq_int_XX == l &  df$F_g_XX > df$time_XX & df$time_XX != t_min_XX)  
+      data_reg$time_FE_XX <- as.factor(data_reg$time_XX)
+      data_reg <- within(data_reg, time_FE_XX <- relevel(time_FE_XX, ref = 2))
+      model <- lm(as.formula(fe_reg),  data = data_reg)
+
+      for (v in indep_var) {
+        df$to_add <- df[[v]] * model$coefficients[[v]] 
+        df$to_add[is.na(df$to_add)] <- 0
+        df[[paste0("E_y_hat_gt_",l,"_XX")]] <- df[[paste0("E_y_hat_gt_",l,"_XX")]] + df$to_add
+        df$to_add <- NULL
       }
+      df[[paste0("E_y_hat_gt_",l,"_XX")]] <- ifelse( 
+        df$d_sq_int_XX == l &  df$F_g_XX > df$time_XX & df$time_XX != t_min_XX, df[[paste0("E_y_hat_gt_",l,"_XX")]], NA)
+       data_reg <- NULL
+    }
+    for (t in 2:T_max_XX) {
+      df[[paste0("time_FE_XX", t)]] <- NULL
     }
   }
 
