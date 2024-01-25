@@ -30,18 +30,67 @@
 #' @param by (str) when this option is specified, the command estimates all the effects by the different levels of the specified variable. If the variable is a binary variable for example, then the estimation is carried out once for the sample of groups with var=0 and once for the sample of groups with var=1. The major output of interest then is a graph which shows the treatment effect evolution by the different values of the variable which allows to assess if there is heterogeneity by {it:varname}. Please note that this type of analysis is only valid if the variable is constant over time within groups. 
 #' @param predict_het (list with 2 args: str or vector of str, -1 or vector of positive integers)  when this option is specified, the command outputs tables with estimators and tests on the heterogeneity of treatment effects following Appendix Section 1.5 of de Chaisemartin and D'Haultfoeuille (2020a). With the second argument set to -1, with this option you receive l (the number of effects specified in effects()) tables, each displaying the estimate of the effect of your variables defined in the first argument on the treatment effects computed by did_multiplegt_dyn. The p-value of a test on the null hypothesis that all heterogeneity estimates are equal to zero is shown below each table. If you are only interested in the impact of your first-argument variables on a subset of the l estimated treatment effects, you can specify those inside an integer vector and then the estimators and tests on the heterogeneity of treatment effects will only be carried out for those.Please note that the variables you specify in the varlist should be constant over time within groups.  
 #' @param trends_lin trends_lin
+#' @param less_conservative_se less_conservative_se
+#' @param continuous continuous
 #' @section Overview:
 #' did_multiplegt_dyn estimates the effect of a treatment on an outcome, using group-(e.g. county- or state-) level panel data with multiple groups and periods. It computes the DID event-study estimators introduced in de Chaisemartin and D'Haultfoeuille (2020a).did_multiplegt_dyn can be used with a binary and absorbing (staggered) treatment but it can also be used with a non-binary treatment (discrete or continuous) that can increase or decrease multiple times, even if lagged treatments affect the outcome, and if the current and lagged treatments have heterogeneous effects, across space and/or over time. The event-study estimators computed by the command rely on a no-anticipation and parallel trends assumptions.
 #' 
 #' The command can be used in sharp designs, where the treatment is assigned at the group x period level, and in some fuzzy designs where the treatment varies within group x time cell, see de Chaisemartin and D'Haultfoeuille (2020a) for further details. The panel of groups may be unbalanced: not all groups have to be observed at every period. The data may also be at a more disaggregated level than the group level (e.g. individual-level wage data to measure the effect of a regional-level minimum-wage on individuals' wages).  
 #' 
-#' For all "switchers", namely groups that experience a change of their treatment over the study period, let F_g denote the first time period when g's treatment changes. The command computes the non-normalized event-study estimators DID_l. DID_1 is the average, across all switchers, of DID estimators comparing the F_g-1 to F_g outcome evolution of g to that of groups with the same baseline (period-one) treatment as g but whose treatment has not changed yet at F_g. More generally, DID_l is the average, across all switchers, of DID estimators comparing the F_g-1 to F_g-1+l outcome evolution of g to that of groups with the same baseline treatment as g but whose treatment has not changed yet at F_g-1+l. Non-normalized event-study effects are average effects of having been exposed to a weakly higher treatment dose for l periods, where the magnitude and timing of the incremental treatment doses can vary across groups. The command also computes the normalized event-study estimators DID^n_l, that normalize DID_l by the average total incremental treatment dose received by switchers from F_g-1 to F_g-1+l with respect to their baseline treatment. This normalization ensures that DID^n_l estimates a weighted average of the effects of the current treatment and of its l-1 first lags on the outcome. The command also computes an estimated average total effect per unit of treatment, where “total effect” refers to the sum of the effects of a treatment increment, at the time when it takes place and at later periods, see Section 3.3 of de Chaisemartin and D'Haultfoeuille (2020a) for further details.Finally, the command also computes placebo estimators, that average DIDs comparing the outcome evolution of switcher gand of its control groups, from F_g-1 to F_g-1-l, namely before g's treatment changes for the first time. Those placebos can be used to test the parallel trends and no-anticipation assumptions under which the estimators computed by {cmd:did_multiplegt_dyn} are unbiased.
+#' For all "switchers", namely groups that experience a change of their treatment over the study period, let F_g denote the first time period when g's treatment changes. The command computes the non-normalized event-study estimators DID_l. DID_1 is the average, across all switchers, of DID estimators comparing the F_g-1 to F_g outcome evolution of g to that of groups with the same baseline (period-one) treatment as g but whose treatment has not changed yet at F_g. More generally, DID_l is the average, across all switchers, of DID estimators comparing the F_g-1 to F_g-1+l outcome evolution of g to that of groups with the same baseline treatment as g but whose treatment has not changed yet at F_g-1+l. Non-normalized event-study effects are average effects of having been exposed to a weakly higher treatment dose for l periods, where the magnitude and timing of the incremental treatment doses can vary across groups. The command also computes the normalized event-study estimators DID^n_l, that normalize DID_l by the average total incremental treatment dose received by switchers from F_g-1 to F_g-1+l with respect to their baseline treatment. This normalization ensures that DID^n_l estimates a weighted average of the effects of the current treatment and of its l-1 first lags on the outcome. The command also computes an estimated average total effect per unit of treatment, where “total effect” refers to the sum of the effects of a treatment increment, at the time when it takes place and at later periods, see Section 3.3 of de Chaisemartin and D'Haultfoeuille (2020a) for further details.Finally, the command also computes placebo estimators, that average DIDs comparing the outcome evolution of switcher gand of its control groups, from F_g-1 to F_g-1-l, namely before g's treatment changes for the first time. Those placebos can be used to test the parallel trends and no-anticipation assumptions under which the estimators computed by did_multiplegt_dyn are unbiased.
 #' @section Option compatibility:
 #' Here are some highlights that one should be aware of when combining some options in the command:
 #' 1. The option _by_ and the option _predict_het_ are not compatible unless they receive different inputs (varname). In such case (i.e, two different inputs), the command carries out the heterogeneity prediction,according to the variable specified in _predict_het_, conditional on the different values taken by the variable specified in _by_.
 #' 2. If the option _by_ is specified, and ones requests the data to be saved using the option _save_results_, the command will save the estimation results as usual except that the names of the columns are indexed by the level of the variable inputed in _by_. E.g., if the variable (let's call it by_var) has 4 levels: in the saved dataset, one will have point_estimate1 (for by_var==1), point_estimate2 (for by_var==2) etc. as the estimates of effects estimated conditional on the sample such that by_var==1, by_var==2, etc. respectively.
 #' 3. Options _by_ and _design_: If one requests the design to be displayed in the console, the command displays succesively the design for each level of the variable inputed in _by_. Otherwise, if one requests the design to be stored in an Excel file, the command stores each design in a specific sheet. Exactly the same reasoning applies when specifying the _by_ option together with the _date_first_switch_ option. 
 #' 4. The option _normalized_ should not be specified if one wants to use _predict_het_. For more details see Lemma 6 of [de Chaisemartin, C, D'Haultfoeuille, X (2020a)](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3731856).
+#' @examples
+#' # In the following example, we use data from Favara and Imbs (2015). 
+#' # The dataset can be downloaded from GitHub:
+#' repo <- "chaisemartinPackages/ApplicationData/main" 
+#' file <- "favara_imbs_did_multiplegt_dyn.dta"
+#' url <- paste("https://raw.githubusercontent.com", repo, file, sep = "/")
+#' favara_imbs <-  haven::read_dta(url)
+#' 
+#' # Estimating eight non-normalized event-study effects and three placebo 
+#' # effects of banking deregulations on loans volume:
+#' model1 <- did_multiplegt_dyn(
+#'     df = favara_imbs,
+#'     Y = "Dl_vloans_b",
+#'     G = "county",
+#'     T = "year",
+#'     D = "inter_bra",
+#'     effects = 8,
+#'     placebo = 3,
+#'     cluster = "state_n",
+#'     graph_off = TRUE
+#' )
+#' 
+#' # Estimating eight normalized event-study effects and three placebo effects 
+#' # of banking deregulations on loans volume, restricting the estimation 
+#' # to switchers for which all effects can be estimated, and testing that effects are equal:
+#' model2 <- did_multiplegt_dyn(
+#'     df = favara_imbs,
+#'     Y = "Dl_vloans_b",
+#'     G = "county",
+#'     T = "year",
+#'     D = "inter_bra",
+#'     effects = 8,
+#'     placebo = 3,
+#'     cluster = "state_n",
+#'     normalized = TRUE,
+#'     same_switchers = TRUE,
+#'     effects_equal = TRUE
+#' )
+#' 
+#' # Printing results
+#' for (i in 1:2) {
+#'     print(get(paste0("model",i)))
+#' }
+#' 
+#' # Please note that some of the standard errors displayed above could differ from those 
+#' # reported in de Chaisemartin and D'Haultfoeuille (2020b) due to coverage-improving 
+#' # changes to the variance estimator.
 #' @export 
 did_multiplegt_dyn <- function(
     df, 
@@ -71,7 +120,9 @@ did_multiplegt_dyn <- function(
     graph_off = FALSE,
     by = NULL,
     predict_het = NULL,
-    trends_lin = FALSE
+    trends_lin = FALSE,
+    less_conservative_se = FALSE,
+    continuous = NULL
     ) { 
   
   args <- list()
@@ -83,10 +134,16 @@ did_multiplegt_dyn <- function(
   did_multiplegt_dyn <- list(args)
   f_names <- c("args")
 
+  #### The continous and the design option(s) should not be specified simulataneously
+  if (!is.null(design) & !is.null(continuous)) {
+    stop("The design option can not be specified together with the continuous option!")
+  }
+  #### By option block: checks on the variable specified and initializes the did_multiplegt_dyn object with the by shape (that is, there will be one subobject for each level of the by option)
   by_levels <- c("_no_by")
   if (!is.null(by)) {
+    ## checking that by variable is time-invariant
     if (!did_multiplegt_dyn_by_check(df, G, by)) {
-      cat(sprintf("The variable %s is time-variant. The command will ignore the by option", by));cat("\n");
+      stop(sprintf("The variable %s specified in the by option is time-varying. That variable should be time-invariant.", by))
     } else {
       by_levels <- levels(factor(df[[by]]))
       did_multiplegt_dyn <- append(did_multiplegt_dyn, list(by_levels))
@@ -109,7 +166,8 @@ did_multiplegt_dyn <- function(
     weight, controls, dont_drop_larger_lower, 
     drop_if_d_miss_before_first_switch, cluster, 
     same_switchers, same_switchers_pl, effects_equal, 
-    save_results, normalized, predict_het, trends_lin)
+    save_results, normalized, predict_het, trends_lin, 
+    less_conservative_se, continuous)
 
     temp_obj <- list(df_est$did_multiplegt_dyn)
     names(temp_obj)[length(temp_obj)] <- "results"
@@ -128,7 +186,7 @@ did_multiplegt_dyn <- function(
 
     if (!is.null(normalized_weights)) {
       temp_obj <- append(temp_obj, 
-          list(did_multiplegt_dyn_normweights(df_est, normalized, normalized_weights, same_switchers)))
+          list(did_multiplegt_dyn_normweights(df_est, normalized, normalized_weights, same_switchers, continuous)))
       names(temp_obj)[length(temp_obj)] <- "normalized_weights"
     }
 
