@@ -31,7 +31,7 @@
 #' @importFrom utils write.csv
 #' @importFrom rlang :=
 #' @importFrom rlang .data
-#' @importFrom stats pchisq qnorm sd weighted.mean as.formula df.residual lm nobs qt
+#' @importFrom stats pchisq qnorm sd weighted.mean as.formula df.residual lm nobs qt relevel
 #' @import lmtest
 #' @import sandwich
 #' @importFrom car linearHypothesis

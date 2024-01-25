@@ -107,7 +107,7 @@ did_multiplegt_dyn estimates the effect of a treatment on an outcome, using grou
 
 The command can be used in sharp designs, where the treatment is assigned at the group x period level, and in some fuzzy designs where the treatment varies within group x time cell, see de Chaisemartin and D'Haultfoeuille (2020a) for further details. The panel of groups may be unbalanced: not all groups have to be observed at every period. The data may also be at a more disaggregated level than the group level (e.g. individual-level wage data to measure the effect of a regional-level minimum-wage on individuals' wages).
 
-For all "switchers", namely groups that experience a change of their treatment over the study period, let F_g denote the first time period when g's treatment changes. The command computes the non-normalized event-study estimators DID_l. DID_1 is the average, across all switchers, of DID estimators comparing the F_g-1 to F_g outcome evolution of g to that of groups with the same baseline (period-one) treatment as g but whose treatment has not changed yet at F_g. More generally, DID_l is the average, across all switchers, of DID estimators comparing the F_g-1 to F_g-1+l outcome evolution of g to that of groups with the same baseline treatment as g but whose treatment has not changed yet at F_g-1+l. Non-normalized event-study effects are average effects of having been exposed to a weakly higher treatment dose for l periods, where the magnitude and timing of the incremental treatment doses can vary across groups. The command also computes the normalized event-study estimators DID^n_l, that normalize DID_l by the average total incremental treatment dose received by switchers from F_g-1 to F_g-1+l with respect to their baseline treatment. This normalization ensures that DID^n_l estimates a weighted average of the effects of the current treatment and of its l-1 first lags on the outcome. The command also computes an estimated average total effect per unit of treatment, where “total effect” refers to the sum of the effects of a treatment increment, at the time when it takes place and at later periods, see Section 3.3 of de Chaisemartin and D'Haultfoeuille (2020a) for further details.Finally, the command also computes placebo estimators, that average DIDs comparing the outcome evolution of switcher gand of its control groups, from F_g-1 to F_g-1-l, namely before g's treatment changes for the first time. Those placebos can be used to test the parallel trends and no-anticipation assumptions under which the estimators computed by {cmd:did_multiplegt_dyn} are unbiased.
+For all "switchers", namely groups that experience a change of their treatment over the study period, let F_g denote the first time period when g's treatment changes. The command computes the non-normalized event-study estimators DID_l. DID_1 is the average, across all switchers, of DID estimators comparing the F_g-1 to F_g outcome evolution of g to that of groups with the same baseline (period-one) treatment as g but whose treatment has not changed yet at F_g. More generally, DID_l is the average, across all switchers, of DID estimators comparing the F_g-1 to F_g-1+l outcome evolution of g to that of groups with the same baseline treatment as g but whose treatment has not changed yet at F_g-1+l. Non-normalized event-study effects are average effects of having been exposed to a weakly higher treatment dose for l periods, where the magnitude and timing of the incremental treatment doses can vary across groups. The command also computes the normalized event-study estimators DID^n_l, that normalize DID_l by the average total incremental treatment dose received by switchers from F_g-1 to F_g-1+l with respect to their baseline treatment. This normalization ensures that DID^n_l estimates a weighted average of the effects of the current treatment and of its l-1 first lags on the outcome. The command also computes an estimated average total effect per unit of treatment, where “total effect” refers to the sum of the effects of a treatment increment, at the time when it takes place and at later periods, see Section 3.3 of de Chaisemartin and D'Haultfoeuille (2020a) for further details.Finally, the command also computes placebo estimators, that average DIDs comparing the outcome evolution of switcher gand of its control groups, from F_g-1 to F_g-1-l, namely before g's treatment changes for the first time. Those placebos can be used to test the parallel trends and no-anticipation assumptions under which the estimators computed by did_multiplegt_dyn are unbiased.
 }
 
 \section{Option compatibility}{
@@ -121,3 +121,51 @@ Here are some highlights that one should be aware of when combining some options
 }
 }
 
+\examples{
+# In the following example, we use data from Favara and Imbs (2015). 
+# The dataset can be downloaded from GitHub:
+repo <- "chaisemartinPackages/ApplicationData/main" 
+file <- "favara_imbs_did_multiplegt_dyn.dta"
+url <- paste("https://raw.githubusercontent.com", repo, file, sep = "/")
+favara_imbs <-  haven::read_dta(url)
+
+# Estimating eight non-normalized event-study effects and three placebo 
+# effects of banking deregulations on loans volume:
+model1 <- did_multiplegt_dyn(
+    df = favara_imbs,
+    Y = "Dl_vloans_b",
+    G = "county",
+    T = "year",
+    D = "inter_bra",
+    effects = 8,
+    placebo = 3,
+    cluster = "state_n",
+    graph_off = TRUE
+)
+
+# Estimating eight normalized event-study effects and three placebo effects 
+# of banking deregulations on loans volume, restricting the estimation 
+# to switchers for which all effects can be estimated, and testing that effects are equal:
+model2 <- did_multiplegt_dyn(
+    df = favara_imbs,
+    Y = "Dl_vloans_b",
+    G = "county",
+    T = "year",
+    D = "inter_bra",
+    effects = 8,
+    placebo = 3,
+    cluster = "state_n",
+    normalized = TRUE,
+    same_switchers = TRUE,
+    effects_equal = TRUE
+)
+
+# Printing results
+for (i in 1:2) {
+    print(get(paste0("model",i)))
+}
+
+# Please note that some of the standard errors displayed above could differ from those 
+# reported in de Chaisemartin and D'Haultfoeuille (2020b) due to coverage-improving 
+# changes to the variance estimator.
+}
