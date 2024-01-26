@@ -677,7 +677,7 @@ suppressWarnings({
       data_reg <- subset(df, df$d_sq_int_XX == l &  df$F_g_XX > df$time_XX & df$time_XX != t_min_XX)  
       data_reg$time_FE_XX <- as.factor(data_reg$time_XX)
       data_reg <- within(data_reg, time_FE_XX <- relevel(time_FE_XX, ref = 2))
-      model <- lm(as.formula(fe_reg),  data = data_reg)
+      model <- lm(as.formula(fe_reg),  data = data_reg, weights = weight_XX) ## Should we include the weights? If yes, check with Stata.
 
       for (v in indep_var) {
         df$to_add <- df[[v]] * model$coefficients[[v]] 
@@ -1532,8 +1532,11 @@ if (!is.null(predict_het)) {
     out_names <- c(out_names, "predict_het")
   }
 }
-did_multiplegt_dyn <- append(did_multiplegt_dyn, list(df))
-out_names <- c(out_names, "debug")
+
+# Uncomment for debugging #
+#did_multiplegt_dyn <- append(did_multiplegt_dyn, list(df))
+#out_names <- c(out_names, "debug")
+
 names(did_multiplegt_dyn) <- out_names
 
 delta <- list() 
