@@ -7,13 +7,13 @@ diff_print <- function(robj, sobj) {
     stata_effects <- subset(sobj, sobj$time_to_treat > 0)
     stata_effects <- stata_effects[order(stata_effects$time_to_treat), ]
     stata_effects$time_to_treat <- NULL
-    print(round(abs(stata_effects - robj$results$Effects), 2))
+    print(round(abs(stata_effects - robj$results$Effects), 4))
 
     stata_placebo <- subset(sobj, sobj$time_to_treat < 0)
     stata_placebo$time_to_treat <- -stata_placebo$time_to_treat
     stata_placebo <- stata_placebo[order(stata_placebo$time_to_treat), ]
     stata_placebo$time_to_treat <- NULL
-    print(round(abs(stata_placebo - robj$results$Placebo), 2))
+    print(round(abs(stata_placebo - robj$results$Placebo), 4))
 }
 
 setwd(gsub("Test", "DIDmultiplegtDYN", dirname(sys.frame(1)$ofile)))
