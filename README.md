@@ -11,6 +11,7 @@ Estimation of event-study Difference-in-Difference (DID) estimators in designs w
 or decrease multiple times.  This is a beta version of the command. New options will be added soon, and some of the options already provided are not fully stabilized yet.
 
 ## Setup
+
 ### Stata
 ```s
 ssc install did_multiplegt_dyn, replace
@@ -22,6 +23,8 @@ ssc install did_multiplegt_dyn, replace
 [![R-CMD-check](https://github.com/DiegoCiccia/did_multiplegt_dyn/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/DiegoCiccia/did_multiplegt_dyn/actions/workflows/R-CMD-check.yaml)
 
 ## Syntax
+
+### Stata
 
 **did_multiplegt_dyn Y G T D** [if] [in] [, **effects**(#) **normalized effects_equal placebo**(#) **ci_level**(#) **controls**(*varlist*) **trends_nonparam**(*varlist*) **weight**(*varlist*) **switchers**(*string*) **same_switchers drop_larger_lower drop_if_d_miss_before_first_switch cluster**(*varname*) **by**(*varname*) **predict_het**( *varlist,numlist*) **trends_lin normalized_weightS**(*string*) **date_first_switch**( [*by_baseline_treat*],*string*) **graphoptions**(*string*) **graph_off save_results**(*path*) **save_sample**]
 
