@@ -309,21 +309,21 @@ deregulations on loans volume, restricting the estimation to switchers for which
 ```
 
     
-## FAQ
+## :question: FAQ
 
- *did_multiplegt_dyn does not output exactly the same results as did_multiplegt, is there something
+ > :question: *did_multiplegt_dyn does not output exactly the same results as did_multiplegt, is there something
     wrong?*
 
 No, the two commands can sometimes output different results.  This is mostly due to different
     conventions in the way the two commands deal with missing values.  See de Chaisemartin et al
     (2023b) for further details.
 
-*Do I have to include group and time fixed effects as controls when using the did_multiplegt_dyn
+> :question: *Do I have to include group and time fixed effects as controls when using the did_multiplegt_dyn
     package?*
 
 No, you do not have to.  Group and time fixed effects are automatically controlled for.
 
-*My group-level panel is unbalanced: some groups (e.g. counties) are not observed in every year.
+> :question: *My group-level panel is unbalanced: some groups (e.g. counties) are not observed in every year.
     Can I still use the command?*
 
 You can. A frequent case of unbalancedness is when some groups are not observed over the full
@@ -353,7 +353,7 @@ Finally, it may also be the case that the data is fully missing at one or severa
     outcome missing for every observation.  Then, treatment changes occurring between 1991 and 1993
     will be used in the estimation, assuming they all took place between 1991 and 1992.
 
-*Related to imbalanced panels, my outcomes (and potentially the control variables) are measured
+> :question: *Related to imbalanced panels, my outcomes (and potentially the control variables) are measured
     less frequently than the treatment.  For instance, the outcome is measured every two years, but I
     know the treatment of every group in every year.  How should I proceed?*
 
@@ -384,7 +384,7 @@ If the treatment is observed three times more often than the treatment, you can 
 A short do file with a simple example where the treatment status is observed in each period while
     the outcome is only observed every second period can be found [here](https://drive.google.com/uc?export=download&id=1NBwfsFeNltU3XSOsORdthUW49LIezm1z).
 
-*How many control variables can I include in the estimation?*
+> :question: *How many control variables can I include in the estimation?*
 
 Estimators with control variables are similar to those without controls, except that the
     first-difference of the outcome is replaced by residuals from regressions of the first-difference
@@ -401,7 +401,7 @@ Estimators with control variables are similar to those without controls, except 
     will let the user know that they are encountering this situation, and may thus want to reduce
     their number of control variables.
 
-*In my application, groups' baseline treatment is a continuous variable, meaning that all groups
+> :question: *In my application, groups' baseline treatment is a continuous variable, meaning that all groups
     have a different period-one treatment.  Therefore, Assumption 1 in de Chaisemartin and
     D'Haultfoeuille (2020a) fails. Can I still use the command?*
 
@@ -420,26 +420,26 @@ Estimators with control variables are similar to those without controls, except 
     switchers, than just running the command with the original treatment, at the expense of incurring
     a potential bias if the model for the counterfactual outcome trend is misspecified.
 
-*My design is such that treatment is binary, and groups can enter the treatment, and then leave it
+> :question: *My design is such that treatment is binary, and groups can enter the treatment, and then leave it
     once.  Can I use the command to separately estimate the effect of joining and leaving the
     treatment?*
 
  Yes you can. See Section 1.5 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2020a)
     for further details.
 
-*My design has several treatments that may all have dynamic effects.  Can I use the command to
+> :question: *My design has several treatments that may all have dynamic effects.  Can I use the command to
     estimate the effect of a treatment controlling for other treatments?*
 
  Yes, if those treatments follow binary and staggered designs.  See Section 3.2 of the Web
     Appendix of de Chaisemartin and D'Haultfoeuille (2020b) for further details.
 
-*Can I perform triple difference-in-differences with the command?*
+> :question: *Can I perform triple difference-in-differences with the command?*
 
 Yes. Suppose for instance your third difference is across men and women in the same (g,t) cell.
     Then, for each (g,t) cell, you just need to compute the difference between the average outcome of
     men and women in cell (g,t).  Then, you simply run the command with this new outcome.
 
-*Is it possible to compute the percentage increase in the outcome of the treated relative to its
+> :question: *Is it possible to compute the percentage increase in the outcome of the treated relative to its
     counterfactual?*
 
 Yes. The command already outputs the average total treatment effect, that is, the numerator in
@@ -449,7 +449,7 @@ Yes. The command already outputs the average total treatment effect, that is, th
     treatment change.  Finally, you can just compute un-normalized event-study estimators with
     \tilde{Y} as the outcome.
 
-## References
+## :bookmark_tabs: References
 
 de Chaisemartin, C, D'Haultfoeuille, X (2020a).  [Difference-in-Differences Estimators of
 Intertemporal Treatment Effects](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3731856).
