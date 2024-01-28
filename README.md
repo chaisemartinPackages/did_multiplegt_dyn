@@ -449,7 +449,7 @@ Yes. The command already outputs the average total treatment effect, that is, th
     treatment change.  Finally, you can just compute un-normalized event-study estimators with
     \tilde{Y} as the outcome.
 
-## 📑 :bookmark_tabs: References
+## :bookmark_tabs: References
 
 de Chaisemartin, C, D'Haultfoeuille, X (2020a).  [Difference-in-Differences Estimators of
 Intertemporal Treatment Effects](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3731856).
