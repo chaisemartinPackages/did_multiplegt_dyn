@@ -311,7 +311,7 @@ deregulations on loans volume, restricting the estimation to switchers for which
     
 ## FAQ
 
- *did_multiplegt_dyn does not output exactly the same results as did_multiplegt, is there something
+ > :question: *did_multiplegt_dyn does not output exactly the same results as did_multiplegt, is there something
     wrong?*
 
 No, the two commands can sometimes output different results.  This is mostly due to different
