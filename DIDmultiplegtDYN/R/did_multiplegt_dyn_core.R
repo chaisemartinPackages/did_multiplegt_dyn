@@ -275,7 +275,7 @@ did_multiplegt_dyn_core <- function(
           df[[paste0("E_hat_denom_", count_controls,"_", l, "_XX")]] <- ifelse(
             df$d_sq_int_XX == l, df[[paste0("E_hat_denom_", count_controls,"_", l, "_XX")]], NA)
 
-          df[[paste0("E_y_hat_gt_",l,"_XX")]] <- df[[paste0("E_y_hat_gt_",l,"_XX")]] *
+          df[[paste0("E_y_hat_gt_",l,"_XX")]] <- df[[paste0("E_y_hat_gt_int_",l,"_XX")]] *
               (df[[paste0("E_hat_denom_",count_controls,"_",l,"_XX")]] >= 2)
 
           #df[paste0("E_hat_t",count_controls,"_",l, "_temp")] <- (df[[paste0("prod_X",count_controls,"_diff_y_int_XX")]] * df$dummy_XX) / df[[paste0("E_hat_denom_", count_controls, "_", l, "_XX")]]

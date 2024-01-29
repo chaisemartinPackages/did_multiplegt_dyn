@@ -672,21 +672,21 @@ suppressWarnings({
     }
     fe_reg <- paste(fe_reg,"+ time_FE_XX -1") 
     for (l in levels_d_sq_XX_final) {
-      df[[paste0("E_y_hat_gt_",l,"_XX")]] <- 0
+      df[[paste0("E_y_hat_gt_int_",l,"_XX")]] <- 0
 
       data_reg <- subset(df, df$d_sq_int_XX == l &  df$F_g_XX > df$time_XX & df$time_XX != t_min_XX)  
       data_reg$time_FE_XX <- as.factor(data_reg$time_XX)
       data_reg <- within(data_reg, time_FE_XX <- relevel(time_FE_XX, ref = 2))
-      model <- lm(as.formula(fe_reg),  data = data_reg, weights = weight_XX) ## Should we include the weights? If yes, check with Stata.
+      model <- lm(as.formula(fe_reg),  data = data_reg, weights = data_reg$weight_XX) ## Should we include the weights? If yes, check with Stata.
 
       for (v in indep_var) {
         df$to_add <- df[[v]] * model$coefficients[[v]] 
         df$to_add[is.na(df$to_add)] <- 0
-        df[[paste0("E_y_hat_gt_",l,"_XX")]] <- df[[paste0("E_y_hat_gt_",l,"_XX")]] + df$to_add
+        df[[paste0("E_y_hat_gt_int_",l,"_XX")]] <- df[[paste0("E_y_hat_gt_int_",l,"_XX")]] + df$to_add
         df$to_add <- NULL
       }
-      df[[paste0("E_y_hat_gt_",l,"_XX")]] <- ifelse( 
-        df$d_sq_int_XX == l &  df$F_g_XX > df$time_XX & df$time_XX != t_min_XX, df[[paste0("E_y_hat_gt_",l,"_XX")]], NA)
+      df[[paste0("E_y_hat_gt_int_",l,"_XX")]] <- ifelse( 
+        df$d_sq_int_XX == l &  df$F_g_XX > df$time_XX & df$time_XX != t_min_XX, df[[paste0("E_y_hat_gt_int_",l,"_XX")]], NA)
        data_reg <- NULL
     }
     for (t in 2:T_max_XX) {
