@@ -53,6 +53,20 @@ diff_print(did_multiplegt_dyn, stata_mat)
 stata_mat <- NULL
 stata("clear")
 
+library(wooldridge)
+data("wagepan")
+setwd(gsub("/DIDmultiplegtDYN", "", getwd()))
+wagepan$over_gr <- wagepan$nr %% 3
+did_multiplegt_dyn <- did_multiplegt_dyn(
+    df = wagepan, Y = "lwage", G = "nr", T = "year", D = "union",
+    effects = 5, placebo = 2, graph_off = TRUE, cluster = "over_gr")
+stata_mat <- stata("qui do did_multiplegt_dyn_working_24_01_24.do
+       qui did_multiplegt_dyn_new lwage nr year union, effects(5) placebo(2) save_results(res) graph_off cluster(over_gr)
+       qui use res.dta, clear", data.in = wagepan, data.out = TRUE)                         
+diff_print(did_multiplegt_dyn, stata_mat)
+stata_mat <- NULL
+stata("clear")
+
 unlink("res.dta")
 
 

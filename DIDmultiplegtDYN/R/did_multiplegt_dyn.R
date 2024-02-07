@@ -116,7 +116,7 @@ did_multiplegt_dyn <- function(
     normalized = FALSE, 
     design = NULL, 
     date_first_switch = NULL, 
-    normalized_weights = NULL, 
+    normalized_weights = FALSE, 
     graph_off = FALSE,
     by = NULL,
     predict_het = NULL,
@@ -137,6 +137,10 @@ did_multiplegt_dyn <- function(
   #### The continous and the design option(s) should not be specified simulataneously
   if (!is.null(design) & !is.null(continuous)) {
     stop("The design option can not be specified together with the continuous option!")
+  }
+  ### Normalized weights requires normalized ###
+  if (isTRUE(normalized_weights) & isFALSE(normalized)) {
+    stop("normalized option required to compute normalized_weights")
   }
   #### By option block: checks on the variable specified and initializes the did_multiplegt_dyn object with the by shape (that is, there will be one subobject for each level of the by option)
   by_levels <- c("_no_by")
@@ -184,7 +188,7 @@ did_multiplegt_dyn <- function(
       append_dfs <- TRUE
     }
 
-    if (!is.null(normalized_weights)) {
+    if (isTRUE(normalized_weights)) {
       temp_obj <- append(temp_obj, 
           list(did_multiplegt_dyn_normweights(df_est, normalized, normalized_weights, same_switchers, continuous)))
       names(temp_obj)[length(temp_obj)] <- "normalized_weights"

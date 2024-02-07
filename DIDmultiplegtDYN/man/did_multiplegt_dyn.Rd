@@ -28,7 +28,7 @@ did_multiplegt_dyn(
   normalized = FALSE,
   design = NULL,
   date_first_switch = NULL,
-  normalized_weights = NULL,
+  normalized_weights = FALSE,
   graph_off = FALSE,
   by = NULL,
   predict_het = NULL,

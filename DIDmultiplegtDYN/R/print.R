@@ -118,8 +118,7 @@ print.did_multiplegt_dyn <- function(x, ...) {
         if (!is.null(ref$normalized_weights)) {
             cat("\n")
             cat(noquote(strrep("-", 60)));cat("\n");
-            cat(strrep(" ", 7));cat(sprintf("Weights on treatment lags - by %s", 
-                ref$normalized_weights$by_opt_lag));cat("\n");
+            cat(strrep(" ", 13));cat("Weights on treatment lags");cat("\n");
             cat(noquote(strrep("-", 60)));cat("\n");
             print(ref$normalized_weights$norm_weight_mat)
             cat("\n")
