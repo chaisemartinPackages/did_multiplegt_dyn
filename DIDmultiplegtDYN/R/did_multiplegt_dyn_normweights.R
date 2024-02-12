@@ -1,4 +1,4 @@
-#' Internal function of did_multiplegt_dyn
+#' Option that shows a table with weights attached to each normalized effect
 #' @param data data
 #' @param normalized normalized
 #' @param normopt normopt
@@ -25,6 +25,7 @@ did_multiplegt_dyn_normweights <- function(
 
   suppressWarnings({
 
+	## Set up the matrix for the output table
   weight_mat <- matrix(NA, nrow = l_XX, ncol = l_XX) 
   coln <- c()
   rown <- c()
@@ -34,8 +35,11 @@ did_multiplegt_dyn_normweights <- function(
     df <- df %>% group_by(.data$group_XX) %>% mutate(!!paste0("N_gt_",i,"_XX") := mean(.data[[paste0("N_gt_",i,"_temp_XX")]], na.rm = TRUE)) %>% ungroup()
     df[[paste0("N_gt_",i,"_temp_XX")]] <- NULL
     for (k in 0:(i-1)) {
+
+			# Visualization by k
       row <- k + 1
 
+			## Compute the delta_l_k, if the continuous option is specified the original treatment values are used
       if (is.null(continuous)) {
         df[paste0("delta_",i,"_",k)] <- ifelse(df$time_XX == df$F_g_XX - 1 + i - k & df$F_g_XX - 1 + i <= df$T_g_XX, abs(df$treatment_XX - df$d_sq_XX), NA)
       } else {
@@ -52,10 +56,12 @@ did_multiplegt_dyn_normweights <- function(
     df[[paste0("N_gt_",i,"_XX")]] <- NULL
   }
 
+	## Generating the row names 
   for (j in 1:l_XX) {
     rown <- c(rown, paste0("k=",j-1))
   }     
 
+	## Fill the values for the displayed table
   mat_total <- weight_mat
   mat_total[is.na(mat_total)] <- 0
   total <- matrix(1,nrow=1,ncol=l_XX) %*% mat_total

@@ -207,7 +207,7 @@ did_multiplegt_dyn <- function(
   if (isTRUE(normalized_weights) & isFALSE(normalized)) {
     stop("normalized option required to compute normalized_weights")
   }
-  #### By option block: checks on the variable specified and initializes the did_multiplegt_dyn object with the by shape (that is, there will be one subobject for each level of the by option)
+  #### By option block: checks on the variable specified and initializes the did_multiplegt_dyn object accounting for the by option
   by_levels <- c("_no_by")
   if (!is.null(by)) {
     ## checking that by variable is time-invariant
@@ -219,6 +219,10 @@ did_multiplegt_dyn <- function(
       f_names <- c(f_names, "by_levels")
     }
   }
+
+  # The following code structure accounts for the by option:
+  ## - if the option is not specified, the output is an object with just one "results" branch.
+  ## - if the option is specified, the output takes on as many branches as the levels of the by variable
 
   append_design <- FALSE
   append_dfs <- FALSE

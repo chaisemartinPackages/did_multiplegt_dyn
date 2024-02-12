@@ -1,4 +1,4 @@
-#' Internal function of did_multiplegt_dyn
+#' Internal function of did_multiplegt_dyn that computes U_Gg_plus_XX, U_Gg_minus_XX, U_Gg_var_plus_XX, and U_Gg_var_minus_XX. These are essential variables for the computation of the DID_\ell estimators and their variances.
 #' @param df df
 #' @param Y Y
 #' @param G G

@@ -562,24 +562,16 @@ suppressWarnings({
       ## Multiply by sqrt(N_gt_XX) to replicate weighted regression
       df$diff_y_wXX <- sqrt(df$N_gt_XX) * df$diff_y_XX
 
-      #df[[paste0("prod_X", count_controls, "_diff_y_temp_XX")]] <- ifelse(
-        #df$time_XX >= 2 & df$time_XX < df$F_g_XX, 
-          #df[[paste0("resid_X", count_controls,"_time_FE_XX")]] * df$diff_y_XX, NA)
-      #df[[paste0("prod_X", count_controls, "_diff_y_temp_XX")]] <- ifelse(
-        #is.na(df[[paste0("prod_X", count_controls, "_diff_y_temp_XX")]]), 0,
-          #df[[paste0("prod_X", count_controls, "_diff_y_temp_XX")]])
-
-      ## Computing the sum for each group to obtain the term \sum_{t=2}^{F_g-1}*N_{g,t}*\Delta \Dot{X}_{g,t}* \Delta Y_{g,t}
-      #df <- df %>% group_by(.data$group_XX) %>% 
-          #mutate(!!paste0("prod_X",count_controls,"_diff_y_XX") := 
-            #sum(.data[[paste0("prod_X", count_controls,"_diff_y_temp_XX")]]))
-
+      # Note: resid_X`count_controls'_time_FE_XX is already multiplied by sqrt(N_gt_XX)
       df[paste0("prod_X",count_controls,"_Ngt_XX")] <- df[[paste0("resid_X",count_controls,"_time_FE_XX")]] * sqrt(df$N_gt_XX)
       df[[paste0("prod_X",count_controls,"_Ngt_XX")]] <- ifelse(
         is.na(df[[paste0("prod_X",count_controls,"_Ngt_XX")]]),0,
         df[[paste0("prod_X",count_controls,"_Ngt_XX")]])
       
     }
+
+    ## Computing the Den_d matrices and their inverts,
+    ## and creating locals storing the status quos for which Den_d^{-1} not defined. 
 
     store_singular_XX <- ""
     store_noresidualization_XX <- c()
@@ -591,6 +583,8 @@ suppressWarnings({
         assign(paste0("store_singular_", l, "_XX"), 0)
         assign(paste0("useful_res_", l, "_XX"), 
             length(levels(as.factor(data_XX$F_g_XX[data_XX$d_sq_int_XX == l]))))
+
+        ## A baseline treatment is relevant iff it is taken by at least two groups with different values of F_g_XX and non-missing diff_y_XX, otherwise we do not need to perform the residualization for this specific baseline treatment.
         if (get(paste0("useful_res_",l,"_XX")) > 1) {
 
           # Isolate the observations used for the computation of theta_d
@@ -598,6 +592,7 @@ suppressWarnings({
 
           # R version of the accum function
           #-- The final matrix should be order k + 1 with k n. of controls
+          # Using the matrix accum function, to regress the first difference of outcome on the first differences of covariates. We will obtain the vectors of coefficients \theta_d s, where d indexes values of the baseline treatment.
           Y_vec <- as.matrix(data_XX$diff_y_wXX)
           X_vec <- as.matrix(data_XX[mycontrols_XX])
           W_vec <- as.matrix(data_XX$weight_XX)
@@ -620,7 +615,7 @@ suppressWarnings({
             didmgt_XX <- overall_XX[2:(count_controls + 1), 2:(count_controls + 1)]
             didmgt_XY <- overall_XX[2:(count_controls + 1), 1]
 
-            # Computing the vectors of coefficients \theta_d for each l
+            # Computing the vectors of coefficients \theta_d for each value of the baseline tratment
             assign(paste0("coefs_sq_", l, "_XX"), Ginv(as.matrix(didmgt_XX), tol = 10^(-16)) %*% didmgt_XY)
             levels_d_sq_XX_final <- c(levels_d_sq_XX_final, l)
 
@@ -638,6 +633,8 @@ suppressWarnings({
         assign(paste0("coefs_sq_", l, "_XX"), get(paste0("coefs_sq_", l, "_XX")), inherits = TRUE)
         assign(paste0("useful_res_", l, "_XX"), get(paste0("useful_res_", l, "_XX")), inherits = TRUE)
         }
+
+    # Fill up store_singular_XX, with correct values of statu quo and not the levels
     levels_d_sq_bis_XX <- levels(as.factor(df$d_sq_XX))
     index_sing_XX <- 0 
     for (l in levels_d_sq_bis_XX) {
@@ -647,6 +644,7 @@ suppressWarnings({
       }
     }
 
+    # Display errors if one of the Den_d^{-1} is not defined
     if (store_singular_XX != "") {
       cat(sprintf("Some control variables are not taken into account for groups with baseline treatment equal to: %s. This may occur in the following situations:", store_singular_XX))
       cat("\n")
@@ -656,10 +654,12 @@ suppressWarnings({
       cat("\n")
     }
 
+    # Values of baseline treatment such that residualization could not be performed at all are dropped.
     for (l in store_noresidualization_XX) {
       df <- subset(df, df$d_sq_int_XX != l)
     }
 
+    # Running residualization regression to compute predicted values
     fe_reg <- "diff_y_XX ~ "
     indep_var <- c()
     for (c in 1:count_controls) {
@@ -677,7 +677,7 @@ suppressWarnings({
       data_reg <- subset(df, df$d_sq_int_XX == l &  df$F_g_XX > df$time_XX & df$time_XX != t_min_XX)  
       data_reg$time_FE_XX <- as.factor(data_reg$time_XX)
       data_reg <- within(data_reg, time_FE_XX <- relevel(time_FE_XX, ref = 2))
-      model <- lm(as.formula(fe_reg),  data = data_reg, weights = data_reg$weight_XX) ## Should we include the weights? If yes, check with Stata.
+      model <- lm(as.formula(fe_reg),  data = data_reg, weights = data_reg$weight_XX) 
 
       for (v in indep_var) {
         df$to_add <- df[[v]] * model$coefficients[[v]] 
@@ -694,25 +694,34 @@ suppressWarnings({
     }
   }
 
-  # Initialize L_u_XX/L_a_XX
-  # If the trends_lin option was specified, and we dropped the first time period, L_u_XX should be decreased by 1.
+  ###### 4. Performing the estimation and storing the results 
+  ## Computing L_u/L_a, maximum number of event-study effects that can be computed
+  ## for the switchers in/out, to compare them to number of effects requested,
+  ## and finally determine the number of effects to be estimated.
+  ## Same thing for the placebos.
+
+  ## Initialize L_u_XX/L_a_XX
   L_u_XX <- NA
   L_a_XX <- NA
 
+  ## For switchers in
   if (switchers == "" | switchers == "in") {
     L_u_XX <- max(df$L_g_XX[df$S_g_XX == 1], na.rm = TRUE)  
     if (length(df$S_g_XX[df$S_g_XX == 1 & !is.na(df$S_g_XX)]) == 0) {
       L_u_XX <- 0
     }
-
+    ## For placebos
     if (placebo != 0) {
       L_placebo_u_XX <- max(df$L_g_placebo_XX[df$S_g_XX == 1], na.rm = TRUE)  
+      ## If the trends_lin option was specified, L_placebo_u_XX should be decreased by 1
+      ## because data starts at period 2 instead of 1.
       if (isTRUE(trends_lin)) {
         L_placebo_u_XX <- L_placebo_u_XX - 1
       }
     }
   }
 
+  ## For switchers out
   if (switchers == "" | switchers == "out") {
     L_a_XX <- max(df$L_g_XX[df$S_g_XX == 0], na.rm = TRUE)  
     if (length(df$L_g_XX[df$S_g_XX == 0 & !is.na(df$S_g_XX)]) == 0) {
@@ -726,6 +735,7 @@ suppressWarnings({
     }
   }
 
+  ## Error message if Design restriction 1 is not met
   if (
     (switchers == "in" & (is.na(L_u_XX) | L_u_XX == 0)) | 
     (switchers == "out" & (is.na(L_a_XX) | L_a_XX == 0)) | 
@@ -733,6 +743,9 @@ suppressWarnings({
     ) {
     stop("No treatment effect can be estimated. This is because Assumption 1 in de Chaisemartin & D'Haultfoeuille (2023) is not satisfied in the data used forestimation, given the options requested. If this is caused by your baseline treatement being continuous you can try using the option continuous() which allows for a continous period-one treatement.")
   }
+
+  ## Checking that the number of dynamic and placebo effects requested by user
+  ## are feasible, and correcting them if they are not. 
 
   if (switchers == "" ) {
     l_XX <- max(L_a_XX, L_u_XX, na.rm = TRUE)
@@ -771,6 +784,7 @@ suppressWarnings({
     }
   }
 
+  # If the number of effects or placebos initially asked by user was too large, display error message
   if (l_XX < effects) {
     print(warning(sprintf("The number of effects requested is too large. The number of effects which can be estimated is at most %.0f. The command will therefore try to estimante %.0f effect(s)", l_XX, l_XX)))
   }
@@ -784,8 +798,10 @@ suppressWarnings({
     }
   }
 
+  ## Generating default values for the variables which will be aggregated 
+  ## after Program 2 below has been run for switchers in and for switchers out.
+
   inh_obj <- c()
-  # Generating default values for the variables which will be aggregated.
   df[paste0("U_Gg", 1:l_XX, "_plus_XX")] <- lapply(1:l_XX, function(i) 0)
   df[paste0("U_Gg", 1:l_XX, "_minus_XX")] <- lapply(1:l_XX, function(i) 0)
   df[paste0("count", 1:l_XX, "_plus_XX")] <- lapply(1:l_XX, function(i) 0)
@@ -876,12 +892,18 @@ suppressWarnings({
     }
   }
 
-  # Initialize variable to earmark switchers by the number of the event-study effect
+  ## Initialize variable to earmark switchers by the number of the event-study effect
   df$switchers_tag_XX <- NA
 
+  ## Perform the estimation: call the program did_multiplegt_dyn_core, 
+  ## for switchers in and for switchers out, and store the results.
+
+  # For switchers in
   if (switchers == "" | switchers == "in") {
     if (!is.na(L_u_XX) & L_u_XX != 0) {
 
+      ## Perform the estimation of effects and placebos outside of the loop on 
+      ## number of effects if trends_lin not specified
       if (isFALSE(trends_lin)) {
         data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers, same_switchers_pl, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se, continuous = continuous)
 
@@ -892,12 +914,16 @@ suppressWarnings({
           assign(e, const[[e]])
         }
 
+	      # Store the number of the event-study effect for switchers-in
         for (k in 1:l_XX) {
           df$switchers_tag_XX[df[[paste0("distance_to_switch_",k,"_XX")]] == 1] <- k
         }
       }
 
       for (i in 1:l_XX) {
+      ## Perform the estimation of effects inside of the loop on number of effects 
+      ## if trends_lin is specified
+      ## Note that if the option trends_lin was specified, same_switchers must also be specified.
 
         if (isTRUE(trends_lin)) {
           data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = 0, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se, continuous = continuous)
@@ -909,8 +935,12 @@ suppressWarnings({
             assign(e, const[[e]])
           }          
 
+	        ## Store the number of the event-study effect for switchers-in
           df$switchers_tag_XX[df[[paste0("distance_to_switch_",i,"_XX")]] == 1] <- i
         }
+
+        ## Store variables necessary for computation of effects.
+        ## N.B.: in the case of unbalanced panels, it can happen that the U_Gg`i'_XX are not computed by program 2 (for example when y is missing). Consequently, for the command not to display an error message and continue running, we need to verify the variable is created, which is conditional on  N1_`i'_XX!=0.
 
         if (get(paste0("N1_",i,"_XX")) != 0) {
           df[[paste0("U_Gg",i,"_plus_XX")]] <- df[[paste0("U_Gg",i,"_XX")]]
@@ -927,6 +957,7 @@ suppressWarnings({
 
       }
 
+      # Same as above for placebos.
       if (l_placebo_XX != 0) {
         for (i in 1:l_placebo_XX) {
 
@@ -957,6 +988,7 @@ suppressWarnings({
         }
       }
 
+    # Store variables necessary for computation of average effect.
       if (isFALSE(trends_lin)) {
         if (sum_N1_l_XX != 0) {
           df$U_Gg_plus_XX <- df$U_Gg_XX
@@ -967,6 +999,7 @@ suppressWarnings({
     }
   }
 
+  ## Same thing as above, for switchers out
   if (switchers == "" | switchers == "out") {
     if (!is.na(L_a_XX) & L_a_XX != 0) {
 
@@ -981,6 +1014,7 @@ suppressWarnings({
         }
 
         for (k in 1:l_XX) {
+	        ## Store the number of the event-study effect for switchers-out
           df$switchers_tag_XX[df[[paste0("distance_to_switch_",k,"_XX")]] == 1] <- k
         }
       }
@@ -997,6 +1031,7 @@ suppressWarnings({
             assign(e, const[[e]])
           }
 
+	        ## Store the number of the event-study effect for switchers-out
           df$switchers_tag_XX[df[[paste0("distance_to_switch_",i,"_XX")]] == 1] <- i
         }
 
@@ -1053,12 +1088,14 @@ suppressWarnings({
     }
   }
   rownames <- c()
-  # Aggregating the results for switchers in and out. #####
 
+  ###### 5. Computing the estimators and their variances
+
+  # Creation of the matrix which stores all the estimators (DID_l, DID_pl, delta, etc.), their sd and the CIs
   mat_res_XX <- matrix(NA, nrow = l_XX + l_placebo_XX + 1, ncol = 7)
 
-  #------ DID_l ------------------------------------------#
-
+  ####  Computing DID_\ell
+  ## Loop over the number of effects to be estimated
   for (i in 1:l_XX) {
     df[paste0("U_Gg",i,"_global_XX")] <- get(paste0("N1_",i,"_XX_new")) / (get(paste0("N1_",i,"_XX_new")) + get(paste0("N0_",i,"_XX_new"))) * df[[paste0("U_Gg",i,"_plus_XX")]] + get(paste0("N0_",i,"_XX_new")) / (get(paste0("N1_",i,"_XX_new")) + get(paste0("N0_",i,"_XX_new"))) * df[[paste0("U_Gg",i,"_minus_XX")]]
     df[[paste0("U_Gg",i,"_global_XX")]][df$first_obs_by_gp_XX == 0] <- NA
@@ -1067,53 +1104,65 @@ suppressWarnings({
         mutate(!!paste0("count",i,"_global_XX") :=  max(.data[[paste0("count",i,"_plus_XX")]], .data[[paste0("count",i,"_minus_XX")]], na.rm = TRUE)) 
     df[[paste0("count",i,"_global_XX")]][df[[paste0("count",i,"_global_XX")]] == -Inf] <- NA
 
+    ## Computing aggregated delta_D (difference between treatments received wrt status quo, from F_g-1 to F_g-1+\ell), only needed for the normalized estimator 
     if (normalized == TRUE) {
       assign(paste0("delta_D_",i,"_global_XX"), 
       ( get(paste0("N1_",i,"_XX_new")) /( get(paste0("N1_",i,"_XX_new")) + get(paste0("N0_",i,"_XX_new")) ) ) * get(paste0("delta_D_",i,"_in_XX")) +  (get(paste0("N0_",i,"_XX_new"))/(get(paste0("N1_",i,"_XX_new")) + get(paste0("N0_",i,"_XX_new")))) * get(paste0("delta_D_",i,"_out_XX")))
     }
 
-    # Number of switchers
+    ## Counting number of switchers DID_\ell applies to
     assign(paste0("N_switchers_effect_",i,"_XX"), get(paste0("N1_",i,"_XX_new")) + get(paste0("N0_",i,"_XX_new")))
     mat_res_XX[i,6] <- get(paste0("N_switchers_effect_",i,"_XX"))
     mat_res_XX[i,7] <- i
     assign(paste0("N_switchers_effect_",i), get(paste0("N_switchers_effect_",i,"_XX")))
-    # Number of observations used in the estimation 
+
+    ## Counting number of observations used in the computation of DID_\ell
     df[paste0("N_effect_",i,"_XX")] <- sum(df[[paste0("count",i,"_global_XX")]], na.rm = TRUE)
     assign(paste0("N_effect_",i,"_XX"), mean(df[[paste0("N_effect_",i,"_XX")]]))
     assign(paste0("N_effect_",i), get(paste0("N_effect_",i,"_XX")))
     mat_res_XX[i,5] <- get(paste0("N_effect_",i,"_XX"))
 
+    ## Error message if DID_\ell cannot be estimated
     if (get(paste0("N_switchers_effect_",i,"_XX")) == 0 | get(paste0("N_effect_",i,"_XX")) == 0) {
       warning(paste0("Effect_",i,"cannot be estimated. There is no switcher or no control for this effect."))
     }
 
-    # DID_l
+    ## Averaging the U_Gg\ell to compute DID_\ell
     df[paste0("DID_",i,"_XX")] <- sum(df[[paste0("U_Gg",i,"_global_XX")]], na.rm = TRUE)
     df[[paste0("DID_",i,"_XX")]] <- df[[paste0("DID_",i,"_XX")]] / G_XX
 
+    ## Computing DID^n_\ell if the option was specified
     if (normalized == TRUE) {
         df[[paste0("DID_",i,"_XX")]] <- df[[paste0("DID_",i,"_XX")]] / get(paste0("delta_D_",i,"_global_XX"))
     }
     assign(paste0("DID_",i,"_XX"), mean(df[[paste0("DID_",i,"_XX")]]))
 
+    ## Set DID_\ell missing when there is no switcher or no control
     if ((switchers == "" & get(paste0("N1_",i,"_XX_new")) == 0 & get(paste0("N0_",i,"_XX_new")) == 0) | (switchers == "out" & get(paste0("N0_",i,"_XX_new")) == 0 ) |
     (switchers == "in" & get(paste0("N1_",i,"_XX_new")) == 0 )) {
         assign(paste0("DID_",i,"_XX"), NA)
     }
 
+    ## Store DID_\ell estimates in the ereturn and in the results matrix which will be printed out
     assign(paste0("Effect_",i), get(paste0("DID_",i,"_XX")))
     mat_res_XX[i,1] <- get(paste0("DID_",i,"_XX")) 
     rownames <- append(rownames, paste0("Effect_",i, strrep(" ",(12 - nchar(paste0("Effect_",i))))))
   }
 
-  #------ ATE --------------------------------------------#
+  ###### Computing the average total effect
   U_Gg_den_plus_XX <- ifelse(is.na(mean(df$U_Gg_den_plus_XX, na.rm = TRUE)), 0, mean(df$U_Gg_den_plus_XX, na.rm = TRUE))
   U_Gg_den_minus_XX <- ifelse(is.na(mean(df$U_Gg_den_minus_XX, na.rm = TRUE)), 0, mean(df$U_Gg_den_minus_XX, na.rm = TRUE))
 
+  #### The average effect cannot be estimated when the trends_lin option is specified so the whole part will be skipped in that case
+
   if (isFALSE(trends_lin)) {
+
+    ## Computing the weight w_+.
     if (switchers == "") {
       w_plus_XX <- U_Gg_den_plus_XX * sum_N1_l_XX / (U_Gg_den_plus_XX * sum_N1_l_XX + U_Gg_den_minus_XX * sum_N0_l_XX)
     }
+
+    ## When the "switchers" option is used, full weight is put to either switchers out or in
     if (switchers == "out") {
       w_plus_XX <- 0
     }
@@ -1121,13 +1170,19 @@ suppressWarnings({
       w_plus_XX <- 1
     }
 
+    ## Aggregating the U_Gg for switchers in and out
     df$U_Gg_global_XX <- w_plus_XX * df$U_Gg_plus_XX + (1 - w_plus_XX) * df$U_Gg_minus_XX
     df$U_Gg_global_XX[df$first_obs_by_gp == 0] <- NA
 
+    ## Averaging the U_Gg to compute average total effect
     df$delta_XX <- sum(df$U_Gg_global_XX, na.rm = TRUE) / G_XX
     delta_XX <- mean(df$delta_XX, na.rm = TRUE)
     assign("Av_tot_effect", delta_XX)
+
+    ## Completing the results matrix
+    # Storing the results
     mat_res_XX[l_XX+1,1] <- delta_XX
+    # Number of switchers
     N_switchers_effect_XX <- 0
     for (i in 1:l_XX) {
       N_switchers_effect_XX <- N_switchers_effect_XX + get(paste0("N_switchers_effect_",i,"_XX"))
@@ -1135,6 +1190,7 @@ suppressWarnings({
     mat_res_XX[l_XX+1,6] <- N_switchers_effect_XX
     mat_res_XX[l_XX+1,7] <- 0
     assign("N_switchers_effect_average", N_switchers_effect_XX)
+    # Number of observations used in the estimation
     df$count_global_XX <- 0
     for (i in 1:l_XX) {
       df <- df %>% rowwise() %>% 
@@ -1147,7 +1203,7 @@ suppressWarnings({
   rownames <- append(rownames, paste0("Av_tot_eff", strrep(" ",(12 - nchar("Av_tot_eff")))))
   mat_res_XX[l_XX+1,7] <- 0
 
-  #-- Placebos ---------------------------------------------#
+  #### Computing the placebo estimators (same steps as for the DID_\ell, not commented)
 
   if (l_placebo_XX != 0) {
     for (i in 1:l_placebo_XX) {
@@ -1179,12 +1235,10 @@ suppressWarnings({
       mat_res_XX[l_XX+1+i,1] <- get(paste0("DID_placebo_",i,"_XX")) 
       rownames <- append(rownames, paste0("Placebo_",i, strrep(" ",(12 - nchar(paste0("Placebo_",i))))))
 
-      # Number of switchers
       assign(paste0("N_switchers_placebo_",i,"_XX"), get(paste0("N1_placebo_",i,"_XX_new")) + get(paste0("N0_placebo_",i,"_XX_new")))
       mat_res_XX[l_XX+1+i,6] <- get(paste0("N_switchers_placebo_",i,"_XX"))
       mat_res_XX[l_XX+1+i,7] <- -i
       assign(paste0("N_switchers_placebo_",i), get(paste0("N_switchers_placebo_",i,"_XX")))
-      # Number of observations used in the estimation 
       df[paste0("N_placebo_",i,"_XX")] <- sum(df[[paste0("count",i,"_pl_global_XX")]], na.rm = TRUE)
       assign(paste0("N_placebo_",i,"_XX"), mean(df[[paste0("N_placebo_",i,"_XX")]]))
       assign(paste0("N_placebo_",i), get(paste0("N_placebo_",i,"_XX")))
@@ -1197,26 +1251,32 @@ suppressWarnings({
     }
   }
 
-  # Estimating the asymptotic variances #####################################
+  ####  Computing the variance of DID_\ell
 
+  ## Patch significance level for t statistics
   ci_level <- ci_level / 100
   z_level <- qnorm(ci_level + (1 - ci_level)/2)
 
-  #-- Estimating \hat{\sigma}^2_l ------------------------------------------#
+  ## Loop over the number of effects to be estimated
   for (i in 1:l_XX) {
     if ((switchers == "" & (get(paste0("N1_",i,"_XX_new")) != 0 | get(paste0("N0_",i,"_XX_new"))) != 0) | (switchers == "out" & get(paste0("N0_",i,"_XX_new")) != 0 ) | (switchers == "in" & get(paste0("N1_",i,"_XX_new")) != 0 )) {
 
-        
+        ## Aggregating the U_Gg_var_\ell for switchers in and out
         df[paste0("U_Gg_var_glob_",i,"_XX")] <- df[[paste0("U_Gg_var_",i,"_in_XX")]] * (get(paste0("N1_",i,"_XX_new")) / (get(paste0("N1_",i,"_XX_new")) + get(paste0("N0_",i,"_XX_new")))) + df[[paste0("U_Gg_var_",i,"_out_XX")]] * (get(paste0("N0_",i,"_XX_new")) / (get(paste0("N1_",i,"_XX_new")) + get(paste0("N0_",i,"_XX_new"))))
 
+        ## Compute \hat{\sigma}^2_l without clustering
         if (is.null(cluster)) {
         df[paste0("U_Gg_var_glob_eff",i,"_sqrd_XX")] <- df[[paste0("U_Gg_var_glob_",i,"_XX")]]^2 * df$first_obs_by_gp_XX
         assign(paste0("sum_for_var_",i,"_XX"), sum(df[[paste0("U_Gg_var_glob_eff",i,"_sqrd_XX")]], na.rm = TRUE) / G_XX^2) 
         } else {
+        ## Compute \hat{\sigma}^2_l with clustering: sum U_Gg_var_\ell within a cluster, and then take average of square. 
           df[[paste0("U_Gg_var_glob_",i,"_XX")]] <- df[[paste0("U_Gg_var_glob_",i,"_XX")]] * df$first_obs_by_gp_XX
+
+	        ## Sum within cluster
           df <- df %>% group_by(.data$cluster_XX) %>%
               mutate(!!paste0("clust_U_Gg_var_glob_",i,"_XX") 
                   := sum(.data[[paste0("U_Gg_var_glob_",i,"_XX")]], na.rm = TRUE))
+	        ## Compute average of square
           df[paste0("clust_U_Gg_var_glob_",i,"_2_XX")] <-
               df[[paste0("clust_U_Gg_var_glob_", i, "_XX")]]^2 * df$first_obs_by_clust_XX
           assign(paste0("sum_for_var_",i,"_XX"), 
@@ -1225,14 +1285,17 @@ suppressWarnings({
               df[[paste0("clust_U_Gg_var_glob_",i,"_XX")]]
         }
 
+        ## Compute SE
         assign(paste0("se_",i,"_XX"), sqrt(get(paste0("sum_for_var_",i,"_XX"))))
+
+        ## Normalize SE if normalized option was specified
         if (normalized == TRUE) {
           assign(paste0("se_",i,"_XX"), get(paste0("se_",i,"_XX")) / get(paste0("delta_D_",i,"_global_XX")))
         }
+
+        ## Storing the results
         mat_res_XX[i,2] <- get(paste0("se_",i,"_XX"))
         assign(paste0("se_effect_",i),get(paste0("se_",i,"_XX")))
-
-        # CI level
         assign(paste0("LB_CI_",i,"_XX"), get(paste0("DID_",i,"_XX")) - z_level * get(paste0("se_",i,"_XX")))
         mat_res_XX[i,3] <- get(paste0("LB_CI_",i,"_XX"))
         assign(paste0("UB_CI_",i,"_XX"), get(paste0("DID_",i,"_XX")) + z_level * get(paste0("se_",i,"_XX")))
@@ -1240,7 +1303,7 @@ suppressWarnings({
     }
   }
 
-  #-- Estimating \hat{\sigma}^2_pl ------------------------------------------#
+  ##  Computing the variances of the placebo estimators (same steps as for the DID_\ell, not commented)
   if (l_placebo_XX != 0) {
     for (i in 1:l_placebo_XX) {
       if ((switchers == "" & (get(paste0("N1_placebo_",i,"_XX_new")) != 0 | get(paste0("N0_placebo_",i,"_XX_new")) != 0)) | (switchers == "out" & get(paste0("N0_placebo_",i,"_XX_new")) != 0 ) | (switchers == "in" & get(paste0("N1_placebo_",i,"_XX_new")) != 0 )) {
@@ -1270,7 +1333,6 @@ suppressWarnings({
           mat_res_XX[l_XX + 1 + i,2] <- get(paste0("se_placebo_",i,"_XX"))
           assign(paste0("se_placebo_",i),get(paste0("se_placebo_",i,"_XX")))
 
-          # CI level
           assign(paste0("LB_CI_placebo_",i,"_XX"), get(paste0("DID_placebo_",i,"_XX")) - z_level * get(paste0("se_placebo_",i,"_XX")))
           mat_res_XX[l_XX + 1 + i,3] <- get(paste0("LB_CI_placebo_",i,"_XX"))
           assign(paste0("UB_CI_placebo_",i,"_XX"), get(paste0("DID_placebo_",i,"_XX")) + z_level * get(paste0("se_placebo_",i,"_XX")))
@@ -1279,8 +1341,7 @@ suppressWarnings({
     }
   }
 
-  #-- Estimating \hat{\sigma}^2 __------------------------------------------#
-
+  ##  Computing the variance of the average total effect (same steps as for the DID_\ell, not commented)
   if (isFALSE(trends_lin)) {
     if ((switchers=="" & (sum_N1_l_XX!=0|sum_N0_l_XX!=0))|(switchers =="out" & sum_N0_l_XX!=0)|(switchers=="in" & sum_N1_l_XX !=0)) {
 
@@ -1309,77 +1370,101 @@ suppressWarnings({
     }
   }
 
-#-- F tests ---------------------------------------------------#
+###### 6. Computing p-values from the tests 
+
 # If the option cluster is specified, we have previously replaced U_Gg_var_glob_pl_`i'_XX by clust_U_Gg_var_glob_pl_`i'_XX, and U_Gg_var_glob_`i'_XX by clust_U_Gg_var_glob_`i'_XX. 
 # Now, we must also replace first_obs_by_gp_XX by first_obs_by_clust_XX
 if (!is.null(cluster)) {
   df$first_obs_by_gp_XX <- df$first_obs_by_clust_XX
 }
 
-# Performing a test to see whether all placebos are jointly equal to 0
+###### Performing a test to see whether all placebos are jointly equal to 0
 all_Ns_pl_not_zero <- NA
+## Test can only be run when at least two placebos requested:
 if (l_placebo_XX != 0 & l_placebo_XX > 1) {
+	## If test is feasible, initalize scalar at 0
   all_Ns_pl_not_zero <- 0 
+  all_delta_pl_not_zero <- 0 
 
+	## Count the number of estimated placebos included in the test
   for (i in 1:l_placebo_XX) {
     if ( (switchers == "" & (get(paste0("N1_placebo_",i,"_XX_new"))!= 0 | get(paste0("N0_placebo_",i,"_XX_new"))!= 0 )) | (switchers == "out" & get(paste0("N0_placebo_",i,"_XX_new")) != 0) | (switchers == "in" & get(paste0("N1_placebo_",i,"_XX_new")) != 0) ) {
-      all_Ns_pl_not_zero = all_Ns_pl_not_zero + 1
+      all_Ns_pl_not_zero <- all_Ns_pl_not_zero + 1
+    }
+
+    if (isTRUE(normalized)) {
+      if (get(paste0("delta_D_pl_",i,"_global_XX")) != 0 & !is.na(get(paste0("delta_D_pl_",i,"_global_XX")))) {
+        all_delta_pl_not_zero <- all_delta_pl_not_zero + 1
+      }
     }
   }
 
-  if (all_Ns_pl_not_zero == l_placebo_XX) {
+	## Test can only be run when all requested placebos could be computed:
+  if ((all_Ns_pl_not_zero == l_placebo_XX & isFALSE(normalized)) | (isTRUE(normalized) & all_Ns_pl_not_zero == l_placebo_XX & all_delta_pl_not_zero == l_placebo_XX)) {
+
+	  ## Creating a vector with all placebo estimates
     didmgt_Placebo <- matrix(0, nrow = l_placebo_XX, ncol = 1)
+
+	  ## Creating a matrix where the variances and the covariances of the placebos will be stored.
     didmgt_Var_Placebo <- matrix(0, nrow = l_placebo_XX, ncol = l_placebo_XX)
 
+	  ## Fill those matrices
     for (i in 1:l_placebo_XX) {
       didmgt_Placebo[i,1] <- get(paste0("DID_placebo_",i,"_XX"))
       didmgt_Var_Placebo[i,i] <- get(paste0("se_placebo_",i,"_XX"))^2
 
       if (i < l_placebo_XX) {
         for (j in (i+1):l_placebo_XX) {
+			    ## Create variables necessary to compute the covariances
           if (normalized == FALSE) {
             df[[paste0("U_Gg_var_pl_",i,"_",j,"_XX")]] <- df[[paste0("U_Gg_var_glob_pl_",i,"_XX")]] +  df[[paste0("U_Gg_var_glob_pl_",j,"_XX")]] 
           } else {
             df[[paste0("U_Gg_var_pl_",i,"_",j,"_XX")]] <- df[[paste0("U_Gg_var_glob_pl_",i,"_XX")]] / get(paste0("delta_D_pl_",i,"_global_XX")) +  df[[paste0("U_Gg_var_glob_pl_",j,"_XX")]] / get(paste0("delta_D_pl_",j,"_global_XX"))
           }
 
+			    ## Estimate the covariances
           df[[paste0("U_Gg_var_pl_",i,"_",j,"_2_XX")]] <- df[[paste0("U_Gg_var_pl_",i,"_",j,"_XX")]]^2 * df$first_obs_by_gp_XX
           assign(paste0("var_sum_pl_",i,"_",j,"_XX"), sum( df[[paste0("U_Gg_var_pl_",i,"_",j,"_2_XX")]], na.rm = TRUE) / G_XX^2)
           assign(paste0("cov_pl_",i,"_",j,"_XX"), (get(paste0("var_sum_pl_",i,"_",j,"_XX")) - get(paste0("se_placebo_",i,"_XX"))^2 - get(paste0("se_placebo_",j,"_XX"))^2)/2) 
 
+			    ## Store the results
           didmgt_Var_Placebo[i,j] <- get(paste0("cov_pl_",i,"_",j,"_XX"))
           didmgt_Var_Placebo[j,i] <- get(paste0("cov_pl_",i,"_",j,"_XX"))
         }
       }
     }
 
+	  ## Compute P-value for the F-test on joint nullity of all placebos
     didmgt_Var_Placebo_inv <- Ginv(didmgt_Var_Placebo)
     didmgt_chi2placebo <- t(didmgt_Placebo) %*% didmgt_Var_Placebo_inv  %*% didmgt_Placebo
     p_jointplacebo <- 1 - pchisq(didmgt_chi2placebo[1,1], df = l_placebo_XX)
   } else {
+	  ## Error message if not all of the specified placebos could be estimated 
     warning("Some placebos could not be estimated. Therefore, the test of joint nullity of the placebos could not be computed.")
   }
 }
 
-# Predicting effects heterogeneity
+###### Testing for effect heterogeneity
 if (!is.null(predict_het)) {
+  ## Define number of effects we want to calculate
   if (length(predict_het_good) > 0) {
     if (-1 %in% het_effects) {
       het_effects <- 1:l_XX
     }
     all_effects_XX <- c(1:l_XX)[het_effects]
     if (NA %in% all_effects_XX) {
+	    ## error if specified effects not matching with those actually calculated	
       stop("Error in predict_het second argument: please specify only numbers that are smaller or equal to the number you request in effects()")
     }
 
-    # Yg,Fg-1
+    # Preliminaries: Yg,Fg−1
     df$Yg_Fg_min1_XX <- ifelse(df$time_XX == df$F_g_XX - 1, df$outcome_non_diff_XX, NA)
     df <- df %>% group_by(.data$group_XX) %>% 
         mutate(Yg_Fg_min1_XX = mean(.data$Yg_Fg_min1_XX, na.rm = TRUE))
     df <- df[order(df$group_XX, df$time_XX), ]
     df <- df %>% group_by(.data$group_XX) %>% mutate(gr_id = row_number())
 
-    # Generation of factor dummies for regressio
+    # Generation of factor dummies for regression
     for (v in c("F_g_XX", "d_sq_XX", "S_g_XX")) {
       df[paste0(v,"_h")] <- factor(df[[v]])
       for (l in levels(df[[paste0(v,"_h")]])) {
@@ -1392,7 +1477,9 @@ if (!is.null(predict_het)) {
     }
 
     het_res <- data.frame()
+    ## Loop the procedure over all requested effects for which potential heterogeneity should be predicted
     for (i in all_effects_XX) {
+
       # Yg,Fg-1 + l
       df[paste0("Yg_Fg_", i, "_XX")] <- ifelse(df$time_XX == df$F_g_XX - 1 + i, df$outcome_non_diff_XX, NA)
       df <- df %>% group_by(.data$group_XX) %>% 
@@ -1400,8 +1487,11 @@ if (!is.null(predict_het)) {
 
       # Now we can generate Sg*(Yg,Fg−1+l − Yg,Fg−1)
       df[paste0("prod_het_",i,"_XX")] <- df$S_g_het_XX * (df[[paste0("Yg_Fg_",i,"_XX")]] - df$Yg_Fg_min1_XX)
+
+      # keep one observation by group to not artificially increase sample
       df[[paste0("prod_het_",i,"_XX")]] <- ifelse(df$gr_id == 1, df[[paste0("prod_het_",i,"_XX")]], NA) 
       
+      # In order to perform the test with coeftest, we need a vector of non missing regression coefficients. To avoid collinearity, we run the regression two times: the first time with the full set of regressors (F_g_XX_h#d_sq_XX_h#S_g_XX_h), then with just the non-collinear variables. 
       het_reg <- paste0("prod_het_",i,"_XX ~ ")
       for (v in predict_het_good) {
         het_reg <- paste0(het_reg,v," + ")
@@ -1421,6 +1511,8 @@ if (!is.null(predict_het)) {
       model_r <- matrix(coeftest(model, vcov. = vcovHC(model, type = "HC1"))[2:(length(predict_het_good)+1), 1:3], ncol = 3)
       f_stat <- linearHypothesis(model,lhyp, vcov = vcovHC(model, type = "HC1"))[["Pr(>F)"]][2]
       t_stat <- qt(0.975, df.residual(model))
+
+      ## Output Part of the predict_het option
       het_res <- rbind(het_res, data.frame(
         effect = matrix(i, nrow = length(predict_het_good)),
         covariate = predict_het_good,
@@ -1440,8 +1532,7 @@ if (!is.null(predict_het)) {
   }
 }
 
-# Performing a test that all the DID_l are equal
-
+###### Performing a test that all DID_\ell effects are equal (similar structure as test on placebos, not commented, except for the small differences with placebos)
 if (effects_equal == TRUE & l_XX > 1) {
   all_Ns_not_zero <- 0
   for (i in 1:l_XX) {
@@ -1456,7 +1547,6 @@ if (effects_equal == TRUE & l_XX > 1) {
     didmgt_Var_Effects <- matrix(0, nrow = l_XX, ncol = l_XX)
     didmgt_identity <- matrix(0, nrow = l_XX - 1, ncol = l_XX)
 
-  # Computing and storing the covariances.
   for (i in 1:l_XX) {
     if (((switchers == "" & (get(paste0("N1_",i,"_XX_new")) != 0 | get(paste0("N0_",i,"_XX_new")) != 0)) | 
     (switchers == "out" & get(paste0("N0_",i,"_XX_new")) != 0) | 
@@ -1492,13 +1582,13 @@ if (effects_equal == TRUE & l_XX > 1) {
     }
   }
 
-  # Computing the vector of recentered effects and its variance matrix
+	## Creating a matrix of demeaned effects: null being tested = joint equality, not jointly 0
   didmgt_D <- didmgt_identity - matrix(1/l_XX, nrow = l_XX - 1, ncol = l_XX)
   didmgt_test_effects <- didmgt_D %*% didmgt_Effects
   didmgt_test_var <- didmgt_D %*% didmgt_Var_Effects %*% t(didmgt_D)
+  # Enforcing symmetry
   didmgt_test_var <- (didmgt_test_var + t(didmgt_test_var)) / 2
 
-  # Performing the test
   didmgt_chi2_equal_ef <- t(didmgt_test_effects) %*% Ginv(didmgt_test_var) %*% didmgt_test_effects
   p_equality_effects <- 
       1 - pchisq(didmgt_chi2_equal_ef[1,1], df = l_XX - 1)
@@ -1508,7 +1598,10 @@ if (effects_equal == TRUE & l_XX > 1) {
 }
 }
  
-# Returning the results of the estimation ##################################
+###### Returning the results of the estimation
+
+## All the results from the estimations and tests are attached to the did_multiplegt_dyn object as its "results" branch (or as the "_by_level_n$results" for n in 1:length(levels(by)) with the by option)
+## The whole estimation dataset plus some scalars are by default stored and passed to other functions for post-estimation features.
 
 mat_res_XX[,1:4] <- round(mat_res_XX[,1:4],5)
 mat_res_XX[,5:6] <- round(mat_res_XX[,5:6],0)
@@ -1550,8 +1643,8 @@ if (!is.null(predict_het)) {
 }
 
 # Uncomment for debugging #
-did_multiplegt_dyn <- append(did_multiplegt_dyn, list(df))
-out_names <- c(out_names, "debug")
+#did_multiplegt_dyn <- append(did_multiplegt_dyn, list(df))
+#out_names <- c(out_names, "debug")
 
 names(did_multiplegt_dyn) <- out_names
 
