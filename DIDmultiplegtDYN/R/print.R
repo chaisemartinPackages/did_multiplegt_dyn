@@ -148,6 +148,16 @@ print.did_multiplegt_dyn <- function(x, ...) {
 
 }
 
+#' @title A summary method for did_multiplegt_dyn
+#' @name summary.did_multiplegt_dyn 
+#' @description A customized summary display for did_multiplegt_dyn output
+#' @param object A did_multiplegt_dyn object
+#' @param ... Undocumented
+#' @export
+summary.did_multiplegt_dyn <- function(object, ...) {
+    print(object)
+}
+
 mat_print <- function(mat) {
     if (inherits(mat,"matrix")) {
         dis <- matrix(data = 0, nrow = nrow(mat) , ncol = ncol(mat))

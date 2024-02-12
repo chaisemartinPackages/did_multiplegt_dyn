@@ -15,11 +15,11 @@ did_save_sample <- function(
   df <- data$df
   suppressWarnings({
   df_save <- subset(df, !is.na(df$G) & !is.na(df$T))
-  df_save <- df_save %>% dplyr::select(.data$G, .data$T, .data$S_g_XX)
-  df_save <- data.table::setnames(df_save, old = c("G", "T", "S_g_XX"), new = c(Gn, Tn, "did_sample"))
+  df_save <- df_save %>% dplyr::select(.data$G, .data$T, .data$S_g_XX, .data$switchers_tag_XX)
+  df_save <- data.table::setnames(df_save, old = c("G", "T", "S_g_XX", "switchers_tag_XX"), new = c(Gn, Tn, "did_sample", "did_effect"))
   df_save$did_sample <- ifelse(df_save$did_sample == 0, -1, df_save$did_sample)
   df_save$did_sample <- ifelse(is.na(df_save$did_sample), 0, df_save$did_sample)
-  df_save$did_sample <- factor(df_save$did_sample, levels = c(0,1,-1), labels = c("Never-switcher", "Switcher-in", "Switchers-out"))
+  df_save$did_sample <- factor(df_save$did_sample, levels = c(0,1,-1), labels = c("Control", "Switcher-in", "Switchers-out"))
   })
   return(df_save)
 }

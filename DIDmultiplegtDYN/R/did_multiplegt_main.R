@@ -876,6 +876,9 @@ suppressWarnings({
     }
   }
 
+  # Initialize variable to earmark switchers by the number of the event-study effect
+  df$switchers_tag_XX <- NA
+
   if (switchers == "" | switchers == "in") {
     if (!is.na(L_u_XX) & L_u_XX != 0) {
 
@@ -888,8 +891,11 @@ suppressWarnings({
           const[[e]] <- data$const[[e]]
           assign(e, const[[e]])
         }
-      }
 
+        for (k in 1:l_XX) {
+          df$switchers_tag_XX[df[[paste0("distance_to_switch_",k,"_XX")]] == 1] <- k
+        }
+      }
 
       for (i in 1:l_XX) {
 
@@ -902,6 +908,8 @@ suppressWarnings({
             const[[e]] <- data$const[[e]]
             assign(e, const[[e]])
           }          
+
+          df$switchers_tag_XX[df[[paste0("distance_to_switch_",i,"_XX")]] == 1] <- i
         }
 
         if (get(paste0("N1_",i,"_XX")) != 0) {
@@ -971,6 +979,10 @@ suppressWarnings({
           const[[e]] <- data$const[[e]]
           assign(e, const[[e]])
         }
+
+        for (k in 1:l_XX) {
+          df$switchers_tag_XX[df[[paste0("distance_to_switch_",k,"_XX")]] == 1] <- k
+        }
       }
 
       for (i in 1:l_XX) {
@@ -984,6 +996,8 @@ suppressWarnings({
             const[[e]] <- data$const[[e]]
             assign(e, const[[e]])
           }
+
+          df$switchers_tag_XX[df[[paste0("distance_to_switch_",i,"_XX")]] == 1] <- i
         }
 
         if (get(paste0("N0_",i,"_XX")) != 0) {
@@ -1342,7 +1356,6 @@ if (l_placebo_XX != 0 & l_placebo_XX > 1) {
     didmgt_Var_Placebo_inv <- Ginv(didmgt_Var_Placebo)
     didmgt_chi2placebo <- t(didmgt_Placebo) %*% didmgt_Var_Placebo_inv  %*% didmgt_Placebo
     p_jointplacebo <- 1 - pchisq(didmgt_chi2placebo[1,1], df = l_placebo_XX)
-    assign("p_jointplacebo", p_jointplacebo)
   } else {
     warning("Some placebos could not be estimated. Therefore, the test of joint nullity of the placebos could not be computed.")
   }
@@ -1523,8 +1536,11 @@ if (isTRUE(effects_equal)) {
 if (placebo != 0) {
   Placebo_mat <- mat_res_XX[(l_XX+2):nrow(mat_res_XX), 1:(ncol(mat_res_XX) -1)]
   did_multiplegt_dyn <- append(did_multiplegt_dyn, list(Placebo_mat))
-  did_multiplegt_dyn <- append(did_multiplegt_dyn, p_jointplacebo)
-  out_names <- c(out_names, "Placebos", "p_jointplacebos")
+  out_names <- c(out_names, "Placebos")
+  if (placebo > 1) {
+    did_multiplegt_dyn <- append(did_multiplegt_dyn, p_jointplacebo)
+    out_names <- c(out_names, "p_jointplacebo")
+  }
 }
 if (!is.null(predict_het)) {
   if (length(predict_het_good) > 0) {
@@ -1534,8 +1550,8 @@ if (!is.null(predict_het)) {
 }
 
 # Uncomment for debugging #
-#did_multiplegt_dyn <- append(did_multiplegt_dyn, list(df))
-#out_names <- c(out_names, "debug")
+did_multiplegt_dyn <- append(did_multiplegt_dyn, list(df))
+out_names <- c(out_names, "debug")
 
 names(did_multiplegt_dyn) <- out_names
 
