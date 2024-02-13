@@ -366,7 +366,7 @@ did_multiplegt_dyn_core <- function(
 
     ##  For never switchers, demeaning wrt to cohorts defined by D_{g,1}, `trends_nonparam' (\mathcal{D}_k in companion paper)
 
-    df <- joint_trends(df, "d_sq_XX", trends_nonparam)
+    df <- joint_trends(df, c("d_sq_XX", "time_XX"), trends_nonparam)
 
     # Denominator of the mean
     df <- df %>% group_by(.data$joint_trends_XX) %>% 
@@ -823,7 +823,7 @@ did_multiplegt_dyn_core <- function(
 
         ## For never switchers, demeaning wrt to cohorts defined by D_{g,1}, `trends_nonparam' \mathcal{D}_k in companion paper)
 
-        df <- joint_trends(df, "d_sq_XX", trends_nonparam)
+        df <- joint_trends(df, c("d_sq_XX", "time_XX"), trends_nonparam)
 
         # Denominator of the mean
         df <- df %>% group_by(.data$joint_trends_XX) %>% 

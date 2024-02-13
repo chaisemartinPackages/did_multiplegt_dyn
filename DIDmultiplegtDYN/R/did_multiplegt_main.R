@@ -452,7 +452,7 @@ suppressWarnings({
     time_fe_XX <- levels(factor(df$time_XX))
     for (j in 2:length(time_fe_XX)) { 
       for (k in 1:degree_pol) {
-        df[paste0("time_fe_XX_",j,"_bt",k,"_XX")] <- (df$time_XX == time_fe_XX[j]) * 
+        df[paste0("time_fe_XX_",j,"_bt",k,"_XX")] <- (df$time_XX >= time_fe_XX[j]) * 
             df[[paste0("d_sq_",k,"_XX")]]
         controls <- c(controls, paste0("time_fe_XX_",j,"_bt",k,"_XX"))
       }
