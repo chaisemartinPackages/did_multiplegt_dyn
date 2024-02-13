@@ -194,7 +194,7 @@ did_multiplegt_dyn_core <- function(
         df$relevant_y_missing_XX <- (is.na(df$outcome_XX) & df$time_XX >= df$F_g_XX - 1 - placebo & df$time_XX <= df$F_g_XX - 1 + effects)
         ## Or if some of the controls are missing:
         if (!is.null(controls)) {
-          df$relevant_y_missing_XX <- ifelse(df$fd_X_all_non_missing_XX == 0 & df$time_XX >= df$F_g_XX - placebo & df$time_XX <= df$F_g_XX - 1 + effects, 1, df$relevant_y_missing_XX)
+          df$relevant_y_missing_XX <- ifelse(df$fd_X_all_non_missing_XX == 0 & df$time_XX >= df$F_g_XX - 1 - placebo & df$time_XX <= df$F_g_XX - 1 + effects, 1, df$relevant_y_missing_XX)
         }
         df <- df %>% group_by(.data$group_XX) %>%
             mutate(cum_fillin_XX = sum(.data$relevant_y_missing_XX, na.rm = TRUE))
@@ -788,9 +788,6 @@ did_multiplegt_dyn_core <- function(
             ## index l corresponds to d in the paper
             for (l in levels_d_sq_XX) {
               
-              df <- df %>% dplyr::select(-dplyr::any_of("dummy_XX"))
-              df$dummy_XX <- as.numeric(df$F_g_XX > df$time_XX & df$d_sq_int_XX == l)
-
               df[[paste0("m",increase_XX,"_pl_g_",l,"_",count_controls,"_",i,"_XX")]] <- 
                 (i <= df$T_g_XX - 2 & df$d_sq_int_XX == l) * (G_XX / get(paste0("N",increase_XX,"_placebo_",i,"_XX"))) * ((df[[paste0("dist_to_switch_pl_",i,"_XX")]] - (df[[paste0("N",increase_XX,"_t_placebo_",i,"_g_XX")]]/df[[paste0("N_gt_control_placebo_",i,"_XX")]]) * df[[paste0("never_change_d_pl_",i,"_XX")]]) * (df$time_XX >= i + 1 & df$time_XX <= df$T_g_XX) * (df[[paste0("diff_X",count_controls,"_pl_",i,"_N_XX")]]))
 
@@ -990,10 +987,6 @@ did_multiplegt_dyn_core <- function(
       Ntrendslin_pl <- min(Ntrendslin_pl, get(paste0("N",increase_XX,"_placebo_",i,"_XX")), na.rm = TRUE)
     }
 
-    if (isTRUE(trends_lin) & Ntrendslin_pl == 0) {
-      assign(paste0("N",increase_XX,"_placebo_",l_placebo_u_a_XX), 0)
-    }
-
     if (isTRUE(trends_lin) & Ntrendslin_pl != 0) {
       df[[paste0("U_Gg_pl_",l_u_a_XX,"_TL")]] <- 0
       df[[paste0("U_Gg_pl_",l_u_a_XX,"_var_TL")]] <- 0
@@ -1005,7 +998,6 @@ did_multiplegt_dyn_core <- function(
         df[[paste0("U_Gg_pl_",l_u_a_XX,"_var_TL")]] <- ifelse(!is.na(df[[paste0("U_Gg_pl_",i,"_var_XX")]]),
         df[[paste0("U_Gg_pl_",l_u_a_XX,"_var_TL")]] + df[[paste0("U_Gg_pl_",i,"_var_XX")]],
         df[[paste0("U_Gg_pl_",l_u_a_XX,"_var_TL")]])
-
       }
 
       df[[paste0("U_Gg_placebo_",l_u_a_XX,"_XX")]] <- df[[paste0("U_Gg_pl_",l_u_a_XX,"_TL")]] 
