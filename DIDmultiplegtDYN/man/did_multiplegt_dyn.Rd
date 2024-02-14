@@ -66,7 +66,7 @@ did_multiplegt_dyn(
 
 \item{trends_lin}{(logical) when this option is specified, the estimation of the treatment effects allows for group-specific linear trends. Estimators with linear trends start by computing event-study effects on the outcome's first-difference, rather than on the outcome itself, thus allowing for group-specific linear trends. Then, to recover event-study effect \eqn{\ell} on the outcome, event-study effects on the outcome's first-difference are summed from 1 to \eqn{\ell}. See Section 1.3 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details. When this option is specified, the estimated average total effect per unit of treatment is not computed.}
 
-\item{continuous}{(list with 2 args: char, int) allows to use the command even when groups' period-one treatment is continuous, meaning that all groups have a different period-one treatment value. With a discrete period-one treatment, the command compares the outcome evolution of switchers and non-switchers with the same period-one treatment.  But with a truly continuous period-one treatment, there will be no two groups with the same period-one treatment. With "pol" as the char argument, the command assumes that group's status-quo outcome evolution is a polynomial in their period-one treatment. The user's chosen polynomial order is the option's int argument. See Section 1.10 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details. Unlike the other variance estimators computed by the command, those computed when the continuous option is specified are not backed by a proven asymptotic normality result. Preliminary simulation evidence indicates that when the option is used with a correctly-specified polynomial order, those variance estimators are conservative. On the other hand, when the specified polynomial order is strictly larger than needed, those variance estimators can become liberal. Thus, when this option is specified, we recommend using the bootstrap for inference, by manually bootstrapping the command. At least, one should perform a robustness check where one compares the analytic variance computed by the command to a bootstrapped variance.}
+\item{continuous}{(int) allows to use the command even when groups' period-one treatment is continuous, meaning that all groups have a different period-one treatment value. With a discrete period-one treatment, the command compares the outcome evolution of switchers and non-switchers with the same period-one treatment.  But with a truly continuous period-one treatment, there will be no two groups with the same period-one treatment. The command assumes that group's status-quo outcome evolution is a polynomial in their period-one treatment. The user's chosen polynomial order is the option's int argument. See Section 1.10 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details. Unlike the other variance estimators computed by the command, those computed when the continuous option is specified are not backed by a proven asymptotic normality result. Preliminary simulation evidence indicates that when the option is used with a correctly-specified polynomial order, those variance estimators are conservative. On the other hand, when the specified polynomial order is strictly larger than needed, those variance estimators can become liberal. Thus, when this option is specified, we recommend using the bootstrap for inference, by manually bootstrapping the command. At least, one should perform a robustness check where one compares the analytic variance computed by the command to a bootstrapped variance.}
 
 \item{weight}{(char) gives the name of a variable to be used to weight the data. For instance, if one works with a district \eqn{\times} year data set and one wants to weight the estimation by each district \eqn{\times} year's population, one should write weight(population), where population is the population of each district \eqn{\times} year. If the data set is at a more disaggregated level than group \eqn{\times} time, the command aggregates it at the group \eqn{\times} time level internally, and weights the estimation by the number of observations in each group \eqn{\times} time cell if the weight option is not specified, or by the sum of the weights of the observations in each group \eqn{\times} time cell if the weight option is specified.}
 
@@ -180,43 +180,23 @@ file <- "favara_imbs_did_multiplegt_dyn.dta"
 url <- paste("https://raw.githubusercontent.com", repo, file, sep = "/")
 favara_imbs <-  haven::read_dta(url)
 
-# Estimating eight non-normalized event-study effects and three placebo 
+# Estimating 3 non-normalized event-study effects and two placebo 
 # effects of banking deregulations on loans volume:
-model1 <- did_multiplegt_dyn(
+summary(did_multiplegt_dyn(
     df = favara_imbs,
     Y = "Dl_vloans_b",
     G = "county",
     T = "year",
     D = "inter_bra",
-    effects = 8,
-    placebo = 3,
+    effects = 2,
+    placebo = 1,
     cluster = "state_n",
     graph_off = TRUE
-)
-
-# Estimating eight normalized event-study effects and three placebo effects 
-# of banking deregulations on loans volume, restricting the estimation 
-# to switchers for which all effects can be estimated, and testing that effects are equal:
-model2 <- did_multiplegt_dyn(
-    df = favara_imbs,
-    Y = "Dl_vloans_b",
-    G = "county",
-    T = "year",
-    D = "inter_bra",
-    effects = 8,
-    placebo = 3,
-    cluster = "state_n",
-    normalized = TRUE,
-    same_switchers = TRUE,
-    effects_equal = TRUE
-)
-
-# Printing results
-for (i in 1:2) {
-    print(get(paste0("model",i)))
-}
+))
 
 # Please note that some of the standard errors displayed above could differ from those 
 # reported in de Chaisemartin and D'Haultfoeuille (2020b) due to coverage-improving 
 # changes to the variance estimator.
+
+# See the did_multiplegt_dyn GitHub page for further examples and details.
 }

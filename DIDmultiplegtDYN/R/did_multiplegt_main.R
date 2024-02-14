@@ -447,10 +447,14 @@ suppressWarnings({
     ## Enriching controls
     time_fe_XX <- levels(factor(df$time_XX))
     for (j in 2:length(time_fe_XX)) { 
-      for (k in 1:degree_pol) {
-        df[paste0("time_fe_XX_",j,"_bt",k,"_XX")] <- (df$time_XX >= time_fe_XX[j]) * 
-            df[[paste0("d_sq_",k,"_XX")]]
-        controls <- c(controls, paste0("time_fe_XX_",j,"_bt",k,"_XX"))
+        for (k in 1:degree_pol) {
+          df[[paste0("time_fe_XX_",j,"_bt",k,"_XX")]] <- (df$time_XX >= j) * 
+              df[[paste0("d_sq_",k,"_XX")]]
+
+          ## Symmetry with Stata version ##
+          #df[paste0("time_fe_XX_",time_fe_XX[j],"_bt",k,"_XX")] <- (df$time_XX >= time_fe_XX[j]) * 
+              #df[[paste0("d_sq_",k,"_XX")]]
+          controls <- c(controls, paste0("time_fe_XX_",j,"_bt",k,"_XX"))
       }
     }
   }
@@ -699,6 +703,8 @@ suppressWarnings({
   ## Initialize L_u_XX/L_a_XX
   L_u_XX <- NA
   L_a_XX <- NA
+  L_placebo_u_XX <- NA
+  L_placebo_a_XX <- NA
 
   ## For switchers in
   if (switchers == "" | switchers == "in") {

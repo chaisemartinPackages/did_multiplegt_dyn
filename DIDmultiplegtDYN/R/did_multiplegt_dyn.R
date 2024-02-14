@@ -113,45 +113,25 @@
 #' url <- paste("https://raw.githubusercontent.com", repo, file, sep = "/")
 #' favara_imbs <-  haven::read_dta(url)
 #' 
-#' # Estimating eight non-normalized event-study effects and three placebo 
+#' # Estimating 3 non-normalized event-study effects and two placebo 
 #' # effects of banking deregulations on loans volume:
-#' model1 <- did_multiplegt_dyn(
+#' summary(did_multiplegt_dyn(
 #'     df = favara_imbs,
 #'     Y = "Dl_vloans_b",
 #'     G = "county",
 #'     T = "year",
 #'     D = "inter_bra",
-#'     effects = 8,
-#'     placebo = 3,
+#'     effects = 2,
+#'     placebo = 1,
 #'     cluster = "state_n",
 #'     graph_off = TRUE
-#' )
-#' 
-#' # Estimating eight normalized event-study effects and three placebo effects 
-#' # of banking deregulations on loans volume, restricting the estimation 
-#' # to switchers for which all effects can be estimated, and testing that effects are equal:
-#' model2 <- did_multiplegt_dyn(
-#'     df = favara_imbs,
-#'     Y = "Dl_vloans_b",
-#'     G = "county",
-#'     T = "year",
-#'     D = "inter_bra",
-#'     effects = 8,
-#'     placebo = 3,
-#'     cluster = "state_n",
-#'     normalized = TRUE,
-#'     same_switchers = TRUE,
-#'     effects_equal = TRUE
-#' )
-#' 
-#' # Printing results
-#' for (i in 1:2) {
-#'     print(get(paste0("model",i)))
-#' }
+#' ))
 #' 
 #' # Please note that some of the standard errors displayed above could differ from those 
 #' # reported in de Chaisemartin and D'Haultfoeuille (2020b) due to coverage-improving 
 #' # changes to the variance estimator.
+#' 
+#' # See the did_multiplegt_dyn GitHub page for further examples and details.
 #' @export 
 did_multiplegt_dyn <- function(
     df, 
