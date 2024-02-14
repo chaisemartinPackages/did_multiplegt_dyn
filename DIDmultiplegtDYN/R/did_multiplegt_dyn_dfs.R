@@ -1,4 +1,4 @@
-#' Internal function of did_multiplegt_dyn
+#' Option that produces a table showing the number of groups switching for the first time by period
 #' @param data data
 #' @param dfs dfs
 #' @param by by
@@ -26,26 +26,34 @@ did_multiplegt_dyn_dfs <- function(
   if (length(dfs) != 2) {
     stop("Syntax error in date_first_switch option.")
   }
+
+	## Fetch the arguments 
   dfs_opt <- dfs[1]
   dfs_path <- dfs[2]
 
+	## Error message if the arguments in the option were specified wrong
   if (dfs_opt != "" & dfs_opt != "by_baseline_treat") {
     stop("Only option by_baseline_treat allowed.")
   }
 
+	## Drop non switchers and keep one observation per group
   df <- subset(df, !(df$F_g_XX == T_max_XX + 1 | is.na(df$F_g_XX)))
   df <- subset(df, df$time_XX == df$F_g_XX)
   df <- df %>% dplyr::select(.data$G, .data$T, .data$F_g_XX, .data$d_sq_XX)
 
+	## When by_baseline_treat is not specified
   if (dfs_opt == "") {
+		## collapse the number of groups by time
     df$tot_s <- 1
     df <- df %>% group_by(.data$T) %>% 
     mutate(tot_s = sum(.data$tot_s, na.rm = TRUE)) %>% 
     dplyr::select(-.data$G, -.data$F_g_XX, -.data$d_sq_XX)
     df <- unique(df)
     df <- df[order(df$T), ]
+		## generate the share of each group
     df$share_XX <- (df$tot_s / sum(df$tot_s, na.rm = TRUE)) * 100
     df <- df[c("tot_s", "share_XX", "T")]
+		## make matrix with the number and share of groups by time
     dfsmat <- matrix(NA, ncol = 2, nrow = dim(df)[1])
     rown <- c()
     coln <- c("N", "Share")
@@ -60,6 +68,8 @@ did_multiplegt_dyn_dfs <- function(
     colnames(dfsmat) <- coln
     rownames(dfsmat) <- rown 
     dfsmat[, 2] <- sprintf("%s", format(round(dfsmat[,2], 2), big.mark=",", scientific=FALSE, trim=TRUE))
+
+		## output as excel
     if (dfs_path != "console") {
       by_add <- ""
       if (by_index != "_no_by") {
@@ -75,7 +85,10 @@ did_multiplegt_dyn_dfs <- function(
       dfs_mat = noquote(dfsmat)
     )
   }
+
+	## When by_baseline_treat is specified
   if (dfs_opt == "by_baseline_treat") {
+		## collapse, but this time by time and status quo treatment
     df$tot_s <- 1
     df <- df %>% group_by(.data$T, .data$d_sq_XX) %>% 
     mutate(tot_s = sum(.data$tot_s, na.rm = TRUE)) %>% 
@@ -98,6 +111,7 @@ did_multiplegt_dyn_dfs <- function(
       df_by <- subset(df, df$d_sq_XX == l)
       df_by$share_XX <- (df_by$tot_s / sum(df_by$tot_s, na.rm = TRUE)) * 100
       df_by <- df_by[c("tot_s", "share_XX", "T")]
+		  ## make matrix with the number and share of groups by time, one for each level of status quo treatment
       dfsmat <- matrix(NA, ncol = 2, nrow = dim(df_by)[1])
       rown <- c()
       coln <- c("N", "Share")
@@ -119,6 +133,7 @@ did_multiplegt_dyn_dfs <- function(
       names(res_dfs)[length(res_dfs) - 1] <- paste0("level",index)
       names(res_dfs)[length(res_dfs)] <- paste0("dfs_mat",index)
 
+		  ## output as excel
       if (dfs_path != "console") {
         sheetn <- paste0("Base treat. ", l)
         write.xlsx(dfsmat, dfs_path, row.names = TRUE, col.names = TRUE, sheetName = paste0(sheetn, by_add), append = append)

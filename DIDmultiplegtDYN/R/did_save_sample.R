@@ -1,4 +1,4 @@
-#' Internal function of did_multiplegt_dyn
+#' Option that allows to see which groups were included in the estimation and if they were switcher in/out ot control
 #' @param data data
 #' @param Gn Gn
 #' @param Tn Tn
@@ -14,13 +14,16 @@ did_save_sample <- function(
     ) {
   df <- data$df
   suppressWarnings({
+	## keeping only group, time and switcher status (if not missing)
   df_save <- subset(df, !is.na(df$G) & !is.na(df$T))
-  df_save <- df_save %>% dplyr::select(.data$G, .data$T, .data$S_g_XX)
-  df_save <- data.table::setnames(df_save, old = c("G", "T", "S_g_XX"), new = c(Gn, Tn, "did_sample"))
+  df_save <- df_save %>% dplyr::select(.data$G, .data$T, .data$S_g_XX, .data$switchers_tag_XX)
+	## redefine S_g_XX to show if group is switcher in/out or control	
+  df_save <- data.table::setnames(df_save, old = c("G", "T", "S_g_XX", "switchers_tag_XX"), new = c(Gn, Tn, "did_sample", "did_effect"))
   df_save$did_sample <- ifelse(df_save$did_sample == 0, -1, df_save$did_sample)
   df_save$did_sample <- ifelse(is.na(df_save$did_sample), 0, df_save$did_sample)
-  df_save$did_sample <- factor(df_save$did_sample, levels = c(0,1,-1), labels = c("Never-switcher", "Switcher-in", "Switchers-out"))
+  df_save$did_sample <- factor(df_save$did_sample, levels = c(0,1,-1), labels = c("Control", "Switcher-in", "Switchers-out"))
   })
+	# Return dataset to be merged to main data
   return(df_save)
 }
 

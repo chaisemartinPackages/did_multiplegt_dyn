@@ -1,4 +1,3 @@
-#' Internal function of did_multiplegt_dyn
 #' Checks whether the variable specified in the by option is time-variant
 #' The program allows only time-variant variables in the by option
 #' @param df df

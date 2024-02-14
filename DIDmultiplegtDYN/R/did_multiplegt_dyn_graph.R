@@ -1,4 +1,4 @@
-#' Internal function of did_multiplegt_dyn
+#' Function for event study plot. the did_multiplegt_dyn command always generates a ggplot object that can be printed right after the end of the routine (graph_off = FALSE) or called afterwards from the global environment after assigning the did_multiplegt_dyn output to a variable.
 #' @param data data
 #' @import ggplot2
 #' @import dplyr
@@ -19,7 +19,7 @@ did_multiplegt_dyn_graph <- function(data) {
   return(did_multiplegt_dyn_plot)
 }
 
-#' Internal function of did_multiplegt_dyn
+#' Internal function of did_multiplegt_dyn to overlay plots
 #' @param obj A did_multiplegt_dyn object
 #' @import ggplot2
 #' @noRd

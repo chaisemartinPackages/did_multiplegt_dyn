@@ -1,5 +1,5 @@
 Package: DIDmultiplegtDYN
-Title: did_multiplegt_dyn, Estimation in Difference-in-Difference (DID) designs with multiple groups and periods
+Title: Estimation in Difference-in-Difference Designs with Multiple Groups and Periods
 Version: 1.0.0
 Authors@R:     
     c(person("Diego", "Ciccia", role = c("aut", "cre"), email = "diego.ciccia@sciencespo.fr"),
@@ -8,7 +8,7 @@ Authors@R:
 	person("Doulo", "Sow", role = "aut", email = "doulo.sow@ensae.fr"),
     person("Clément", "de Chaisemartin", role = "aut", email = "clement.dechaisemartin@sciencespo.fr"))
 Maintainer: Diego Ciccia <diego.ciccia@sciencespo.fr>
-Description: Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, and with a potentially non-binary treatment that may increase or decrease multiple times. This is a beta version of the command. New options will be added soon, and some of the options already provided are not fully stabilized yet.
+Description: Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, and with a potentially non-binary treatment that may increase or decrease multiple times. 
 License: MIT + file LICENSE
 Author: Diego Ciccia [aut, cre],
 	Felix Knau [aut],
