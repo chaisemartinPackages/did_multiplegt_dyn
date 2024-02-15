@@ -23,9 +23,6 @@ did_multiplegt_dyn_dfs <- function(
     T_max_XX <- data$T_max_XX
 
   suppressWarnings({
-  if (length(dfs) != 2) {
-    stop("Syntax error in date_first_switch option.")
-  }
 
 	## Fetch the arguments 
   dfs_opt <- dfs[1]

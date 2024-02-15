@@ -166,23 +166,44 @@ did_multiplegt_dyn <- function(
     drop_if_d_miss_before_first_switch = FALSE
     ) { 
   
+
+  #### General syntax checks ####
   args <- list()
   for (v in names(formals(did_multiplegt_dyn))) {
+    ## Class checks
+    if (!is.null(get(v))) {
+      if (v == "df") {
+        if (!inherits(get(v), "data.frame")) {
+          stop(sprintf("Syntax error in %s option. Dataframe object required.", v))
+        }
+      } else if (v %in% c("Y", "G", "T", "D", "by", "cluster", "weight", "switchers", "save_results")) {
+        if (!(length(get(v)) == 1 & inherits(get(v), "character"))) {
+          stop(sprintf("Syntax error in %s option. Only one string allowed.", v))
+        }
+      } else if (v %in% c("effects", "placebo", "ci_level", "continuous")) {
+        if (!(inherits(get(v), "numeric") & get(v) %% 1 == 0)) {
+          stop(sprintf("Syntax error in %s option. Integer required.", v))
+        }
+      } else if (v %in% c("predict_het", "design", "date_first_switch")) {
+        if (!(inherits(get(v), "list") & length(get(v)) == 2)) {
+          stop(sprintf("Syntax error in %s option. List with two arguments required.", v))
+        }
+      } else if (v %in% c("controls", "trends_nonparam")) { 
+        if (!(inherits(get(v), "character"))) {
+          stop(sprintf("Syntax error in %s option. String or string array required.", v))
+        }
+      } else if (v %in% c("normalized", "normalized_weights", "effects_equal", "trends_lin", "same_switchers", "same_switchers_pl", "graph_off", "save_sample", "less_conservative_se", "dont_drop_larger_lowe", "drop_if_d_miss_before_first_switch")) {
+        if (!inherits(get(v), "logical")) {
+          stop(sprintf("Syntax error in %s option. Logical required.", v))
+        }
+      }
+    }
     if (v != "df") {
       args[[v]] <- get(v)
     }
   }
   did_multiplegt_dyn <- list(args)
   f_names <- c("args")
-
-  #### Checking that the by, cluster and weight options are correctly specified ####
-  for (v in c("by", "cluster", "weight")) {
-    if (!is.null(get(v))) {
-      if (length(get(v)) != 1) {
-        stop(sprintf("Syntax error in option %s: only one varname allowed.", v))
-      }
-    }
-  }
 
   #### The predict_het option cannot be specified together with normalized or controls
   if (!is.null(predict_het)) {

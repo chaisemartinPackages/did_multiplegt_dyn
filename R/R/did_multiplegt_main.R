@@ -75,9 +75,6 @@ suppressWarnings({
 
   #### Continous option: checking that polynomial order specified, and putting it into degree_pol scalar.
   if (!is.null(continuous)) {
-    if (!(inherits(continuous, "numeric") & continuous %% 1 == 0)) {
-      stop("The argument for the continuous option must be an integer")
-    }
     degree_pol <- continuous
   }
 
@@ -899,7 +896,7 @@ suppressWarnings({
 
   ## Perform the estimation: call the program did_multiplegt_dyn_core, 
   ## for switchers in and for switchers out, and store the results.
-
+  
   # For switchers in
   if (switchers == "" | switchers == "in") {
     if (!is.na(L_u_XX) & L_u_XX != 0) {
@@ -1441,6 +1438,7 @@ if (l_placebo_XX != 0 & l_placebo_XX > 1) {
     didmgt_chi2placebo <- t(didmgt_Placebo) %*% didmgt_Var_Placebo_inv  %*% didmgt_Placebo
     p_jointplacebo <- 1 - pchisq(didmgt_chi2placebo[1,1], df = l_placebo_XX)
   } else {
+    p_jointplacebo <- NA
 	  ## Error message if not all of the specified placebos could be estimated 
     warning("Some placebos could not be estimated. Therefore, the test of joint nullity of the placebos could not be computed.")
   }
@@ -1484,7 +1482,7 @@ if (!is.null(predict_het)) {
     ## Loop the procedure over all requested effects for which potential heterogeneity should be predicted
     for (i in all_effects_XX) {
       # Generation of factor dummies for regression
-      het_sample <- subset(df, df$F_g_XX - 1 + i <= df$T_g_XX & feasible_het_XX)[c("F_g_XX", "d_sq_XX", "S_g_XX", trends_nonparam)]
+      het_sample <- subset(df, df$F_g_XX - 1 + i <= df$T_g_XX & df$feasible_het_XX)[c("F_g_XX", "d_sq_XX", "S_g_XX", trends_nonparam)]
       het_interact <- ""
       for (v in c("F_g_XX", "d_sq_XX", "S_g_XX", trends_nonparam)) {
         if (length(levels(as.factor(het_sample[[v]]))) > 1) {

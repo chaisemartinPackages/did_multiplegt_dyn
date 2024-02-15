@@ -27,9 +27,6 @@ did_multiplegt_dyn_design <- function(
 
 	## Error message if the arguments in the option were specified wrong
   suppressWarnings({
-  if (length(design_opt) != 2) {
-    stop("Syntax error in design option.")
-  }
 
 	## Fetch the arguments 
   des_p <- as.numeric(design_opt[1])
