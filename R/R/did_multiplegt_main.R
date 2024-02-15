@@ -1463,16 +1463,18 @@ if (!is.null(predict_het)) {
     df$Yg_Fg_min1_XX <- ifelse(df$time_XX == df$F_g_XX - 1, df$outcome_non_diff_XX, NA)
     df <- df %>% group_by(.data$group_XX) %>% 
         mutate(Yg_Fg_min1_XX = mean(.data$Yg_Fg_min1_XX, na.rm = TRUE))
+    df$feasible_het_XX <- !is.na(df$Yg_Fg_min1_XX)
+    if (!is.null(trends_lin)) {
+      df$Yg_Fg_min2_XX <- ifelse(df$time_XX == df$F_g_XX - 2, df$outcome_non_diff_XX, NA)
+      df <- df %>% group_by(.data$group_XX) %>% 
+          mutate(Yg_Fg_min2_XX = mean(.data$Yg_Fg_min2_XX, na.rm = TRUE))
+      df$Yg_Fg_min2_XX <- ifelse(is.nan(df$Yg_Fg_min2_XX), NA, df$Yg_Fg_min2_XX)
+
+      df$feasible_het_XX <- df$feasible_het_XX & !is.na(df$Yg_Fg_min2_XX)
+    }
     df <- df[order(df$group_XX, df$time_XX), ]
     df <- df %>% group_by(.data$group_XX) %>% mutate(gr_id = row_number())
 
-    # Generation of factor dummies for regression
-    for (v in c("F_g_XX", "d_sq_XX", "S_g_XX")) {
-      df[paste0(v,"_h")] <- factor(df[[v]])
-      for (l in levels(df[[paste0(v,"_h")]])) {
-        df[[paste0(v,"_h",l)]] <- as.numeric(df[[v]] == l)
-      }
-    }
     lhyp <- c()
     for (v in predict_het_good) {
       lhyp <- c(lhyp, paste0(v, "=0"))
@@ -1481,14 +1483,34 @@ if (!is.null(predict_het)) {
     het_res <- data.frame()
     ## Loop the procedure over all requested effects for which potential heterogeneity should be predicted
     for (i in all_effects_XX) {
+      # Generation of factor dummies for regression
+      het_sample <- subset(df, df$F_g_XX - 1 + i <= df$T_g_XX & feasible_het_XX)[c("F_g_XX", "d_sq_XX", "S_g_XX", trends_nonparam)]
+      het_interact <- ""
+      for (v in c("F_g_XX", "d_sq_XX", "S_g_XX", trends_nonparam)) {
+        if (length(levels(as.factor(het_sample[[v]]))) > 1) {
+          df[paste0(v,"_h")] <- factor(df[[v]])
+          for (l in levels(df[[paste0(v,"_h")]])) {
+            df[[paste0(v,"_h",l)]] <- as.numeric(df[[v]] == l)
+          }
+          het_interact <- paste0(het_interact,":",v,"_h")
+        }
+      }
+      het_interact <- substr(het_interact,2,nchar(het_interact))
+      het_sample <- NULL
 
       # Yg,Fg-1 + l
       df[paste0("Yg_Fg_", i, "_XX")] <- ifelse(df$time_XX == df$F_g_XX - 1 + i, df$outcome_non_diff_XX, NA)
       df <- df %>% group_by(.data$group_XX) %>% 
           mutate(!!paste0("Yg_Fg_",i,"_XX") := mean(.data[[paste0("Yg_Fg_",i,"_XX")]], na.rm = TRUE))
 
+      df$diff_het_XX <- df[[paste0("Yg_Fg_",i,"_XX")]] - df$Yg_Fg_min1_XX
+      if (isTRUE(trends_lin)) {
+        df$diff_het_XX <- df$diff_het_XX - i * (df$Yg_Fg_min1_XX - df$Yg_Fg_min2_XX)        
+      }
+
       # Now we can generate Sg*(Yg,Fg−1+l − Yg,Fg−1)
-      df[paste0("prod_het_",i,"_XX")] <- df$S_g_het_XX * (df[[paste0("Yg_Fg_",i,"_XX")]] - df$Yg_Fg_min1_XX)
+      df[paste0("prod_het_",i,"_XX")] <- df$S_g_het_XX * df$diff_het_XX
+      df$diff_het_XX <- NULL      
 
       # keep one observation by group to not artificially increase sample
       df[[paste0("prod_het_",i,"_XX")]] <- ifelse(df$gr_id == 1, df[[paste0("prod_het_",i,"_XX")]], NA) 
@@ -1498,10 +1520,10 @@ if (!is.null(predict_het)) {
       for (v in predict_het_good) {
         het_reg <- paste0(het_reg,v," + ")
       }
-      het_reg <- paste0(het_reg, " F_g_XX_h:d_sq_XX_h:S_g_XX_h")
-      model <- lm(as.formula(het_reg), data = subset(df, df$F_g_XX - 1 + i <= df$T_g_XX))
-
-      het_reg <- gsub("F_g_XX_h:d_sq_XX_h:S_g_XX_h", "", het_reg)
+      het_reg <- paste0(het_reg, het_interact)
+      het_sample <- subset(df, df$F_g_XX - 1 + i <= df$T_g_XX)
+      model <- lm(as.formula(het_reg), data = het_sample, weights = het_sample$weight_XX)
+      het_reg <- gsub(het_interact, "", het_reg)
       for (k in names(model$coefficients)) {
         if (!(k %in% c("(Intercept)", predict_het_good))) {
           if (!is.na(model$coefficients[[k]])) {
@@ -1509,10 +1531,11 @@ if (!is.null(predict_het)) {
           }
         }
       }
-      model <- lm(as.formula(het_reg), data = subset(df, df$F_g_XX - 1 + i <= df$T_g_XX))
+      model <- lm(as.formula(het_reg), data = het_sample, weights = het_sample$weight_XX)
       model_r <- matrix(coeftest(model, vcov. = vcovHC(model, type = "HC1"))[2:(length(predict_het_good)+1), 1:3], ncol = 3)
       f_stat <- linearHypothesis(model,lhyp, vcov = vcovHC(model, type = "HC1"))[["Pr(>F)"]][2]
       t_stat <- qt(0.975, df.residual(model))
+      het_sample <- NULL
 
       ## Output Part of the predict_het option
       het_res <- rbind(het_res, data.frame(
@@ -1527,7 +1550,7 @@ if (!is.null(predict_het)) {
         pF = matrix(f_stat, nrow = length(predict_het_good))
       ))  
     }
-    for (v in c("F_g_XX", "d_sq_XX", "S_g_XX")) {
+    for (v in c("F_g_XX", "d_sq_XX", "S_g_XX", trends_nonparam)) {
       df[[paste0(v,"_h")]] <- NULL
     }
     het_res <- het_res[order(het_res$covariate, het_res$effect), ]
