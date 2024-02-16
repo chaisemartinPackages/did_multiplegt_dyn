@@ -5,6 +5,7 @@
 #' @param trends_nonparam trends_nonparam
 #' @import dplyr
 #' @importFrom magrittr %>%
+#' @returns A dataframe.
 #' @noRd
 joint_trends <- function(
     df, 

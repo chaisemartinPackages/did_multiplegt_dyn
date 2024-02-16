@@ -6,10 +6,10 @@
 \usage{
 did_multiplegt_dyn(
   df,
-  Y,
-  G,
-  T,
-  D,
+  outcome,
+  group,
+  time,
+  treatment,
   effects = 1,
   design = NULL,
   normalized = FALSE,
@@ -40,13 +40,13 @@ did_multiplegt_dyn(
 \arguments{
 \item{df}{(dataframe or matrix) the estimation dataset.}
 
-\item{Y}{(char) is the outcome variable.}
+\item{outcome}{(char) is the outcome variable.}
 
-\item{G}{(char) is the group variable.}
+\item{group}{(char) is the group variable.}
 
-\item{T}{(char) is the time period variable. The command assumes that the time variable is evenly spaced (e.g.: the panel is at the yearly level, and no year is missing for all groups). When it is not (e.g.: the panel is at the yearly level, but three consecutive years are missing for all groups), the command can still be used, though it requires a bit of tweaking, see FAQ section below.}
+\item{time}{(char) is the time period variable. The command assumes that the time variable is evenly spaced (e.g.: the panel is at the yearly level, and no year is missing for all groups). When it is not (e.g.: the panel is at the yearly level, but three consecutive years are missing for all groups), the command can still be used, though it requires a bit of tweaking, see FAQ section below.}
 
-\item{D}{(char) is the treatment variable.}
+\item{treatment}{(char) is the treatment variable.}
 
 \item{effects}{(int) gives the number of event-study effects to be estimated. By default, the command estimates non-normalized event-study effects. Non-normalized event-study effects are averages, across all switchers, of the effect of having received their actual rather than their period-one treatment dose, for \eqn{\ell} periods. While non-normalized event-study effects can be interpreted as average effects of being exposed to a weakly higher treatment dose for \eqn{\ell} periods, the magnitude and timing of the incremental treatment doses can vary across groups.}
 
@@ -97,6 +97,9 @@ did_multiplegt_dyn(
 \item{dont_drop_larger_lower}{(logical) by default, the command drops all the \eqn{(g,t)} cells such that at \eqn{t}, group \eqn{g} has experienced both a strictly larger and a strictly lower treatment than its baseline treatment. de Chaisemartin and D'Haultfoeuille (2020a) recommend this procedure, if you are interested in more details you can see their Section 3.1. The option dont_drop_larger_lower allows to overwrite this procedure and keeps \eqn{(g,t)} cells such that at \eqn{t}, group \eqn{g} has experienced both a strictly larger and a strictly lower treatment than its baseline treatment in the estimation sample.}
 
 \item{drop_if_d_miss_before_first_switch}{(logical) This option is relevant when the treatment of some groups is missing at some time periods. Then, the command imputes some of those missing treatments. Those imputations are detailed in Appendix A of de Chaisemartin et al (2024). In designs where groups' treatments can change at most once, all those imputations are justified by the design. In other designs, some of those imputations may be liberal. drop_if_d_miss_before_first_switch can be used to overrule the potentially liberal imputations that are not innocuous for the non-normalized event-study estimators. See Appendix A of de Chaisemartin et al (2024) for further details.}
+}
+\value{
+A list of class did_multiplegt_dyn containing the arguments used, the results for the estimation requested and a ggplot object with the event-study graph. If the by option is specified, the did_multiplegt_dyn object will contain the arguments, a list with the levels of the by option, a sublist for each of these levels with the results and ggplot objects from these by-estimations and a ggplot object for the combined event-study graph. The class did_multiplegt_dyn is assigned to enable customized print and summary methods.
 }
 \description{
 Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, with a potentially non-binary treatment that may increase or decrease multiple times.
@@ -184,10 +187,10 @@ favara_imbs <-  haven::read_dta(url)
 # effects of banking deregulations on loans volume:
 summary(did_multiplegt_dyn(
     df = favara_imbs,
-    Y = "Dl_vloans_b",
-    G = "county",
-    T = "year",
-    D = "inter_bra",
+    outcome = "Dl_vloans_b",
+    group = "county",
+    time = "year",
+    treatment = "inter_bra",
     effects = 2,
     placebo = 1,
     cluster = "state_n",

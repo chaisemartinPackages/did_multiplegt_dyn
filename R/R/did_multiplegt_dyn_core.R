@@ -1,9 +1,9 @@
 #' Internal function of did_multiplegt_dyn that computes U_Gg_plus_XX, U_Gg_minus_XX, U_Gg_var_plus_XX, and U_Gg_var_minus_XX. These are essential variables for the computation of the DID_\ell estimators and their variances.
 #' @param df df
-#' @param Y Y
-#' @param G G
-#' @param T T
-#' @param D D
+#' @param outcome outcome
+#' @param group group
+#' @param time time
+#' @param treatment treatment
 #' @param effects effects
 #' @param placebo placebp
 #' @param switchers_core switchers_core
@@ -22,13 +22,14 @@
 #' @importFrom magrittr %>%
 #' @importFrom rlang := 
 #' @importFrom rlang .data
+#' @returns A dataframe for the values of U_Gg_plus_XX, U_Gg_minus_XX, U_Gg_var_plus_XX, and U_Gg_var_minus_XX.
 #' @noRd
 did_multiplegt_dyn_core <- function(
     df, 
-    Y, 
-    G, 
-    T, 
-    D, 
+    outcome, 
+    group, 
+    time, 
+    treatment, 
     effects, 
     placebo, 
     switchers_core = NULL, 

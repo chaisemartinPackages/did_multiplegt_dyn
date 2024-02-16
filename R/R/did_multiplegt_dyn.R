@@ -3,10 +3,10 @@
 #' @md 
 #' @description Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, with a potentially non-binary treatment that may increase or decrease multiple times.
 #' @param df (dataframe or matrix) the estimation dataset.
-#' @param Y (char) is the outcome variable. 
-#' @param G (char) is the group variable. 
-#' @param T (char) is the time period variable. The command assumes that the time variable is evenly spaced (e.g.: the panel is at the yearly level, and no year is missing for all groups). When it is not (e.g.: the panel is at the yearly level, but three consecutive years are missing for all groups), the command can still be used, though it requires a bit of tweaking, see FAQ section below.
-#' @param D (char) is the treatment variable.
+#' @param outcome (char) is the outcome variable. 
+#' @param group (char) is the group variable. 
+#' @param time (char) is the time period variable. The command assumes that the time variable is evenly spaced (e.g.: the panel is at the yearly level, and no year is missing for all groups). When it is not (e.g.: the panel is at the yearly level, but three consecutive years are missing for all groups), the command can still be used, though it requires a bit of tweaking, see FAQ section below.
+#' @param treatment (char) is the treatment variable.
 #' @param effects (int) gives the number of event-study effects to be estimated. By default, the command estimates non-normalized event-study effects. Non-normalized event-study effects are averages, across all switchers, of the effect of having received their actual rather than their period-one treatment dose, for \eqn{\ell} periods. While non-normalized event-study effects can be interpreted as average effects of being exposed to a weakly higher treatment dose for \eqn{\ell} periods, the magnitude and timing of the incremental treatment doses can vary across groups.
 #' @param design (2 args: float, char path) this option reports switchers' period-one and subsequent treatments, thus helping the analyst understand the treatment paths whose effect is aggregated in the non-normalized event-study effects. When the number of treatment paths is low, one may consider estimating treatment-path-specific event-study effects to facilitate interpretation, see footnote 10 of de Chaisemartin and D'Haultfoeuille (2024) for detailed instructions. When the number of treatment paths is large, one may specify a number included between 0 and 1 in the float argument. Then the command reports the treatment paths common to at least (_float_*100)% of switchers. Results can be printed in the Stata console specifying "console" as the string argument.  For example, _design = c(0.5, "console")_ reports the treatment paths experienced by at least 50% of the switchers and prints the output in the Stata console. Alternatively, the output can be stored in an Excel file providing a valid file path as the string argument.
 #' @param normalized (logical) when this option is specified, the command estimates normalized event-study effects, that are equal to a weighted average of the effects of the current treatment and of its \eqn{\ell-1} first lags on the outcome. See Sections 3.1 and 3.2 of de Chaisemartin and D'Haultfoeuille (2020a) for further details.
@@ -117,10 +117,10 @@
 #' # effects of banking deregulations on loans volume:
 #' summary(did_multiplegt_dyn(
 #'     df = favara_imbs,
-#'     Y = "Dl_vloans_b",
-#'     G = "county",
-#'     T = "year",
-#'     D = "inter_bra",
+#'     outcome = "Dl_vloans_b",
+#'     group = "county",
+#'     time = "year",
+#'     treatment = "inter_bra",
 #'     effects = 2,
 #'     placebo = 1,
 #'     cluster = "state_n",
@@ -132,13 +132,14 @@
 #' # changes to the variance estimator.
 #' 
 #' # See the did_multiplegt_dyn GitHub page for further examples and details.
+#' @returns A list of class did_multiplegt_dyn containing the arguments used, the results for the estimation requested and a ggplot object with the event-study graph. If the by option is specified, the did_multiplegt_dyn object will contain the arguments, a list with the levels of the by option, a sublist for each of these levels with the results and ggplot objects from these by-estimations and a ggplot object for the combined event-study graph. The class did_multiplegt_dyn is assigned to enable customized print and summary methods.
 #' @export 
 did_multiplegt_dyn <- function(
     df, 
-    Y, 
-    G, 
-    T, 
-    D, 
+    outcome, 
+    group, 
+    time, 
+    treatment, 
     effects = 1, 
     design = NULL, 
     normalized = FALSE, 
@@ -176,13 +177,13 @@ did_multiplegt_dyn <- function(
         if (!inherits(get(v), "data.frame")) {
           stop(sprintf("Syntax error in %s option. Dataframe object required.", v))
         }
-      } else if (v %in% c("Y", "G", "T", "D", "by", "cluster", "weight", "switchers", "save_results")) {
+      } else if (v %in% c("outcome", "group", "time", "treatment", "by", "cluster", "weight", "switchers", "save_results")) {
         if (!(length(get(v)) == 1 & inherits(get(v), "character"))) {
           stop(sprintf("Syntax error in %s option. Only one string allowed.", v))
         }
       } else if (v %in% c("effects", "placebo", "ci_level", "continuous")) {
-        if (!(inherits(get(v), "numeric") & get(v) %% 1 == 0)) {
-          stop(sprintf("Syntax error in %s option. Integer required.", v))
+        if (!(inherits(get(v), "numeric") & get(v) %% 1 == 0 & get(v) > 0)) {
+          stop(sprintf("Syntax error in %s option. Positive integer required.", v))
         }
       } else if (v %in% c("predict_het", "design", "date_first_switch")) {
         if (!(inherits(get(v), "list") & length(get(v)) == 2)) {
@@ -227,7 +228,7 @@ did_multiplegt_dyn <- function(
   by_levels <- c("_no_by")
   if (!is.null(by)) {
     ## checking that by variable is time-invariant
-    if (!did_multiplegt_dyn_by_check(df, G, by)) {
+    if (!did_multiplegt_dyn_by_check(df, group, by)) {
       stop(sprintf("The variable %s specified in the by option is time-varying. That variable should be time-invariant.", by))
     } else {
       by_levels <- levels(factor(df[[by]]))
@@ -250,10 +251,7 @@ did_multiplegt_dyn <- function(
       df_main <- df
     }
 
-    df_est <- did_multiplegt_main(df = df_main, Y = Y, G =  G, T =  T, D = D, 
-    effects = effects, placebo = placebo, ci_level = ci_level,switchers = switchers, trends_nonparam = trends_nonparam, weight = weight, controls = controls, dont_drop_larger_lower = dont_drop_larger_lower, drop_if_d_miss_before_first_switch =
-    drop_if_d_miss_before_first_switch, cluster = cluster, 
-    same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, 
+    df_est <- did_multiplegt_main(df = df_main, outcome = outcome, group =  group, time =  time, treatment = treatment, effects = effects, placebo = placebo, ci_level = ci_level,switchers = switchers, trends_nonparam = trends_nonparam, weight = weight, controls = controls, dont_drop_larger_lower = dont_drop_larger_lower, drop_if_d_miss_before_first_switch = drop_if_d_miss_before_first_switch, cluster = cluster, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, 
     effects_equal = effects_equal, save_results = save_results, normalized = normalized, predict_het = predict_het, trends_lin = trends_lin, less_conservative_se = less_conservative_se, continuous = continuous)
 
     temp_obj <- list(df_est$did_multiplegt_dyn)
@@ -279,11 +277,11 @@ did_multiplegt_dyn <- function(
 
     temp_obj <- append(temp_obj, list(did_multiplegt_dyn_graph(df_est)))
     names(temp_obj)[length(temp_obj)] <- "plot"
-
+    
     if (isTRUE(save_sample)) {
-      df_save_XX <- did_save_sample(df_est, G, T)
-      df_m <- merge(df, df_save_XX, by = c(G, T))
-      df_m <- df_m[order(df_m[[G]], df_m[[T]]), ]
+      df_save_XX <- did_save_sample(df_est, group, time)
+      df_m <- merge(df, df_save_XX, by = c(group, time)) 
+      df_m <- df_m[order(df_m[[group]], df_m[[time]]), ]
       temp_obj <- append(temp_obj, list(df_m))
       names(temp_obj)[length(temp_obj)] <- "save_sample"
     }

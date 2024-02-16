@@ -10,6 +10,7 @@
 #' @importFrom rlang :=
 #' @importFrom rlang .data
 #' @importFrom xlsx write.xlsx
+#' @returns A list with the design option output.
 #' @noRd
 did_multiplegt_dyn_design <- function(
     data, 

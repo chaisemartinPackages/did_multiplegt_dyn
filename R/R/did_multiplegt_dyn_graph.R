@@ -3,6 +3,7 @@
 #' @import ggplot2
 #' @import dplyr
 #' @importFrom magrittr %>%
+#' @returns A ggplot object.
 #' @noRd
 did_multiplegt_dyn_graph <- function(data) {
   grmat <- data$mat_res_XX
@@ -22,6 +23,7 @@ did_multiplegt_dyn_graph <- function(data) {
 #' Internal function of did_multiplegt_dyn to overlay plots
 #' @param obj A did_multiplegt_dyn object
 #' @import ggplot2
+#' @returns A ggplot object.
 #' @noRd
 combine_plot <- function(obj) {
   color_set <- get_colors(length(obj$by_levels))
@@ -50,6 +52,7 @@ combine_plot <- function(obj) {
 #' @param N Number of colors to retrieve
 #' @import ggplot2
 #' @importFrom grDevices colors
+#' @returns A list of colors.
 #' @noRd
 get_colors <- function(N) {
   must_color <- c(552, 26, 81, 68, 450, 640, 24, 498) 

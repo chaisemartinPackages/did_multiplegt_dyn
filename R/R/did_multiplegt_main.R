@@ -1,9 +1,9 @@
 #' Internal function of did_multiplegt_dyn
 #' @param df df
-#' @param Y Y
-#' @param G G
-#' @param T T
-#' @param D D
+#' @param outcome outcome
+#' @param group group
+#' @param time time
+#' @param treatment treatment
 #' @param effects effects
 #' @param placebo placebo
 #' @param ci_level ci_level
@@ -35,13 +35,14 @@
 #' @import lmtest
 #' @import sandwich
 #' @importFrom car linearHypothesis
+#' @returns A list with the final estimation dataframe and other relevant matrices and scalars.
 #' @noRd 
 did_multiplegt_main <- function(
   df, 
-  Y, 
-  G, 
-  T, 
-  D, 
+  outcome, 
+  group, 
+  time, 
+  treatment, 
   effects, 
   placebo, 
   ci_level, 
@@ -80,10 +81,10 @@ suppressWarnings({
 
   ######## 2. Data preparation steps
   #### Renaming the variables in the dataset 
-  original_names <- c(c(Y, G, T, D), trends_nonparam, weight, controls, cluster, unlist(predict_het[1]))
+  original_names <- c(c(outcome, group, time, treatment), trends_nonparam, weight, controls, cluster, unlist(predict_het[1]))
   df <- data.frame(df)
   df <- df %>% select_at(original_names)
-  df <- data.table::setnames(df, old = c(Y, G, T, D), new = c("Y", "G", "T", "D"))
+  df <- data.table::setnames(df, old = c(outcome, group, time, treatment), new = c("outcome", "group", "time", "treatment"))
 
   #### Grouping together trends_nonparam variables
   if (!is.null(trends_nonparam)) {
@@ -92,7 +93,7 @@ suppressWarnings({
 
   #### Patching the cluster variable: by default, the command clusters at group level. If the user specifies clustering by group, the clustering option goes to NULL.
   if (!is.null(cluster)) {
-    if (paste0(cluster) == paste0(G)) {
+    if (paste0(cluster) == paste0(group)) {
       cluster <- NULL
     }
     df$cluster_XX <- df[[cluster]]
@@ -100,7 +101,7 @@ suppressWarnings({
 
   #### Selecting the sample
   ## Dropping observations with missing group or time
-  df <- df %>% filter(!is.na(.data$G) & !is.na(.data$T)) 
+  df <- df %>% filter(!is.na(.data$group) & !is.na(.data$time)) 
   ## Dropping observations with missing controls
   if (!is.null(controls)) {
     for (var in controls) {
@@ -114,8 +115,8 @@ suppressWarnings({
     df <- subset(df, !is.na(df$cluster_XX))
   }
   ## Dropping groups with always missing treatment or outcomes
-  df <- df %>% group_by(.data$G) %>% mutate(mean_D = mean(.data$D, na.rm = TRUE))
-  df <- df %>% group_by(.data$G) %>% mutate(mean_Y = mean(.data$Y, na.rm = TRUE))
+  df <- df %>% group_by(.data$group) %>% mutate(mean_D = mean(.data$treatment, na.rm = TRUE)) %>% ungroup()
+  df <- df %>% group_by(.data$group) %>% mutate(mean_Y = mean(.data$outcome, na.rm = TRUE)) %>% ungroup()
   df <- df %>% filter(!is.na(.data$mean_Y) & !is.na(.data$mean_D))  %>% 
       dplyr::select(-.data$mean_Y, -.data$mean_D) 
 
@@ -133,7 +134,7 @@ suppressWarnings({
       ## Checks if only time-invariant variables are specified in predict_het
       predict_het_good <- c()
       for (v in pred_het) {
-        df <- df %>% group_by(.data$G) %>% mutate(sd_het = sd(.data[[v]], na.rm = TRUE))
+        df <- df %>% group_by(.data$group) %>% mutate(sd_het = sd(.data[[v]], na.rm = TRUE)) %>% ungroup()
         if (mean(df$sd_het) == 0) {
           predict_het_good <- c(predict_het_good, v)
         } else {
@@ -143,7 +144,6 @@ suppressWarnings({
       }
     }     
   }
-
 
   #### Collapse and weight
   ## Creating the weight variable 
@@ -157,20 +157,20 @@ suppressWarnings({
 
   ## Checking if the data has to be collapsed
   df$counter_temp <- 1
-  df <- df %>% group_by(.data$G, .data$T) %>% 
-      mutate(counter = sum(.data$counter_temp))
+  df <- df %>% group_by(.data$group, .data$time) %>% 
+      mutate(counter = sum(.data$counter_temp)) %>% ungroup()
   aggregated_data <- max(df$counter) == 1
   df <- df %>% dplyr::select(-.data$counter, -.data$counter_temp) 
 
   ## Collapsing the data if necessary
   if (aggregated_data != 1) {
-    df$weight_XX <- ifelse(is.na(df$D), 0, df$weight_XX)
+    df$weight_XX <- ifelse(is.na(df$treatment), 0, df$weight_XX)
     if (is.null(cluster)) {
       df$cluster_XX <- 1
     }
     . <- NULL
-    df <- df %>%  group_by(.data$G, .data$T) %>%
-    summarise_at(vars(D, Y, trends_nonparam, weight, controls, .data$cluster_XX, .data$weight_XX), funs(weighted.mean(., w=.data$weight_XX)))
+    df <- df %>%  group_by(.data$group, .data$time) %>%
+    summarise_at(vars(treatment, outcome, trends_nonparam, weight, controls, .data$cluster_XX, .data$weight_XX), funs(weighted.mean(., w=.data$weight_XX))) %>% ungroup()
     df$trends_nonparam_XX <- df[trends_nonparam]
     if (is.null(cluster)) {
       df <- df %>% dplyr::select(-.data$cluster_XX)
@@ -178,10 +178,10 @@ suppressWarnings({
   }
 
   #### Generate factorized versions of Y, G, T and D
-  df$outcome_XX <- df$Y
-  df <- df %>% group_by(.data$G) %>% mutate(group_XX = cur_group_id()) %>% ungroup()
-  df <- df %>% group_by(.data$T) %>% mutate(time_XX = cur_group_id()) %>% ungroup()
-  df$treatment_XX <- df$D
+  df$outcome_XX <- df$outcome
+  df <- df %>% group_by(.data$group) %>% mutate(group_XX = cur_group_id()) %>% ungroup()
+  df <- df %>% group_by(.data$time) %>% mutate(time_XX = cur_group_id()) %>% ungroup()
+  df$treatment_XX <- df$treatment
 
   #### Declaring that the dataset is a panel
   df <- pdata.frame(df, index = c("group_XX", "time_XX")) 
@@ -192,13 +192,13 @@ suppressWarnings({
   ## G's first and last date when D not missing
   df$time_d_nonmiss_XX <- ifelse(!is.na(df$treatment_XX), df$time_XX, NA)
   df <- df %>% group_by(.data$group_XX) %>% 
-      mutate(min_time_d_nonmiss_XX = min(.data$time_d_nonmiss_XX, na.rm = TRUE))
+      mutate(min_time_d_nonmiss_XX = min(.data$time_d_nonmiss_XX, na.rm = TRUE)) %>% ungroup()
   df <- df %>% group_by(.data$group_XX) %>% 
-      mutate(max_time_d_nonmiss_XX = max(.data$time_d_nonmiss_XX, na.rm = TRUE))
+      mutate(max_time_d_nonmiss_XX = max(.data$time_d_nonmiss_XX, na.rm = TRUE)) %>% ungroup()
   ## G's first date when Y not missing
   df$time_y_nonmiss_XX <- ifelse(!is.na(df$outcome_XX), df$time_XX, NA)
   df <- df %>% group_by(.data$group_XX) %>%
-     mutate(min_time_y_nonmiss_XX = min(.data$time_y_nonmiss_XX, na.rm = TRUE))
+     mutate(min_time_y_nonmiss_XX = min(.data$time_y_nonmiss_XX, na.rm = TRUE)) %>% ungroup()
   ## G's first date when D missing after Y has been not missing
   df$time_d_miss_XX <- ifelse(is.na(df$treatment_XX) & df$time_XX >= df$min_time_y_nonmiss_XX,df$time_XX, NA)
   df <- df %>% group_by(.data$group_XX) %>%
@@ -212,7 +212,7 @@ suppressWarnings({
 
   df$d_sq_XX <- ifelse(df$time_XX == df$min_time_d_nonmiss_XX,df$treatment_XX,NA)
   df <- df  %>% group_by(.data$group_XX)  %>% 
-      mutate(d_sq_XX = mean(.data$d_sq_XX, na.rm = TRUE)) 
+      mutate(d_sq_XX = mean(.data$d_sq_XX, na.rm = TRUE)) %>% ungroup()
 
   #### Enforcing Design Restriction 2 in the paper.
   #### If the option dont_drop_larger_lower was not specified, 
@@ -254,7 +254,7 @@ suppressWarnings({
   df <- df[order(df$group_XX, df$time_XX), ]
   df$temp_F_g_XX <- ifelse(df$ever_change_d_XX == 1 & shift(df$ever_change_d_XX) == 0,
      df$time_XX, 0)
-  df <- df  %>% group_by(.data$group_XX)  %>% mutate(F_g_XX = max(.data$temp_F_g_XX, na.rm = TRUE))  %>% dplyr::select(-.data$temp_F_g_XX)
+  df <- df  %>% group_by(.data$group_XX)  %>% mutate(F_g_XX = max(.data$temp_F_g_XX, na.rm = TRUE))  %>% dplyr::select(-.data$temp_F_g_XX) %>% ungroup()
 
   #### If continuous option specified, generating polynomials of D_{g,1},
   #### storing D_{g,1} somewhere, and replacing it by 0.
@@ -284,7 +284,7 @@ suppressWarnings({
   #### This means the panel is no longer balanced, though it is balanced within values of the baseline treatment
   df$never_change_d_XX <- 1 - df$ever_change_d_XX 
   df <- joint_trends(df, c("time_XX", "d_sq_XX"), trends_nonparam)
-  df <- df %>% group_by(.data$joint_trends_XX) %>% mutate(controls_time_XX = max(.data$never_change_d_XX))
+  df <- df %>% group_by(.data$joint_trends_XX) %>% mutate(controls_time_XX = max(.data$never_change_d_XX)) %>% ungroup()
   df <- subset(df, df$controls_time_XX > 0)
 
   #### Computing t_min, T_max and adjusting F_g by last period pluc one for those that never change treatment
@@ -307,7 +307,7 @@ suppressWarnings({
 
   df$last_obs_D_bef_switch_t_XX <- ifelse(df$time_XX < df$F_g_XX & !is.na(df$treatment_XX), df$time_XX, NA)
   df <- df %>% group_by(.data$group_XX) %>% 
-  mutate(last_obs_D_bef_switch_XX = max(.data$last_obs_D_bef_switch_t_XX, na.rm = TRUE))
+  mutate(last_obs_D_bef_switch_XX = max(.data$last_obs_D_bef_switch_t_XX, na.rm = TRUE)) %>% ungroup()
 
   #### For groups that do not experience a treatment change, we just have FD_g<=LD_g, and we will deal with missing treatments depending on when they occur with respect to those two dates.
   #### For t<FD_g, by default we are going to consider that g joins the panel at FD_g: any non-missing outcome before FD_g replaced as missing, but all non-missing outcomes after FD_g are kept. For groups such that FY_g<FD_g, this is a "liberal" convention: those groups exist before FD_g, so one could argue that their status quo treatment is missing and they should be dropped from the analysis. We give the user the option to do that, with drop_if_d_miss_before_first_switch option
@@ -327,7 +327,7 @@ suppressWarnings({
   #### For groups that experience a treatment change, if D_gt missing at F_g<t, we replace their missing treatment by D(g,F_g). This is again a liberal convention, but it is innocuous for the reduced-form parameters DID_l, so we do not give the user the option to overrule it (Note that overruling it could make the same_switchers option fail)
 
   df$d_F_g_temp_XX <- ifelse(df$time_XX == df$F_g_XX, df$treatment_XX, NA)
-  df <- df %>% group_by(.data$group_XX) %>% mutate(d_F_g_XX = mean(.data$d_F_g_temp_XX, na.rm = TRUE))
+  df <- df %>% group_by(.data$group_XX) %>% mutate(d_F_g_XX = mean(.data$d_F_g_temp_XX, na.rm = TRUE)) %>% ungroup()
   df$treatment_XX <- ifelse(df$F_g_XX < T_max_XX + 1 & is.na(df$treatment_XX) & df$time_XX > df$F_g_XX & df$last_obs_D_bef_switch_XX == df$F_g_XX - 1, df$d_F_g_XX, df$treatment_XX)
 
   #### *For groups that do not experience a treatment change, if D_gt missing at FD_g<t<LD_g, we replace their missing treatment by D_g1. This is again a liberal convention, so we give the user the option to not use those observations, wi1th drop_if_d_miss_before_first_switch option.
@@ -352,7 +352,7 @@ suppressWarnings({
     df <- df[order(df$group_XX, df$time_XX), ]
     for (v in c("outcome_XX", controls)) {
       df <- df %>% group_by(.data$group_XX) %>%
-        mutate(!!paste0(v,"_L") := lag(.data[[v]], n = 1, order_by = .data$group_XX)) 
+        mutate(!!paste0(v,"_L") := lag(.data[[v]], n = 1, order_by = .data$group_XX)) %>% ungroup()
       df[[v]] <- df[[v]] - df[[paste0(v,"_L")]]
       df[[paste0(v,"_L")]] <- NULL
     }
@@ -366,7 +366,7 @@ suppressWarnings({
   df <- make.pbalanced(df, balance.type = "fill")
   df$time_XX <- as.numeric(as.character(df$time_XX))
   df$group_XX <- as.numeric(as.character(df$group_XX))
-  df <- df %>% group_by(.data$group_XX) %>% mutate(d_sq_XX = mean(.data$d_sq_XX, na.rm = TRUE))
+  df <- df %>% group_by(.data$group_XX) %>% mutate(d_sq_XX = mean(.data$d_sq_XX, na.rm = TRUE)) %>% ungroup()
 
   #### Defining N_gt, the weight of each (g,t) cell
   df$N_gt_XX <- 1
@@ -377,7 +377,7 @@ suppressWarnings({
   #### treatment as g's in period 1 and whose treatment has not changed since 
   #### start of panel. Definition adapted from the paper, to account for 
   #### imbalanced panel.
-  df <- df %>% mutate(F_g_trunc_XX = min(.data$F_g_XX, .data$trunc_control_XX))
+  df <- df %>% rowwise() %>% mutate(F_g_trunc_XX = min(.data$F_g_XX, .data$trunc_control_XX, na.rm = TRUE))
   df$F_g_trunc_XX <- ifelse(is.na(df$trunc_control_XX), df$F_g_XX, df$F_g_trunc_XX)
 
   df <- joint_trends(df, "d_sq_XX", trends_nonparam)
@@ -394,19 +394,19 @@ suppressWarnings({
 
   df$treatment_XX_v1 <- ifelse(df$time_XX >= df$F_g_XX & df$time_XX <= df$T_g_XX, df$treatment_XX, NA)
   df <- df %>% group_by(.data$group_XX) %>% 
-      mutate(avg_post_switch_treat_XX_temp = sum(.data$treatment_XX_v1, na.rm = TRUE))
+      mutate(avg_post_switch_treat_XX_temp = sum(.data$treatment_XX_v1, na.rm = TRUE)) %>% ungroup()
   df <- df %>% dplyr::select(-.data$treatment_XX_v1)
 
   df$count_time_post_switch_XX_temp <- (df$time_XX >= df$F_g_XX & df$time_XX <= df$T_g_XX & !is.na( df$treatment_XX))
  
   df <- df %>% group_by(.data$group_XX) %>%
-      mutate(count_time_post_switch_XX = sum(.data$count_time_post_switch_XX_temp, na.rm = TRUE)) 
+      mutate(count_time_post_switch_XX = sum(.data$count_time_post_switch_XX_temp, na.rm = TRUE)) %>% ungroup()
   
   df$avg_post_switch_treat_XX_temp <- df$avg_post_switch_treat_XX_temp / df$count_time_post_switch_XX
 
   df <- df %>% group_by(.data$group_XX) %>% 
       mutate(avg_post_switch_treat_XX = mean(.data$avg_post_switch_treat_XX_temp, na.rm = TRUE)) %>%
-      dplyr::select(-.data$avg_post_switch_treat_XX_temp)
+      dplyr::select(-.data$avg_post_switch_treat_XX_temp) %>% ungroup()
 
   #### When a group is a switching group, but its average post-treatment treatment 
   #### value is exactly equal to its baseline treatment, we cannnot classify it as 
@@ -417,6 +417,7 @@ suppressWarnings({
   #### if continuous is specified we do this according to the original 
   #### baseline treatment and not to the one set to 0 to correctly
   #### track if a group is switcher in or switcher out.
+
   if (is.null(continuous)) {
     df <- subset(df, !(df$avg_post_switch_treat_XX == df$d_sq_XX & df$F_g_XX != df$T_g_XX + 1))
     df$S_g_XX <- as.numeric(df$avg_post_switch_treat_XX > df$d_sq_XX)
@@ -458,7 +459,7 @@ suppressWarnings({
 
   #### Creating treatment at F_g: D_{g,F_g}
   df$d_fg_XX <- ifelse(df$time_XX == df$F_g_XX, df$treatment_XX, NA)
-  df <- df %>% group_by(.data$group_XX) %>% mutate(d_fg_XX = mean(.data$d_fg_XX, na.rm = TRUE))
+  df <- df %>% group_by(.data$group_XX) %>% mutate(d_fg_XX = mean(.data$d_fg_XX, na.rm = TRUE)) %>% ungroup()
   df$d_fg_XX <- ifelse(is.na(df$d_fg_XX) & df$F_g_XX == T_max_XX + 1, df$d_sq_XX, df$d_fg_XX)
 
   #### Creating the variable L_g_XX = T_g_XX - F_g_XX so that we can compute L_u or L_a afterwards
@@ -475,17 +476,17 @@ suppressWarnings({
   #### Tagging first observation of each group_XX
   df <- df[order(df$group_XX, df$time_XX), ]
   df <- df %>% group_by(.data$group_XX) %>% 
-      mutate(first_obs_by_gp_XX = row_number() == 1)
+      mutate(first_obs_by_gp_XX = row_number() == 1) %>% ungroup()
   df$first_obs_by_gp_XX <- as.numeric(df$first_obs_by_gp_XX)
 
   #### If cluster option if specified, flagging first obs in cluster and checking if the cluster variable is weakly coarser than the group one.
   if (!is.null(cluster)) {
     df <- df %>% group_by(.data$cluster_XX) %>%
-        mutate(first_obs_by_clust_XX = row_number() == 1)
+        mutate(first_obs_by_clust_XX = row_number() == 1) %>% ungroup()
     df$first_obs_by_clust_XX <- as.numeric(df$first_obs_by_clust_XX)
 
     df <- df %>% group_by(.data$group_XX) %>%
-        mutate(cluster_var_g_XX = sd(.data$cluster_XX))
+        mutate(cluster_var_g_XX = sd(.data$cluster_XX)) %>% ungroup()
     ## Error message for clustering: non-nested case
     if (max(df$cluster_var_g_XX, na.rm = TRUE) > 0) {
       stop("The group variable should be nested within the clustering variable.")
@@ -904,7 +905,7 @@ suppressWarnings({
       ## Perform the estimation of effects and placebos outside of the loop on 
       ## number of effects if trends_lin not specified
       if (isFALSE(trends_lin)) {
-        data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
+        data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
 
         df <- data$df
         data$df <- NULL
@@ -925,7 +926,7 @@ suppressWarnings({
       ## Note that if the option trends_lin was specified, same_switchers must also be specified.
 
         if (isTRUE(trends_lin)) {
-          data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = 0, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
+          data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = i, placebo = 0, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
 
           df <- data$df
           data$df <- NULL
@@ -961,7 +962,7 @@ suppressWarnings({
         for (i in 1:l_placebo_XX) {
 
           if (isTRUE(trends_lin)) {
-            data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = i, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
+            data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = i, placebo = i, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
 
             df <- data$df
             data$df <- NULL
@@ -1003,7 +1004,7 @@ suppressWarnings({
     if (!is.na(L_a_XX) & L_a_XX != 0) {
 
       if (isFALSE(trends_lin)) {
-        data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se, continuous = continuous)
+        data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se, continuous = continuous)
 
         df <- data$df
         data$df <- NULL
@@ -1021,7 +1022,7 @@ suppressWarnings({
       for (i in 1:l_XX) {
 
         if (isTRUE(trends_lin)) {
-          data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = 0, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
+          data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = i, placebo = 0, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
 
           df <- data$df
           data$df <- NULL
@@ -1052,7 +1053,7 @@ suppressWarnings({
         for (i in 1:l_placebo_XX) {
 
           if (isTRUE(trends_lin)) {
-            data <- did_multiplegt_dyn_core(df, Y = "outcome_XX", G = "group_XX", T = "time_XX", D = "treatment_XX", effects = i, placebo = i, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
+            data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = i, placebo = i, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
 
             df <- data$df
             data$df <- NULL
@@ -1274,7 +1275,7 @@ suppressWarnings({
 	        ## Sum within cluster
           df <- df %>% group_by(.data$cluster_XX) %>%
               mutate(!!paste0("clust_U_Gg_var_glob_",i,"_XX") 
-                  := sum(.data[[paste0("U_Gg_var_glob_",i,"_XX")]], na.rm = TRUE))
+                  := sum(.data[[paste0("U_Gg_var_glob_",i,"_XX")]], na.rm = TRUE)) %>% ungroup()
 	        ## Compute average of square
           df[paste0("clust_U_Gg_var_glob_",i,"_2_XX")] <-
               df[[paste0("clust_U_Gg_var_glob_", i, "_XX")]]^2 * df$first_obs_by_clust_XX
@@ -1316,7 +1317,7 @@ suppressWarnings({
             df[[paste0("U_Gg_var_glob_pl_",i,"_XX")]] <- df[[paste0("U_Gg_var_glob_pl_",i,"_XX")]] * df$first_obs_by_gp_XX
             df <- df %>% group_by(.data$cluster_XX) %>%
                 mutate(!!paste0("clust_U_Gg_var_glob_pl_",i,"_XX") 
-                    := sum(.data[[paste0("U_Gg_var_glob_pl_",i,"_XX")]], na.rm = TRUE))
+                    := sum(.data[[paste0("U_Gg_var_glob_pl_",i,"_XX")]], na.rm = TRUE)) %>% ungroup()
             df[paste0("clust_U_Gg_var_glob_pl_",i,"_2_XX")] <-
                 df[[paste0("clust_U_Gg_var_glob_pl_", i, "_XX")]]^2 * df$first_obs_by_clust_XX
             assign(paste0("sum_for_var_placebo_",i,"_XX"), 
@@ -1352,7 +1353,7 @@ suppressWarnings({
       } else {
         df$U_Gg_var_global_XX <- df$U_Gg_var_global_XX * df$first_obs_by_gp_XX
         df <- df %>% group_by(.data$cluster_XX) %>%
-            mutate(clust_U_Gg_var_global_XX = sum(.data$U_Gg_var_global_XX, na.rm = TRUE))
+            mutate(clust_U_Gg_var_global_XX = sum(.data$U_Gg_var_global_XX, na.rm = TRUE)) %>% ungroup()
         df$clust_U_Gg_var_global_XX <- df$clust_U_Gg_var_global_XX^2 * df$first_obs_by_clust_XX
         assign("sum_for_var_XX", sum(df$clust_U_Gg_var_global_XX)/G_XX^2)
       }
@@ -1460,18 +1461,18 @@ if (!is.null(predict_het)) {
     # Preliminaries: Yg,Fg−1
     df$Yg_Fg_min1_XX <- ifelse(df$time_XX == df$F_g_XX - 1, df$outcome_non_diff_XX, NA)
     df <- df %>% group_by(.data$group_XX) %>% 
-        mutate(Yg_Fg_min1_XX = mean(.data$Yg_Fg_min1_XX, na.rm = TRUE))
+        mutate(Yg_Fg_min1_XX = mean(.data$Yg_Fg_min1_XX, na.rm = TRUE)) %>% ungroup()
     df$feasible_het_XX <- !is.na(df$Yg_Fg_min1_XX)
     if (!is.null(trends_lin)) {
       df$Yg_Fg_min2_XX <- ifelse(df$time_XX == df$F_g_XX - 2, df$outcome_non_diff_XX, NA)
       df <- df %>% group_by(.data$group_XX) %>% 
-          mutate(Yg_Fg_min2_XX = mean(.data$Yg_Fg_min2_XX, na.rm = TRUE))
+          mutate(Yg_Fg_min2_XX = mean(.data$Yg_Fg_min2_XX, na.rm = TRUE)) %>% ungroup()
       df$Yg_Fg_min2_XX <- ifelse(is.nan(df$Yg_Fg_min2_XX), NA, df$Yg_Fg_min2_XX)
 
       df$feasible_het_XX <- df$feasible_het_XX & !is.na(df$Yg_Fg_min2_XX)
     }
     df <- df[order(df$group_XX, df$time_XX), ]
-    df <- df %>% group_by(.data$group_XX) %>% mutate(gr_id = row_number())
+    df <- df %>% group_by(.data$group_XX) %>% mutate(gr_id = row_number()) %>% ungroup()
 
     lhyp <- c()
     for (v in predict_het_good) {
@@ -1499,7 +1500,7 @@ if (!is.null(predict_het)) {
       # Yg,Fg-1 + l
       df[paste0("Yg_Fg_", i, "_XX")] <- ifelse(df$time_XX == df$F_g_XX - 1 + i, df$outcome_non_diff_XX, NA)
       df <- df %>% group_by(.data$group_XX) %>% 
-          mutate(!!paste0("Yg_Fg_",i,"_XX") := mean(.data[[paste0("Yg_Fg_",i,"_XX")]], na.rm = TRUE))
+          mutate(!!paste0("Yg_Fg_",i,"_XX") := mean(.data[[paste0("Yg_Fg_",i,"_XX")]], na.rm = TRUE)) %>% ungroup()
 
       df$diff_het_XX <- df[[paste0("Yg_Fg_",i,"_XX")]] - df$Yg_Fg_min1_XX
       if (isTRUE(trends_lin)) {
