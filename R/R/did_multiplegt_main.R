@@ -68,7 +68,7 @@ suppressWarnings({
 
   
   ######## 1. Checking that syntax correctly specified
-  #### Add a Warning that same_switchers_pl only works when same_switchers is specified.
+  #### Add a stop message: same_switchers_pl only works when same_switchers is specified.
   if (same_switchers == FALSE & same_switchers_pl == TRUE) {
     stop("The same_switchers_pl option only works if same_switchers is specified as well!")
   }
@@ -127,7 +127,7 @@ suppressWarnings({
     }
     ## Checks if predict_het and normalized are both specified
     if (isTRUE(normalized)) {
-      cat("The options normalized and predict_het cannot be specified together. The option predict_het will be ignored\n")
+      message("The options normalized and predict_het cannot be specified together. The option predict_het will be ignored.")
     } else {
       pred_het <- unlist(predict_het[1])
       het_effects <- unlist(predict_het[2])
@@ -138,7 +138,7 @@ suppressWarnings({
         if (mean(df$sd_het) == 0) {
           predict_het_good <- c(predict_het_good, v)
         } else {
-          cat(sprintf("The variable %s specified in the option predict_het is time-varying, the command will therefore ignore it.\n", v))
+          message(sprintf("The variable %s specified in the option predict_het is time-varying, the command will therefore ignore it.", v))
         }
         df$sd_het <- NULL
       }
@@ -644,12 +644,9 @@ suppressWarnings({
 
     # Display errors if one of the Den_d^{-1} is not defined
     if (store_singular_XX != "") {
-      cat(sprintf("Some control variables are not taken into account for groups with baseline treatment equal to: %s. This may occur in the following situations:", store_singular_XX))
-      cat("\n")
-      cat("1. For groups with those values of the baseline treatment, the regression of the outcome first difference on the controls' first differences and time fixed effects has fewer observations than variables. Note that for each value of the baseline treatment, those regressions are estimated among (g,t)s such that g has not changed treatment yet at t.")
-      cat("\n")
-      cat("2. For groups with those values of the baseline treatment, two or more of your control variables are perfectly collinear in the sample where the regression is run, for instance because those control variables do not vary over time.")
-      cat("\n")
+      message(sprintf("Some control variables are not taken into account for groups with baseline treatment equal to: %s. This may occur in the following situations:", store_singular_XX))
+      message("1. For groups with those values of the baseline treatment, the regression of the outcome first difference on the controls' first differences and time fixed effects has fewer observations than variables. Note that for each value of the baseline treatment, those regressions are estimated among (g,t)s such that g has not changed treatment yet at t.")
+      message("2. For groups with those values of the baseline treatment, two or more of your control variables are perfectly collinear in the sample where the regression is run, for instance because those control variables do not vary over time.")
     }
 
     # Values of baseline treatment such that residualization could not be performed at all are dropped.
@@ -786,15 +783,15 @@ suppressWarnings({
 
   # If the number of effects or placebos initially asked by user was too large, display error message
   if (l_XX < effects) {
-    print(warning(sprintf("The number of effects requested is too large. The number of effects which can be estimated is at most %.0f. The command will therefore try to estimante %.0f effect(s)", l_XX, l_XX)))
+    message(sprintf("The number of effects requested is too large. The number of effects which can be estimated is at most %.0f. The command will therefore try to estimante %.0f effect(s)", l_XX, l_XX))
   }
 
   if (placebo != 0) {
     if (l_placebo_XX < placebo & effects >= placebo) {
-      print(warning(sprintf("The number of placebos which can be estimated is at most %.0f.The command will therefore try to estimate %.0f placebo(s).", l_placebo_XX, l_placebo_XX)))
+      message(sprintf("The number of placebos which can be estimated is at most %.0f.The command will therefore try to estimate %.0f placebo(s).", l_placebo_XX, l_placebo_XX))
     }
     if (effects < placebo) {
-      print(warning(sprintf("The number of placebo requested cannot be larger than the number of effects requested. The command cannot compute more than %.0f placebo(s).", l_placebo_XX)))
+      message(sprintf("The number of placebo requested cannot be larger than the number of effects requested. The command cannot compute more than %.0f placebo(s).", l_placebo_XX))
     }
   }
 
@@ -1124,7 +1121,7 @@ suppressWarnings({
 
     ## Error message if DID_\ell cannot be estimated
     if (get(paste0("N_switchers_effect_",i,"_XX")) == 0 | get(paste0("N_effect_",i,"_XX")) == 0) {
-      warning(paste0("Effect_",i,"cannot be estimated. There is no switcher or no control for this effect."))
+      message(paste0("Effect_",i,"cannot be estimated. There is no switcher or no control for this effect."))
     }
 
     ## Averaging the U_Gg\ell to compute DID_\ell
@@ -1245,7 +1242,7 @@ suppressWarnings({
       mat_res_XX[l_XX + 1 + i,5] <- get(paste0("N_placebo_",i,"_XX"))
 
       if (get(paste0("N_switchers_placebo_",i,"_XX")) == 0 | get(paste0("N_placebo_",i,"_XX")) == 0) {
-        warning(paste0("Placebo_",i,"cannot be estimated. There is no switcher or no control for this placebo."))
+        message(paste0("Placebo_",i,"cannot be estimated. There is no switcher or no control for this placebo."))
       }
 
     }
@@ -1441,7 +1438,7 @@ if (l_placebo_XX != 0 & l_placebo_XX > 1) {
   } else {
     p_jointplacebo <- NA
 	  ## Error message if not all of the specified placebos could be estimated 
-    warning("Some placebos could not be estimated. Therefore, the test of joint nullity of the placebos could not be computed.")
+    message("Some placebos could not be estimated. Therefore, the test of joint nullity of the placebos could not be computed.")
   }
 }
 
@@ -1618,7 +1615,7 @@ if (effects_equal == TRUE & l_XX > 1) {
       1 - pchisq(didmgt_chi2_equal_ef[1,1], df = l_XX - 1)
   assign("p_equality_effects", p_equality_effects, inherits = TRUE)
 } else {
-  warning("Some effects could not be estimated. Therefore, the test of equality of effects could not be computed.")
+  message("Some effects could not be estimated. Therefore, the test of equality of effects could not be computed.")
 }
 }
  
