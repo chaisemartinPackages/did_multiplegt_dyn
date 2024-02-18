@@ -10,6 +10,7 @@
 #' @importFrom rlang :=
 #' @importFrom rlang .data
 #' @importFrom xlsx write.xlsx
+#' @returns A list with the design option output.
 #' @noRd
 did_multiplegt_dyn_design <- function(
     data, 
@@ -27,9 +28,6 @@ did_multiplegt_dyn_design <- function(
 
 	## Error message if the arguments in the option were specified wrong
   suppressWarnings({
-  if (length(design_opt) != 2) {
-    stop("Syntax error in design option.")
-  }
 
 	## Fetch the arguments 
   des_p <- as.numeric(design_opt[1])

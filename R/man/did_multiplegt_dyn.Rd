@@ -6,10 +6,10 @@
 \usage{
 did_multiplegt_dyn(
   df,
-  Y,
-  G,
-  T,
-  D,
+  outcome,
+  group,
+  time,
+  treatment,
   effects = 1,
   design = NULL,
   normalized = FALSE,
@@ -40,13 +40,13 @@ did_multiplegt_dyn(
 \arguments{
 \item{df}{(dataframe or matrix) the estimation dataset.}
 
-\item{Y}{(char) is the outcome variable.}
+\item{outcome}{(char) is the outcome variable.}
 
-\item{G}{(char) is the group variable.}
+\item{group}{(char) is the group variable.}
 
-\item{T}{(char) is the time period variable. The command assumes that the time variable is evenly spaced (e.g.: the panel is at the yearly level, and no year is missing for all groups). When it is not (e.g.: the panel is at the yearly level, but three consecutive years are missing for all groups), the command can still be used, though it requires a bit of tweaking, see FAQ section below.}
+\item{time}{(char) is the time period variable. The command assumes that the time variable is evenly spaced (e.g.: the panel is at the yearly level, and no year is missing for all groups). When it is not (e.g.: the panel is at the yearly level, but three consecutive years are missing for all groups), the command can still be used, though it requires a bit of tweaking, see FAQ section below.}
 
-\item{D}{(char) is the treatment variable.}
+\item{treatment}{(char) is the treatment variable.}
 
 \item{effects}{(int) gives the number of event-study effects to be estimated. By default, the command estimates non-normalized event-study effects. Non-normalized event-study effects are averages, across all switchers, of the effect of having received their actual rather than their period-one treatment dose, for \eqn{\ell} periods. While non-normalized event-study effects can be interpreted as average effects of being exposed to a weakly higher treatment dose for \eqn{\ell} periods, the magnitude and timing of the incremental treatment doses can vary across groups.}
 
@@ -74,7 +74,7 @@ did_multiplegt_dyn(
 
 \item{by}{(char) when this option is specified, the command estimates all the effects by the different levels of the specified variable. If the variable is a binary variable for example, then the estimation is carried out once for the sample of groups with var=0 and once for the sample of groups with var=1. Then, the command reports on a graph event-study plots for all values of the by() argument, thus allowing to assess effect heterogeneity by the specified variable.}
 
-\item{predict_het}{(list with 2 args: char or vector of char, -1 or vector of positive integers)  when this option is specified, the command outputs tables showing whether the group-level and time-invariant variables in the char varlist predict groups' estimated event-study effects. With the second argument set to -1, with this option the command produces one table per event-study effect estimated, each displaying the coefficients from regressions of the group-level estimate of the event-study effect on the variables in the char varlist. The p-value of a test on the null hypothesis that all heterogeneity estimates are equal to zero is shown below each table. If you are only interested in predicting a subset of the event-study effects estimated, you can specify those inside an integer vector as the second argument. This option cannot be specified with normalized = TRUE. See Section 1.5 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details.}
+\item{predict_het}{(list with 2 args: char or vector of char, -1 or vector of positive integers)  when this option is specified, the command outputs tables showing whether the group-level and time-invariant variables in the char varlist predict groups' estimated event-study effects. With the second argument set to -1, with this option the command produces one table per event-study effect estimated, each displaying the coefficients from regressions of the group-level estimate of the event-study effect on the variables in the char varlist. The p-value of a test on the null hypothesis that all heterogeneity estimates are equal to zero is shown below each table. If you are only interested in predicting a subset of the event-study effects estimated, you can specify those inside an integer vector as the second argument. This option cannot be specified with normalized = TRUE and when the controls option is specified. See Section 1.5 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details.}
 
 \item{date_first_switch}{(2 args: char in ("", "by_baseline_treat"), char path) the option reports the dates at which switchers experience their first treatment change, and how many groups experienced a first change at each date. The reference population are switchers for which the last event-study effect can be estimated. If "by_baseline_treat" is specified as the first argument, separate tables are displayed for each level of the period-one treatment. Results can be printed in the Stata console specifying "console" in the second argument. Alternatively, the output can be stored in an Excel file providing a valid file path in the second argument.}
 
@@ -97,6 +97,9 @@ did_multiplegt_dyn(
 \item{dont_drop_larger_lower}{(logical) by default, the command drops all the \eqn{(g,t)} cells such that at \eqn{t}, group \eqn{g} has experienced both a strictly larger and a strictly lower treatment than its baseline treatment. de Chaisemartin and D'Haultfoeuille (2020a) recommend this procedure, if you are interested in more details you can see their Section 3.1. The option dont_drop_larger_lower allows to overwrite this procedure and keeps \eqn{(g,t)} cells such that at \eqn{t}, group \eqn{g} has experienced both a strictly larger and a strictly lower treatment than its baseline treatment in the estimation sample.}
 
 \item{drop_if_d_miss_before_first_switch}{(logical) This option is relevant when the treatment of some groups is missing at some time periods. Then, the command imputes some of those missing treatments. Those imputations are detailed in Appendix A of de Chaisemartin et al (2024). In designs where groups' treatments can change at most once, all those imputations are justified by the design. In other designs, some of those imputations may be liberal. drop_if_d_miss_before_first_switch can be used to overrule the potentially liberal imputations that are not innocuous for the non-normalized event-study estimators. See Appendix A of de Chaisemartin et al (2024) for further details.}
+}
+\value{
+A list of class did_multiplegt_dyn containing the arguments used, the results for the estimation requested and a ggplot object with the event-study graph. If the by option is specified, the did_multiplegt_dyn object will contain the arguments, a list with the levels of the by option, a sublist for each of these levels with the results and ggplot objects from these by-estimations and a ggplot object for the combined event-study graph. The class did_multiplegt_dyn is assigned to enable customized print and summary methods.
 }
 \description{
 Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, with a potentially non-binary treatment that may increase or decrease multiple times.
@@ -184,10 +187,10 @@ favara_imbs <-  haven::read_dta(url)
 # effects of banking deregulations on loans volume:
 summary(did_multiplegt_dyn(
     df = favara_imbs,
-    Y = "Dl_vloans_b",
-    G = "county",
-    T = "year",
-    D = "inter_bra",
+    outcome = "Dl_vloans_b",
+    group = "county",
+    time = "year",
+    treatment = "inter_bra",
     effects = 2,
     placebo = 1,
     cluster = "state_n",

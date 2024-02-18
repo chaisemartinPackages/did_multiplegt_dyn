@@ -3,6 +3,7 @@
 #' @description A customized printed display for did_multiplegt_dyn output
 #' @param x A did_multiplegt_dyn object
 #' @param ... Undocumented
+#' @returns No return, custom print method for did_multiplegt_dyn objects. Estimation tables are fetched from the object and displayed in the same style as the Stata did_multiplegt_dyn command.
 #' @export
 print.did_multiplegt_dyn <- function(x, ...) {
     cat("\n")
@@ -153,11 +154,16 @@ print.did_multiplegt_dyn <- function(x, ...) {
 #' @description A customized summary display for did_multiplegt_dyn output
 #' @param object A did_multiplegt_dyn object
 #' @param ... Undocumented
+#' @returns No return, custom summary method for did_multiplegt_dyn objects. Estimation tables are fetched from the object and displayed in the same style as the Stata did_multiplegt_dyn command.
 #' @export
 summary.did_multiplegt_dyn <- function(object, ...) {
     print(object)
 }
 
+#' Auxiliary function for print method
+#' @param mat mat
+#' @returns No return, just prints the refined input.
+#' @noRd
 mat_print <- function(mat) {
     if (inherits(mat,"matrix")) {
         dis <- matrix(data = 0, nrow = nrow(mat) , ncol = ncol(mat))

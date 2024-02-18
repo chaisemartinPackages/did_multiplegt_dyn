@@ -9,6 +9,7 @@
 #' @importFrom rlang :=
 #' @importFrom rlang .data
 #' @importFrom xlsx write.xlsx
+#' @returns A list with the date_first_switch output.
 #' @noRd
 did_multiplegt_dyn_dfs <- function(
     data, 
@@ -23,9 +24,6 @@ did_multiplegt_dyn_dfs <- function(
     T_max_XX <- data$T_max_XX
 
   suppressWarnings({
-  if (length(dfs) != 2) {
-    stop("Syntax error in date_first_switch option.")
-  }
 
 	## Fetch the arguments 
   dfs_opt <- dfs[1]
@@ -39,20 +37,20 @@ did_multiplegt_dyn_dfs <- function(
 	## Drop non switchers and keep one observation per group
   df <- subset(df, !(df$F_g_XX == T_max_XX + 1 | is.na(df$F_g_XX)))
   df <- subset(df, df$time_XX == df$F_g_XX)
-  df <- df %>% dplyr::select(.data$G, .data$T, .data$F_g_XX, .data$d_sq_XX)
+  df <- df %>% dplyr::select(.data$group, .data$time, .data$F_g_XX, .data$d_sq_XX)
 
 	## When by_baseline_treat is not specified
   if (dfs_opt == "") {
 		## collapse the number of groups by time
     df$tot_s <- 1
-    df <- df %>% group_by(.data$T) %>% 
+    df <- df %>% group_by(.data$time) %>% 
     mutate(tot_s = sum(.data$tot_s, na.rm = TRUE)) %>% 
-    dplyr::select(-.data$G, -.data$F_g_XX, -.data$d_sq_XX)
+    dplyr::select(-.data$group, -.data$F_g_XX, -.data$d_sq_XX)
     df <- unique(df)
-    df <- df[order(df$T), ]
+    df <- df[order(df$time), ]
 		## generate the share of each group
     df$share_XX <- (df$tot_s / sum(df$tot_s, na.rm = TRUE)) * 100
-    df <- df[c("tot_s", "share_XX", "T")]
+    df <- df[c("tot_s", "share_XX", "time")]
 		## make matrix with the number and share of groups by time
     dfsmat <- matrix(NA, ncol = 2, nrow = dim(df)[1])
     rown <- c()
@@ -60,7 +58,7 @@ did_multiplegt_dyn_dfs <- function(
     for (j in 1:2) {
       for (i in 1:dim(df)[1]) {
         if (j == 1) {
-          rown <- c(rown, df$T[i])
+          rown <- c(rown, df$time[i])
         }
         dfsmat[i,j] <- as.numeric(df[i,j])
       }
@@ -90,11 +88,11 @@ did_multiplegt_dyn_dfs <- function(
   if (dfs_opt == "by_baseline_treat") {
 		## collapse, but this time by time and status quo treatment
     df$tot_s <- 1
-    df <- df %>% group_by(.data$T, .data$d_sq_XX) %>% 
+    df <- df %>% group_by(.data$time, .data$d_sq_XX) %>% 
     mutate(tot_s = sum(.data$tot_s, na.rm = TRUE)) %>% 
-    dplyr::select(-.data$G, -.data$F_g_XX)
+    dplyr::select(-.data$group, -.data$F_g_XX)
     df <- unique(df)
-    df <- df[order(df$d_sq_XX, df$T), ]
+    df <- df[order(df$d_sq_XX, df$time), ]
     levels_d_sq_XX <- levels(factor(df$d_sq_XX))
 
     res_dfs <- list(
@@ -110,7 +108,7 @@ did_multiplegt_dyn_dfs <- function(
     for (l in levels_d_sq_XX) {
       df_by <- subset(df, df$d_sq_XX == l)
       df_by$share_XX <- (df_by$tot_s / sum(df_by$tot_s, na.rm = TRUE)) * 100
-      df_by <- df_by[c("tot_s", "share_XX", "T")]
+      df_by <- df_by[c("tot_s", "share_XX", "time")]
 		  ## make matrix with the number and share of groups by time, one for each level of status quo treatment
       dfsmat <- matrix(NA, ncol = 2, nrow = dim(df_by)[1])
       rown <- c()
@@ -118,7 +116,7 @@ did_multiplegt_dyn_dfs <- function(
       for (j in 1:2) {
         for (i in 1:dim(df_by)[1]) {
           if (j == 1) {
-            rown <- c(rown, df_by$T[i])
+            rown <- c(rown, df_by$time[i])
           }
           dfsmat[i,j] <- as.numeric(df_by[i,j])
         }

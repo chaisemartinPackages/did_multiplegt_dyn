@@ -3,10 +3,10 @@
 #' @md 
 #' @description Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, with a potentially non-binary treatment that may increase or decrease multiple times.
 #' @param df (dataframe or matrix) the estimation dataset.
-#' @param Y (char) is the outcome variable. 
-#' @param G (char) is the group variable. 
-#' @param T (char) is the time period variable. The command assumes that the time variable is evenly spaced (e.g.: the panel is at the yearly level, and no year is missing for all groups). When it is not (e.g.: the panel is at the yearly level, but three consecutive years are missing for all groups), the command can still be used, though it requires a bit of tweaking, see FAQ section below.
-#' @param D (char) is the treatment variable.
+#' @param outcome (char) is the outcome variable. 
+#' @param group (char) is the group variable. 
+#' @param time (char) is the time period variable. The command assumes that the time variable is evenly spaced (e.g.: the panel is at the yearly level, and no year is missing for all groups). When it is not (e.g.: the panel is at the yearly level, but three consecutive years are missing for all groups), the command can still be used, though it requires a bit of tweaking, see FAQ section below.
+#' @param treatment (char) is the treatment variable.
 #' @param effects (int) gives the number of event-study effects to be estimated. By default, the command estimates non-normalized event-study effects. Non-normalized event-study effects are averages, across all switchers, of the effect of having received their actual rather than their period-one treatment dose, for \eqn{\ell} periods. While non-normalized event-study effects can be interpreted as average effects of being exposed to a weakly higher treatment dose for \eqn{\ell} periods, the magnitude and timing of the incremental treatment doses can vary across groups.
 #' @param design (2 args: float, char path) this option reports switchers' period-one and subsequent treatments, thus helping the analyst understand the treatment paths whose effect is aggregated in the non-normalized event-study effects. When the number of treatment paths is low, one may consider estimating treatment-path-specific event-study effects to facilitate interpretation, see footnote 10 of de Chaisemartin and D'Haultfoeuille (2024) for detailed instructions. When the number of treatment paths is large, one may specify a number included between 0 and 1 in the float argument. Then the command reports the treatment paths common to at least (_float_*100)% of switchers. Results can be printed in the Stata console specifying "console" as the string argument.  For example, _design = c(0.5, "console")_ reports the treatment paths experienced by at least 50% of the switchers and prints the output in the Stata console. Alternatively, the output can be stored in an Excel file providing a valid file path as the string argument.
 #' @param normalized (logical) when this option is specified, the command estimates normalized event-study effects, that are equal to a weighted average of the effects of the current treatment and of its \eqn{\ell-1} first lags on the outcome. See Sections 3.1 and 3.2 of de Chaisemartin and D'Haultfoeuille (2020a) for further details.
@@ -20,7 +20,7 @@
 #' @param weight (char) gives the name of a variable to be used to weight the data. For instance, if one works with a district \eqn{\times} year data set and one wants to weight the estimation by each district \eqn{\times} year's population, one should write weight(population), where population is the population of each district \eqn{\times} year. If the data set is at a more disaggregated level than group \eqn{\times} time, the command aggregates it at the group \eqn{\times} time level internally, and weights the estimation by the number of observations in each group \eqn{\times} time cell if the weight option is not specified, or by the sum of the weights of the observations in each group \eqn{\times} time cell if the weight option is specified.
 #' @param cluster (char) can be used to cluster the estimators' standard errors. Only one clustering variable is allowed. A common practice in DID analysis is to cluster standard errors at the group level. Such clustering is implemented by default by the command. Standard errors can be clustered at a more aggregated level than the group level, but they cannot be clustered at a more disaggregated level.
 #' @param by (char) when this option is specified, the command estimates all the effects by the different levels of the specified variable. If the variable is a binary variable for example, then the estimation is carried out once for the sample of groups with var=0 and once for the sample of groups with var=1. Then, the command reports on a graph event-study plots for all values of the by() argument, thus allowing to assess effect heterogeneity by the specified variable. 
-#' @param predict_het (list with 2 args: char or vector of char, -1 or vector of positive integers)  when this option is specified, the command outputs tables showing whether the group-level and time-invariant variables in the char varlist predict groups' estimated event-study effects. With the second argument set to -1, with this option the command produces one table per event-study effect estimated, each displaying the coefficients from regressions of the group-level estimate of the event-study effect on the variables in the char varlist. The p-value of a test on the null hypothesis that all heterogeneity estimates are equal to zero is shown below each table. If you are only interested in predicting a subset of the event-study effects estimated, you can specify those inside an integer vector as the second argument. This option cannot be specified with normalized = TRUE. See Section 1.5 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details.
+#' @param predict_het (list with 2 args: char or vector of char, -1 or vector of positive integers)  when this option is specified, the command outputs tables showing whether the group-level and time-invariant variables in the char varlist predict groups' estimated event-study effects. With the second argument set to -1, with this option the command produces one table per event-study effect estimated, each displaying the coefficients from regressions of the group-level estimate of the event-study effect on the variables in the char varlist. The p-value of a test on the null hypothesis that all heterogeneity estimates are equal to zero is shown below each table. If you are only interested in predicting a subset of the event-study effects estimated, you can specify those inside an integer vector as the second argument. This option cannot be specified with normalized = TRUE and when the controls option is specified. See Section 1.5 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details.
 #' @param date_first_switch (2 args: char in ("", "by_baseline_treat"), char path) the option reports the dates at which switchers experience their first treatment change, and how many groups experienced a first change at each date. The reference population are switchers for which the last event-study effect can be estimated. If "by_baseline_treat" is specified as the first argument, separate tables are displayed for each level of the period-one treatment. Results can be printed in the Stata console specifying "console" in the second argument. Alternatively, the output can be stored in an Excel file providing a valid file path in the second argument.
 #' @param same_switchers (logical) if this option is specified and the user requests that at least two effects be estimated, the command will restrict the estimation of the event-study effects to switchers for which all effects can be estimated, to avoid compositional changes.
 #' @param same_switchers_pl (logical, requires same_switchers = TRUE) the command restricts the estimation of event-study and placebo effects to switchers for which all event-study and placebos effects can be estimated. 
@@ -117,10 +117,10 @@
 #' # effects of banking deregulations on loans volume:
 #' summary(did_multiplegt_dyn(
 #'     df = favara_imbs,
-#'     Y = "Dl_vloans_b",
-#'     G = "county",
-#'     T = "year",
-#'     D = "inter_bra",
+#'     outcome = "Dl_vloans_b",
+#'     group = "county",
+#'     time = "year",
+#'     treatment = "inter_bra",
 #'     effects = 2,
 #'     placebo = 1,
 #'     cluster = "state_n",
@@ -132,13 +132,14 @@
 #' # changes to the variance estimator.
 #' 
 #' # See the did_multiplegt_dyn GitHub page for further examples and details.
+#' @returns A list of class did_multiplegt_dyn containing the arguments used, the results for the estimation requested and a ggplot object with the event-study graph. If the by option is specified, the did_multiplegt_dyn object will contain the arguments, a list with the levels of the by option, a sublist for each of these levels with the results and ggplot objects from these by-estimations and a ggplot object for the combined event-study graph. The class did_multiplegt_dyn is assigned to enable customized print and summary methods.
 #' @export 
 did_multiplegt_dyn <- function(
     df, 
-    Y, 
-    G, 
-    T, 
-    D, 
+    outcome, 
+    group, 
+    time, 
+    treatment, 
     effects = 1, 
     design = NULL, 
     normalized = FALSE, 
@@ -166,14 +167,54 @@ did_multiplegt_dyn <- function(
     drop_if_d_miss_before_first_switch = FALSE
     ) { 
   
+
+  #### General syntax checks ####
   args <- list()
   for (v in names(formals(did_multiplegt_dyn))) {
+    ## Class checks
+    if (!is.null(get(v))) {
+      if (v == "df") {
+        if (!inherits(get(v), "data.frame")) {
+          stop(sprintf("Syntax error in %s option. Dataframe object required.", v))
+        }
+      } else if (v %in% c("outcome", "group", "time", "treatment", "by", "cluster", "weight", "switchers", "save_results")) {
+        if (!(length(get(v)) == 1 & inherits(get(v), "character"))) {
+          stop(sprintf("Syntax error in %s option. Only one string allowed.", v))
+        }
+      } else if (v %in% c("effects", "placebo", "ci_level", "continuous")) {
+        if (!(inherits(get(v), "numeric") & get(v) %% 1 == 0 & get(v) > 0)) {
+          stop(sprintf("Syntax error in %s option. Positive integer required.", v))
+        }
+      } else if (v %in% c("predict_het", "design", "date_first_switch")) {
+        if (!(inherits(get(v), "list") & length(get(v)) == 2)) {
+          stop(sprintf("Syntax error in %s option. List with two arguments required.", v))
+        }
+      } else if (v %in% c("controls", "trends_nonparam")) { 
+        if (!(inherits(get(v), "character"))) {
+          stop(sprintf("Syntax error in %s option. String or string array required.", v))
+        }
+      } else if (v %in% c("normalized", "normalized_weights", "effects_equal", "trends_lin", "same_switchers", "same_switchers_pl", "graph_off", "save_sample", "less_conservative_se", "dont_drop_larger_lowe", "drop_if_d_miss_before_first_switch")) {
+        if (!inherits(get(v), "logical")) {
+          stop(sprintf("Syntax error in %s option. Logical required.", v))
+        }
+      }
+    }
     if (v != "df") {
       args[[v]] <- get(v)
     }
   }
   did_multiplegt_dyn <- list(args)
   f_names <- c("args")
+
+  #### The predict_het option cannot be specified together with normalized or controls
+  if (!is.null(predict_het)) {
+    if (isTRUE(normalized)) {
+      stop("The options predict_het and normalized cannot be specified together!")
+    }
+    if (!is.null(controls)) {
+      stop("The options predict_het and controls cannot be specified together!")
+    }
+  }
 
   #### The continous and the design option(s) should not be specified simulataneously
   if (!is.null(design) & !is.null(continuous)) {
@@ -187,7 +228,7 @@ did_multiplegt_dyn <- function(
   by_levels <- c("_no_by")
   if (!is.null(by)) {
     ## checking that by variable is time-invariant
-    if (!did_multiplegt_dyn_by_check(df, G, by)) {
+    if (!did_multiplegt_dyn_by_check(df, group, by)) {
       stop(sprintf("The variable %s specified in the by option is time-varying. That variable should be time-invariant.", by))
     } else {
       by_levels <- levels(factor(df[[by]]))
@@ -210,10 +251,7 @@ did_multiplegt_dyn <- function(
       df_main <- df
     }
 
-    df_est <- did_multiplegt_main(df = df_main, Y = Y, G =  G, T =  T, D = D, 
-    effects = effects, placebo = placebo, ci_level = ci_level,switchers = switchers, trends_nonparam = trends_nonparam, weight = weight, controls = controls, dont_drop_larger_lower = dont_drop_larger_lower, drop_if_d_miss_before_first_switch =
-    drop_if_d_miss_before_first_switch, cluster = cluster, 
-    same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, 
+    df_est <- did_multiplegt_main(df = df_main, outcome = outcome, group =  group, time =  time, treatment = treatment, effects = effects, placebo = placebo, ci_level = ci_level,switchers = switchers, trends_nonparam = trends_nonparam, weight = weight, controls = controls, dont_drop_larger_lower = dont_drop_larger_lower, drop_if_d_miss_before_first_switch = drop_if_d_miss_before_first_switch, cluster = cluster, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, 
     effects_equal = effects_equal, save_results = save_results, normalized = normalized, predict_het = predict_het, trends_lin = trends_lin, less_conservative_se = less_conservative_se, continuous = continuous)
 
     temp_obj <- list(df_est$did_multiplegt_dyn)
@@ -239,11 +277,11 @@ did_multiplegt_dyn <- function(
 
     temp_obj <- append(temp_obj, list(did_multiplegt_dyn_graph(df_est)))
     names(temp_obj)[length(temp_obj)] <- "plot"
-
+    
     if (isTRUE(save_sample)) {
-      df_save_XX <- did_save_sample(df_est, G, T)
-      df_m <- merge(df, df_save_XX, by = c(G, T))
-      df_m <- df_m[order(df_m[[G]], df_m[[T]]), ]
+      df_save_XX <- did_save_sample(df_est, group, time)
+      df_m <- merge(df, df_save_XX, by = c(group, time)) 
+      df_m <- df_m[order(df_m[[group]], df_m[[time]]), ]
       temp_obj <- append(temp_obj, list(df_m))
       names(temp_obj)[length(temp_obj)] <- "save_sample"
     }

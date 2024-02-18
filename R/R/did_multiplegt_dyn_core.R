@@ -1,9 +1,9 @@
 #' Internal function of did_multiplegt_dyn that computes U_Gg_plus_XX, U_Gg_minus_XX, U_Gg_var_plus_XX, and U_Gg_var_minus_XX. These are essential variables for the computation of the DID_\ell estimators and their variances.
 #' @param df df
-#' @param Y Y
-#' @param G G
-#' @param T T
-#' @param D D
+#' @param outcome outcome
+#' @param group group
+#' @param time time
+#' @param treatment treatment
 #' @param effects effects
 #' @param placebo placebp
 #' @param switchers_core switchers_core
@@ -22,13 +22,14 @@
 #' @importFrom magrittr %>%
 #' @importFrom rlang := 
 #' @importFrom rlang .data
+#' @returns A dataframe for the values of U_Gg_plus_XX, U_Gg_minus_XX, U_Gg_var_plus_XX, and U_Gg_var_minus_XX.
 #' @noRd
 did_multiplegt_dyn_core <- function(
     df, 
-    Y, 
-    G, 
-    T, 
-    D, 
+    outcome, 
+    group, 
+    time, 
+    treatment, 
     effects, 
     placebo, 
     switchers_core = NULL, 
@@ -48,6 +49,7 @@ did_multiplegt_dyn_core <- function(
   # Inherited Globals #
   L_u_XX <- globals$L_u_XX
   L_placebo_u_XX <- globals$L_placebo_u_XX
+  L_placebo_a_XX <- globals$L_placebo_a_XX
   L_a_XX <-  globals$L_a_XX
   t_min_XX <- globals$t_min_XX
   T_max_XX <- globals$T_max_XX
@@ -84,8 +86,8 @@ did_multiplegt_dyn_core <- function(
   if (switchers_core == "out") {
     l_u_a_XX <- min(L_a_XX, effects, na.rm = TRUE)
     if (placebo != 0) {
-      if (!is.na(L_placebo_u_XX) & L_placebo_u_XX != 0) {
-        l_placebo_u_a_XX <- min(placebo, L_placebo_u_XX)
+      if (!is.na(L_placebo_a_XX) & L_placebo_a_XX != 0) {
+        l_placebo_u_a_XX <- min(placebo, L_placebo_a_XX)
       }
     }
     increase_XX <- 0
@@ -202,6 +204,14 @@ did_multiplegt_dyn_core <- function(
             df$cum_fillin_XX == 0 & df$time_XX == df$F_g_XX - 1 + effects
         df <- df %>% group_by(.data$group_XX) %>% 
             mutate(fillin_g_XX = sum(.data$dum_fillin_temp_XX, na.rm = TRUE))
+        #v1.0.1
+        if (!is.null(placebo)) {
+          df$dum_fillin_temp_pl_XX <- 
+              df$cum_fillin_XX == 0 & df$time_XX == df$F_g_XX - 1 - placebo
+          df <- df %>% group_by(.data$group_XX) %>% 
+              mutate(fillin_g_pl_XX = sum(.data$dum_fillin_temp_pl_XX, na.rm = TRUE))
+        }
+
         ## tag switchers who have no missings from F_g_XX-1-placebo to F_g_XX-1+effects
         df[paste0("still_switcher_",i,"_XX")] <- 
             df$F_g_XX - 1 + effects <= df$T_g_XX & df$fillin_g_XX > 0
@@ -750,6 +760,11 @@ did_multiplegt_dyn_core <- function(
 
         #### Creating a variable counting the number of groups \ell periods away from switch at t
         df[paste0("dist_to_switch_pl_", i, "_XX")] <- df[[paste0("distance_to_switch_", i, "_XX")]] * (!is.na(df[[paste0("diff_y_pl_",i,"_XX")]]))
+        # v1.0.1.
+        if (isTRUE(same_switchers_pl)) {
+          df[[paste0("dist_to_switch_pl_", i, "_XX")]] <- df[[paste0("dist_to_switch_pl_", i, "_XX")]] * df$fillin_g_pl_XX
+        }
+
         df[paste0("dist_to_switch_pl_", i, "_wXX")] <- 
         df[[paste0("dist_to_switch_pl_", i, "_XX")]] * df$N_gt_XX
 

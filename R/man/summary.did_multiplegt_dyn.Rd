@@ -11,6 +11,9 @@
 
 \item{...}{Undocumented}
 }
+\value{
+No return, custom summary method for did_multiplegt_dyn objects. Estimation tables are fetched from the object and displayed in the same style as the Stata did_multiplegt_dyn command.
+}
 \description{
 A customized summary display for did_multiplegt_dyn output
 }

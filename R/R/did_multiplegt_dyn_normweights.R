@@ -8,6 +8,7 @@
 #' @importFrom magrittr %>%
 #' @importFrom rlang :=
 #' @importFrom rlang .data
+#' @returns A matrix with the normalized_weights option output.
 #' @noRd
 did_multiplegt_dyn_normweights <- function(
   data, 
