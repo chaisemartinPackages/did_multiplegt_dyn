@@ -2,7 +2,7 @@
 #' @importFrom haven read_dta
 #' @md 
 #' @description Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, with a potentially non-binary treatment that may increase or decrease multiple times.
-#' @param df (dataframe or matrix) the estimation dataset.
+#' @param df (dataframe) the estimation dataset.
 #' @param outcome (char) is the outcome variable. 
 #' @param group (char) is the group variable. 
 #' @param time (char) is the time period variable. The command assumes that the time variable is evenly spaced (e.g.: the panel is at the yearly level, and no year is missing for all groups). When it is not (e.g.: the panel is at the yearly level, but three consecutive years are missing for all groups), the command can still be used, though it requires a bit of tweaking, see FAQ section below.
@@ -193,7 +193,7 @@ did_multiplegt_dyn <- function(
         if (!(inherits(get(v), "character"))) {
           stop(sprintf("Syntax error in %s option. String or string array required.", v))
         }
-      } else if (v %in% c("normalized", "normalized_weights", "effects_equal", "trends_lin", "same_switchers", "same_switchers_pl", "graph_off", "save_sample", "less_conservative_se", "dont_drop_larger_lowe", "drop_if_d_miss_before_first_switch")) {
+      } else if (v %in% c("normalized", "normalized_weights", "effects_equal", "trends_lin", "same_switchers", "same_switchers_pl", "graph_off", "save_sample", "less_conservative_se", "dont_drop_larger_lower", "drop_if_d_miss_before_first_switch")) {
         if (!inherits(get(v), "logical")) {
           stop(sprintf("Syntax error in %s option. Logical required.", v))
         }

@@ -121,6 +121,7 @@ suppressWarnings({
       dplyr::select(-.data$mean_Y, -.data$mean_D) 
 
   #### Predict_het option for heterogeneous treatment effects analysis
+  predict_het_good <- c()
   if (!is.null(predict_het)) {
     if (length(predict_het) != 2 & inherits(predict_het, "list")) {
       stop("Syntax error in predict_hat option: list with 2 elements required. Set the second element to -1 to include all the effects.")
@@ -132,7 +133,6 @@ suppressWarnings({
       pred_het <- unlist(predict_het[1])
       het_effects <- unlist(predict_het[2])
       ## Checks if only time-invariant variables are specified in predict_het
-      predict_het_good <- c()
       for (v in pred_het) {
         df <- df %>% group_by(.data$group) %>% mutate(sd_het = sd(.data[[v]], na.rm = TRUE)) %>% ungroup()
         if (mean(df$sd_het) == 0) {
@@ -169,8 +169,12 @@ suppressWarnings({
       df$cluster_XX <- 1
     }
     . <- NULL
-    df <- df %>%  group_by(.data$group, .data$time) %>%
-    summarise_at(vars(treatment, outcome, trends_nonparam, weight, controls, .data$cluster_XX, .data$weight_XX), funs(weighted.mean(., w=.data$weight_XX))) %>% ungroup()
+    df_1 <- df %>%  group_by(.data$group, .data$time) %>%
+    summarise_at(vars(treatment, outcome, trends_nonparam, weight, controls, predict_het_good, .data$cluster_XX), funs(weighted.mean(., w=.data$weight_XX))) %>% ungroup()
+    df_2 <- df %>% group_by(.data$group, .data$time) %>%
+        summarise_at(vars(.data$weight_XX), funs(sum(., na.rm = TRUE))) %>% ungroup()
+    df <- merge(df_1, df_2, by = c("group", "time"))
+    df_1 <- NULL; df_2 <- NULL;
     df$trends_nonparam_XX <- df[trends_nonparam]
     if (is.null(cluster)) {
       df <- df %>% dplyr::select(-.data$cluster_XX)

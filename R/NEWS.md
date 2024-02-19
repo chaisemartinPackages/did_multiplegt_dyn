@@ -17,3 +17,7 @@ First official R release.
 ## Changes in version 1.0.3
 
 + Minor changes to in-console printing statements.
+
+## Changes in version 1.0.4
+
++ Fixed bugs for unbalanced panels.
