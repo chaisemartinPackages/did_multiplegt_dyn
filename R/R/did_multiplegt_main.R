@@ -169,8 +169,12 @@ suppressWarnings({
       df$cluster_XX <- 1
     }
     . <- NULL
-    df <- df %>%  group_by(.data$group, .data$time) %>%
-    summarise_at(vars(treatment, outcome, trends_nonparam, weight, controls, .data$cluster_XX, .data$weight_XX), funs(weighted.mean(., w=.data$weight_XX))) %>% ungroup()
+    df_1 <- df %>%  group_by(.data$group, .data$time) %>%
+    summarise_at(vars(treatment, outcome, trends_nonparam, weight, controls, predict_het_good, .data$cluster_XX), funs(weighted.mean(., w=.data$weight_XX))) %>% ungroup()
+    df_2 <- df %>% group_by(.data$group, .data$time) %>%
+        summarise_at(vars(.data$weight_XX), funs(sum(., na.rm = TRUE))) %>% ungroup()
+    df <- merge(df_1, df_2, by = c("group", "time"))
+    df_1 <- NULL; df_2 <- NULL;
     df$trends_nonparam_XX <- df[trends_nonparam]
     if (is.null(cluster)) {
       df <- df %>% dplyr::select(-.data$cluster_XX)

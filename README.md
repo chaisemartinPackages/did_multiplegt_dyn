@@ -26,72 +26,34 @@ ssc install did_multiplegt_dyn, replace
 
 ### Stata
 
-**did_multiplegt_dyn Y G T D** [if] [in] [, **effects**(#) **normalized effects_equal placebo**(#) **ci_level**(#) **controls**(*varlist*) **trends_nonparam**(*varlist*) **weight**(*varlist*) **switchers**(*string*) **same_switchers drop_larger_lower drop_if_d_miss_before_first_switch cluster**(*varname*) **by**(*varname*) **predict_het**( *varlist,numlist*) **trends_lin normalized_weightS**(*string*) **date_first_switch**( [*by_baseline_treat*],*string*) **graphoptions**(*string*) **graph_off save_results**(*path*) **save_sample**]
+**did_multiplegt_dyn Y G T D** [if] [in] [, **effects**(#) **design**(*float*, *string*) **normalized normalized_weights effects_equal placebo**(#) **controls**(*varlist*)*  **trends_nonparam**(*varlist*) **trends_lin continuous**(#) **weight**(*varname*) **cluster**(*varname*) **by**(*varname*) **predict_het**( *varlist,numlist*) **date_first_switch**( [*by_baseline_treat*],*string*) **same_switchers same_switchers_pl** **switchers**(*string*) **ci_level**(#) **graphoptions**(*string*) **graph_off** **save_results**(*path*) **save_sample** **less_conservative_se** **drop_larger_lower drop_if_d_miss_before_first_switch**]
+
+### R
+**did_multiplegt_dyn** <- function(**df** = *dataframe*, **outcome** = *string*, **group** = *string*, **time** = *string*, **treatment** = *string*, **effects** = 1, **design** = NULL, **normalized** = FALSE, **normalized_weights** = FALSE, **effects_equal** = FALSE, **placebo** = 0, **controls** = NULL, **trends_nonparam** = NULL, **trends_lin** = FALSE, **continuous** = NULL, **weight** = NULL, **cluster** = NULL, **by** = NULL, **predict_het** = NULL, **date_first_switch** = NULL, **same_switchers** = FALSE, **same_switchers_pl** = FALSE, **switchers** = "", **ci_level** = 95, **graph_off** = FALSE, **save_results** = NULL, **save_sample** = FALSE, **less_conservative_se** = FALSE, **dont_drop_larger_lower** = FALSE, **drop_if_d_miss_before_first_switch** = FALSE)
 
 
 ## Description
 
-**did_multiplegt_dyn** estimates the effect of a treatment on an outcome, using group-(e.g. county-
-    or state-) level panel data with multiple groups and periods.  It computes the DID event-study
-    estimators introduced in de Chaisemartin and D'Haultfoeuille (2020a).  **did_multiplegt_dyn** can be
-    used with a binary and absorbing (staggered) treatment but it can also be used with a non-binary
-    treatment (discrete or continuous) that can increase or decrease multiple times, even if lagged
-    treatments affect the outcome, and if the current and lagged treatments have heterogeneous
-    effects, across space and/or over time.  The event-study estimators computed by the command rely
-    on a no-anticipation and parallel trends assumptions.
+**did_multiplegt_dyn** estimates the effect of a treatment on an outcome, using group-(e.g. county- or state-) level panel data. The panel may be unbalanced: not all groups have to be observed at every period. The data may also be at a more disaggregated level than the group level (e.g. individual-level wage data to measure the effect of a regional-level minimum-wage on individuals' wages). 
 
-The command can be used in sharp designs, where the treatment is assigned at the group*period
-    level, and in some fuzzy designs where the treatment varies within group*time cell, see de
-    Chaisemartin and D'Haultfoeuille (2020a) for further details.  The panel of groups may be
-    unbalanced:  not all groups have to be observed at every period.  The data may also be at a more
-    disaggregated level than the group level (e.g. individual-level wage data to measure the effect
-    of a regional-level minimum-wage on individuals' wages).
+The command computes the DID event-study estimators introduced in de Chaisemartin and D'Haultfoeuille (2024). It can be used with a binary and absorbing (staggered) treatment but it can also be used with a non-binary treatment (discrete or continuous) that can increase or decrease multiple times, even if lagged treatments affect the outcome, and if the current and lagged treatments have heterogeneous effects, across space and/or over time. The event-study estimators computed by the command rely on a no-anticipation and parallel trends assumptions.
 
-For all "switchers", namely groups that experience a change of their treatment over the study
-    period, let F_g denote the first time period when g's treatment changes.  The command computes
-    the non-normalized event-study estimators DID_l.  DID_1 is the average, across all switchers, of
-    DID estimators comparing the F_g-1 to F_g outcome evolution of g to that of groups with the same
-    baseline (period-one) treatment as g but whose treatment has not changed yet at F_g.  More
-    generally, DID_l is the average, across all switchers, of DID estimators comparing the F_g-1 to
-    F_g-1+l outcome evolution of g to that of groups with the same baseline treatment as g but whose
-    treatment has not changed yet at F_g-1+l.  Non-normalized event-study effects are average effects
-    of having been exposed to a weakly higher treatment dose for l periods, where the magnitude and
-    timing of the incremental treatment doses can vary across groups.  The command also computes the
-    normalized event-study estimators DID^n_l, that normalize DID_l by the average total incremental
-    treatment dose received by switchers from F_g-1 to F_g-1+l with respect to their baseline
-    treatment.  This normalization ensures that DID^n_l estimates a weighted average of the effects
-    of the current treatment and of its l-1 first lags on the outcome.  The command also computes an
-    estimated average total effect per unit of treatment, where “total effect” refers to the sum of
-    the effects of a treatment increment, at the time when it takes place and at later periods, see
-    Section 3.3 of de Chaisemartin and D'Haultfoeuille (2020a) for further details.  Finally, the
-    command also computes placebo estimators, that average DIDs comparing the outcome evolution of
-    switcher g and of its control groups, from F_g-1 to F_g-1-l, namely before g's treatment changes
-    for the first time.  Those placebos can be used to test the parallel trends and no-anticipation
-    assumptions under which the estimators computed by **did_multiplegt_dyn** are unbiased.
+For all "switchers", namely groups that experience a change of their treatment over the study period, let $F_g$ denote the first time period when g's treatment changes. The command computes the non-normalized event-study estimators $\text{DID}_\ell$. $\text{DID}_1$ is the average, across all switchers, of DID estimators comparing the $F_{g-1}$ to $F_g$ outcome evolution of $g$ to that of groups with the same period-one treatment as $g$ but whose treatment has not changed yet at $F_g$. More generally, $\text{DID}_1$ is the average, across all switchers, of DID estimators comparing the $F_{g-1}$ to $F_{g-1+\ell}$ outcome evolution of $g$ to that of groups with the same period-one treatment as $g$ but whose treatment has not changed yet at $F_{g-1+\ell}$. Non-normalized event-study effects are average effects of having been exposed to a weakly higher treatment dose for $\ell$ periods, where the magnitude and timing of the incremental treatment doses can vary across groups. The command also computes the normalized event-study estimators $\text{DID}^n_\ell$, that normalize $\text{DID}_\ell$ by the average total incremental treatment dose received by switchers from $F_{g-1}$ to $F_{g-1+\ell}$ with respect to their period-one treatment. This normalization ensures that $DID^n_\ell$ estimates a weighted average of the effects of the current treatment and of its $\ell-1$ first lags on the outcome. The command also computes an estimated average total effect per unit of treatment, where "total effect" refers to the sum of the effects of a treatment increment, at the time when it takes place and at later periods, see Section 3.3 of de Chaisemartin and D'Haultfoeuille (2024) for further details. Finally, the command also computes placebo estimators, that average DIDs comparing the outcome evolution of switcher $g$ and of its control groups, from $F_{g-1}$ to $F_{g-1-\ell}$, namely before g's treatment changes for the first time. Those placebos can be used to test the parallel trends and no-anticipation assumptions under which the estimators computed by **did_multiplegt_dyn** are unbiased.
 
-**Y** is the outcome variable.
+**Y** (R: **outcome**) is the outcome variable.
 
-**G** is the group variable.
+**G** (R: **group**) is the group variable.
 
-**T** is the time period variable.  The command assumes that the time variable is evenly spaced
+**T** (R: **time**) is the time period variable.  The command assumes that the time variable is evenly spaced
     (e.g.: the panel is at the yearly level, and no year is missing for all groups).  When it is not
     (e.g.: the panel is at the yearly level, but three consecutive years are missing for all groups),
     the command can still be used, though it requires a bit of tweaking, see FAQ section below.
 
-**D** is the treatment variable.
+**D** (R: **treatment**) is the treatment variable.
     
 
 ## Options   
-
-**effects(#)** gives the number of event-study effects to be estimated.  With a balanced panel of
-    groups, the maximum number of dynamic effects one can estimate can be determined as follows.  For
-    each value of the baseline treatment d, start by computing the difference between the last period
-    at which at least one group has had treatment d since period 1, and the first period at which a
-    group with treatment d at period 1 changed its treatment.  Add one to this difference.  Then, the
-    maximum number of dynamic effects is equal to the maximum of the obtained values, across all
-    values of the baseline treatment.  With an unbalanced panel of groups (e.g.: counties appear or
-    disappear over time if the data is a county-level panel), this method can still be used to derive
-    an upper bound of the maximum number of dynamic effects one can estimate.
+**effects(#)** gives the number of event-study effects to be estimated. By default, the command estimates non-normalized event-study effects. Non-normalized event-study effects are averages, across all switchers, of the effect of having received their actual rather than their period-one treatment dose, for $\ell$ periods. While non-normalized event-study effects can be interpreted as average effects of being exposed to a weakly higher treatment dose for $\ell$ periods, the magnitude and timing of the incremental treatment doses can vary across groups.
 
 **normalized:** when this option is not specified, the command estimates non-normalized event-study
     effects.  Non-normalized event-study effects are average effects of having been exposed to a
