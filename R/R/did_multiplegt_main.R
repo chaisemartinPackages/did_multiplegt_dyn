@@ -121,6 +121,7 @@ suppressWarnings({
       dplyr::select(-.data$mean_Y, -.data$mean_D) 
 
   #### Predict_het option for heterogeneous treatment effects analysis
+  predict_het_good <- c()
   if (!is.null(predict_het)) {
     if (length(predict_het) != 2 & inherits(predict_het, "list")) {
       stop("Syntax error in predict_hat option: list with 2 elements required. Set the second element to -1 to include all the effects.")
@@ -132,7 +133,6 @@ suppressWarnings({
       pred_het <- unlist(predict_het[1])
       het_effects <- unlist(predict_het[2])
       ## Checks if only time-invariant variables are specified in predict_het
-      predict_het_good <- c()
       for (v in pred_het) {
         df <- df %>% group_by(.data$group) %>% mutate(sd_het = sd(.data[[v]], na.rm = TRUE)) %>% ungroup()
         if (mean(df$sd_het) == 0) {
