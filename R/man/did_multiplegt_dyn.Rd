@@ -38,7 +38,7 @@ did_multiplegt_dyn(
 )
 }
 \arguments{
-\item{df}{(dataframe or matrix) the estimation dataset.}
+\item{df}{(dataframe) the estimation dataset.}
 
 \item{outcome}{(char) is the outcome variable.}
 
