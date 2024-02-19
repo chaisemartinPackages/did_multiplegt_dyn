@@ -20,7 +20,6 @@ ssc install did_multiplegt_dyn, replace
 ### R
 ```s
 ```
-[![R-CMD-check](https://github.com/DiegoCiccia/did_multiplegt_dyn/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/DiegoCiccia/did_multiplegt_dyn/actions/workflows/R-CMD-check.yaml)
 
 ## Syntax
 
