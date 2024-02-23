@@ -17,7 +17,7 @@ jobs:
         config:
           - {os: macos-latest,   r: 'release'}
           - {os: ubuntu-latest,   r: 'release'}
-          - {os: debian-latest,   r: 'release'}
+          - {os: windows-latest,   r: 'release'}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
