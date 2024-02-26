@@ -19,6 +19,7 @@ ssc install did_multiplegt_dyn, replace
 
 ### R
 ```s
+install.packages("DIDmultipletDYN")
 ```
 
 ## Syntax
