@@ -23,6 +23,7 @@
 #' @param trends_lin trends_lin
 #' @param less_conservative_se less_conservative_se
 #' @param continuous continuous
+#' @param data_only data_only
 #' @import dplyr
 #' @importFrom matlib Ginv 
 #' @importFrom plm pdata.frame make.pbalanced
@@ -61,7 +62,8 @@ did_multiplegt_main <- function(
   predict_het,
   trends_lin,
   less_conservative_se,
-  continuous
+  continuous,
+  data_only = FALSE
   ) {
 
 suppressWarnings({
@@ -896,6 +898,13 @@ suppressWarnings({
   ## Initialize variable to earmark switchers by the number of the event-study effect
   df$switchers_tag_XX <- NA
 
+  ## Store the data prior to estimation if requested
+  if (isTRUE(data_only)) {
+    data <- list(df,l_XX,T_max_XX)
+    names(data) <- c("df", "l_XX", "T_max_XX")    
+    return(data)
+  }
+
   ## Perform the estimation: call the program did_multiplegt_dyn_core, 
   ## for switchers in and for switchers out, and store the results.
   
@@ -1638,8 +1647,14 @@ if (!is.null(save_results)) {
   write.csv(mat_res_XX, save_results, row.names = TRUE, col.names = TRUE)
 }
 
-Effect_mat <- mat_res_XX[1:l_XX, 1:(ncol(mat_res_XX) -1)]
-ATE_mat <- mat_res_XX[l_XX + 1, 1:(ncol(mat_res_XX) -1)]
+Effect_mat <- matrix(mat_res_XX[1:l_XX, 1:(ncol(mat_res_XX) -1)], ncol = ncol(mat_res_XX)-1, nrow = l_XX)
+rownames(Effect_mat) <- rownames[1:l_XX]
+colnames(Effect_mat) <- c("Estimate", "SE", "LB CI", "UB CI", "N", "Switchers")
+
+ATE_mat <- matrix(mat_res_XX[l_XX + 1, 1:(ncol(mat_res_XX) -1)], ncol = ncol(mat_res_XX)-1, nrow = 1)
+rownames(ATE_mat) <- rownames[l_XX+1]
+colnames(ATE_mat) <- c("Estimate", "SE", "LB CI", "UB CI", "N", "Switchers")
+
 out_names <- c("N_Effects", "N_Placebos", "Effects", "ATE")
 did_multiplegt_dyn <- list(
   l_XX,
@@ -1652,7 +1667,11 @@ if (isTRUE(effects_equal)) {
   out_names <- c(out_names, "p_equality_effects")  
 }
 if (placebo != 0) {
-  Placebo_mat <- mat_res_XX[(l_XX+2):nrow(mat_res_XX), 1:(ncol(mat_res_XX) -1)]
+  Placebo_mat <- matrix(mat_res_XX[(l_XX+2):nrow(mat_res_XX), 1:(ncol(mat_res_XX) -1)], ncol = ncol(mat_res_XX) -1, nrow = l_placebo_XX)
+  rownames(Placebo_mat) <- rownames[(l_XX+2):nrow(mat_res_XX)]
+  colnames(Placebo_mat) <- c("Estimate", "SE", "LB CI", "UB CI", "N", "Switchers")
+
+
   did_multiplegt_dyn <- append(did_multiplegt_dyn, list(Placebo_mat))
   out_names <- c(out_names, "Placebos")
   if (placebo > 1) {

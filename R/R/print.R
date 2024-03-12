@@ -19,7 +19,11 @@ print.did_multiplegt_dyn <- function(x, ...) {
             ref <- x
         } else {
             ref <- x[[paste0("by_level_",b)]]
-            section <- paste(" By",x$args$by, "=", by_levels[b], "###")
+            if (!is.null(x$args[["by"]])) {
+                section <- paste(" By",x$args$by, "=", by_levels[b], "###")
+            } else if (!is.null(x$args[["by_path"]])) {
+                section <- paste0(" By treatment path: (", by_levels[b],") ", "###")
+            }
             cat(noquote(strrep("#", 70 - nchar(section) - 1)));cat(section);
             cat("\n");cat("\n");
         }
@@ -53,9 +57,12 @@ print.did_multiplegt_dyn <- function(x, ...) {
             cat(strrep(" ", 4));cat(" Testing the parallel trends and no anticipation assumptions");cat("\n");
             cat(noquote(strrep("-", 70)));cat("\n");
             mat_print(ref$results$Placebos)
+            if (is.null(x$args$bootstrap)) {
+                cat("\n")
+                cat(sprintf("Test of joint nullity of the placebos : p-value = %.4f", ref$results$p_jointplacebo))
+                cat("\n")
+            }
             cat("\n")
-            cat(sprintf("Test of joint nullity of the placebos : p-value = %.4f", ref$results$p_jointplacebo))
-            cat("\n");cat("\n")
         }
 
         if (!is.null(ref$design)) {

@@ -37,6 +37,7 @@ did_multiplegt_dyn_design <- function(
 
 	## keep periods up to ℓ periods after the first switch
   df$F_g_plus_n_XX <- df$F_g_XX + des_n - 1
+  df$sel_XX <- df$time_XX >= df$F_g_XX - 1 & df$time_XX <= df$F_g_plus_n_XX
   df <- subset(df, df$time_XX >= df$F_g_XX - 1 & df$time_XX <= df$F_g_plus_n_XX)
   df <- df[order(df$group_XX, df$time_XX), ]
   df <- df %>% group_by(.data$group_XX) %>% 
