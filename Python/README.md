@@ -37,6 +37,11 @@ import wooldridge
 pandas2ri.activate()
 wagepan = pandas2ri.py2ri(wooldridge.data('wagepan'))
 ```
+
+If you installed rpy2 using just pip install rpy2, then replace the last line with
+```r
+wagepan = pandas2ri.py2rpy(wooldridge.data('wagepan'))
+```
 Once the dataframe is loaded, we can set up the estimation options. The arguments of the options have different classes (numeric, list, character, ...). These R classes are normally different than Python ones ("in R, *almost* everything is a vector"), but a bit of tweaking is enough to ensure that all the options of **did_multiplegt_dyn** can be correctly assigned. Consider the following equivalences:
 + string arguments ("outcome", "group", "time", "treatment", "by", "cluster", "weight", "switchers", "save_results") can be specified as Python strings (e.g. outcome = 'lwage');
 + integer arguments ("effects","placebo", "ci_level", "continuous", "bootstrap", "by_path") can be specified as floats with zero decimal part (e.g. effects = 3.0) - This is due to the fact that the R integer class is quite restrictive, so the syntax check looks for numeric objects such that the remainder from 1 is 0;
