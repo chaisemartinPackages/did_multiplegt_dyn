@@ -32,6 +32,8 @@
 #' @param less_conservative_se (logical) when groups' treatment can change multiple times, the standard errors reported by default by the command may be conservative. Then, less conservative standard errors can be obtained by specifying this option. See de Chaisemartin et al. (2024) for further details.
 #' @param dont_drop_larger_lower (logical) by default, the command drops all the \eqn{(g,t)} cells such that at \eqn{t}, group \eqn{g} has experienced both a strictly larger and a strictly lower treatment than its baseline treatment. de Chaisemartin and D'Haultfoeuille (2020a) recommend this procedure, if you are interested in more details you can see their Section 3.1. The option dont_drop_larger_lower allows to overwrite this procedure and keeps \eqn{(g,t)} cells such that at \eqn{t}, group \eqn{g} has experienced both a strictly larger and a strictly lower treatment than its baseline treatment in the estimation sample.
 #' @param drop_if_d_miss_before_first_switch (logical) This option is relevant when the treatment of some groups is missing at some time periods. Then, the command imputes some of those missing treatments. Those imputations are detailed in Appendix A of de Chaisemartin et al (2024). In designs where groups' treatments can change at most once, all those imputations are justified by the design. In other designs, some of those imputations may be liberal. drop_if_d_miss_before_first_switch can be used to overrule the potentially liberal imputations that are not innocuous for the non-normalized event-study estimators. See Appendix A of de Chaisemartin et al (2024) for further details.
+#' @param bootstrap (integer) This option allows to bootstrap the standard errors of the estimated coefficients. The integer argument is the number of bootstrap replications.
+#' @param by_path (integer) by_path
 #' @section Overview:
 #' \code{did_multiplegt_dyn()} estimates the effect of a treatment on an outcome, using group-(e.g. county- or state-) level panel data. The panel may be unbalanced: not all groups have to be observed at every period. The data may also be at a more disaggregated level than the group level (e.g. individual-level wage data to measure the effect of a regional-level minimum-wage on individuals' wages). The command computes the DID event-study estimators introduced in de Chaisemartin and D'Haultfoeuille (2024). It can be used with a binary and absorbing (staggered) treatment but it can also be used with a non-binary treatment (discrete or continuous) that can increase or decrease multiple times, even if lagged treatments affect the outcome, and if the current and lagged treatments have heterogeneous effects, across space and/or over time. The event-study estimators computed by the command rely on a no-anticipation and parallel trends assumptions.
 #' 
@@ -164,7 +166,9 @@ did_multiplegt_dyn <- function(
     save_sample = FALSE, 
     less_conservative_se = FALSE,
     dont_drop_larger_lower = FALSE, 
-    drop_if_d_miss_before_first_switch = FALSE
+    drop_if_d_miss_before_first_switch = FALSE,
+    bootstrap = NULL,
+    by_path = NULL
     ) { 
   
 
@@ -181,9 +185,17 @@ did_multiplegt_dyn <- function(
         if (!(length(get(v)) == 1 & inherits(get(v), "character"))) {
           stop(sprintf("Syntax error in %s option. Only one string allowed.", v))
         }
-      } else if (v %in% c("effects", "placebo", "ci_level", "continuous")) {
+      } else if (v %in% c("effects", "ci_level", "continuous", "bootstrap", "by_path")) {
         if (!(inherits(get(v), "numeric") & get(v) %% 1 == 0 & get(v) > 0)) {
           stop(sprintf("Syntax error in %s option. Positive integer required.", v))
+        }
+      } else if (v == "placebo") {
+        if (!(inherits(get(v), "numeric") & ((get(v) %% 1 == 0  & get(v) > 0) | get(v) == 0))) {
+          stop(sprintf("Syntax error in %s option. Non-negative integer required.", v))
+        }
+      } else if (v == "bootstrap") {
+        if (!(inherits(get(v), "numeric") & get(v) > 1)) {
+          stop(sprintf("Syntax error in %s option. At least 2 bootstrap replications required.", v))
         }
       } else if (v %in% c("predict_het", "design", "date_first_switch")) {
         if (!(inherits(get(v), "list") & length(get(v)) == 2)) {
@@ -224,6 +236,11 @@ did_multiplegt_dyn <- function(
   if (isTRUE(normalized_weights) & isFALSE(normalized)) {
     stop("normalized option required to compute normalized_weights")
   }
+  ### By or by_path ###
+  if (!is.null(by) & !is.null(by_path)) {
+    stop("You cannot specify by and by_path options together.")
+  }
+
   #### By option block: checks on the variable specified and initializes the did_multiplegt_dyn object accounting for the by option
   by_levels <- c("_no_by")
   if (!is.null(by)) {
@@ -237,6 +254,17 @@ did_multiplegt_dyn <- function(
     }
   }
 
+  if (!is.null(by_path)) {
+    data <- did_multiplegt_by_path(df = df, outcome = outcome, group =  group, time =  time, treatment = treatment, effects = effects, placebo = placebo, ci_level = ci_level,switchers = switchers, trends_nonparam = trends_nonparam, weight = weight, controls = controls, dont_drop_larger_lower = dont_drop_larger_lower, drop_if_d_miss_before_first_switch = drop_if_d_miss_before_first_switch, cluster = cluster, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, effects_equal = effects_equal, save_results = save_results, normalized = normalized, predict_het = predict_het, trends_lin = trends_lin, less_conservative_se = less_conservative_se, continuous = continuous, by_path = by_path)
+
+    df <- data$df
+    by_levels <- data$path
+    did_multiplegt_dyn <- append(did_multiplegt_dyn, list(by_levels))
+    f_names <- c(f_names, "by_levels")
+
+    same_switchers <- TRUE
+  }
+
   # The following code structure accounts for the by option:
   ## - if the option is not specified, the output is an object with just one "results" branch.
   ## - if the option is specified, the output takes on as many branches as the levels of the by variable
@@ -246,16 +274,28 @@ did_multiplegt_dyn <- function(
   for (b in 1:length(by_levels)) {
 
     if (by_levels[b] != "_no_by") {
+        if (!is.null(by)) {
         df_main <- subset(df, df[[by]] == by_levels[b])
+        message(sprintf("Running did_multiplegt_dyn for %s = %s", by, by_levels[b]))
+        } else if (!is.null(by_path)) {
+          df_main <- subset(df, df$path_XX == by_levels[b] | 
+              (df$yet_to_switch == 1 & df$baseline_XX == substr(by_levels[b],1,1)))
+          df_main$path_XX <- df_main$yet_to_switch_XX <- df_main$baseline_XX <- NULL
+          message(sprintf("Running did_multiplegt_dyn for treatment path (%s)", by_levels[b]))
+        }
     } else {
       df_main <- df
     }
 
-    df_est <- did_multiplegt_main(df = df_main, outcome = outcome, group =  group, time =  time, treatment = treatment, effects = effects, placebo = placebo, ci_level = ci_level,switchers = switchers, trends_nonparam = trends_nonparam, weight = weight, controls = controls, dont_drop_larger_lower = dont_drop_larger_lower, drop_if_d_miss_before_first_switch = drop_if_d_miss_before_first_switch, cluster = cluster, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, 
-    effects_equal = effects_equal, save_results = save_results, normalized = normalized, predict_het = predict_het, trends_lin = trends_lin, less_conservative_se = less_conservative_se, continuous = continuous)
+    df_est <- did_multiplegt_main(df = df_main, outcome = outcome, group =  group, time =  time, treatment = treatment, effects = effects, placebo = placebo, ci_level = ci_level,switchers = switchers, trends_nonparam = trends_nonparam, weight = weight, controls = controls, dont_drop_larger_lower = dont_drop_larger_lower, drop_if_d_miss_before_first_switch = drop_if_d_miss_before_first_switch, cluster = cluster, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, effects_equal = effects_equal, save_results = save_results, normalized = normalized, predict_het = predict_het, trends_lin = trends_lin, less_conservative_se = less_conservative_se, continuous = continuous)
 
     temp_obj <- list(df_est$did_multiplegt_dyn)
     names(temp_obj)[length(temp_obj)] <- "results"
+
+    if (!is.null(bootstrap)) {
+      message(sprintf("\nBootstrap, %.0f reps:", bootstrap))
+      temp_obj$results <- did_multiplegt_bootstrap(df = df_main, outcome = outcome, group =  group, time =  time, treatment = treatment, effects = effects, placebo = placebo, ci_level = ci_level,switchers = switchers, trends_nonparam = trends_nonparam, weight = weight, controls = controls, dont_drop_larger_lower = dont_drop_larger_lower, drop_if_d_miss_before_first_switch = drop_if_d_miss_before_first_switch, cluster = cluster, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, effects_equal = FALSE, save_results = NULL, normalized = normalized, predict_het = predict_het, trends_lin = trends_lin, less_conservative_se = less_conservative_se, continuous = continuous, bootstrap = bootstrap, base = temp_obj$results)
+    }
 
     if (!is.null(design)) {
       temp_obj <- append(temp_obj, list(did_multiplegt_dyn_design(df_est, design, weight, by, by_levels[b], append_design)))
@@ -299,7 +339,7 @@ did_multiplegt_dyn <- function(
 
   names(did_multiplegt_dyn) <- f_names
 
-  if (!is.null(by)) {
+  if (!is.null(by) | !is.null(by_path)) {
     if (isTRUE(save_sample)) {
       did_multiplegt_dyn <- adj_save_sample(did_multiplegt_dyn)
       names(did_multiplegt_dyn)[length(did_multiplegt_dyn)] <- "save_sample"
