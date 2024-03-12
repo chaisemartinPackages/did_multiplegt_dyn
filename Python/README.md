@@ -56,6 +56,9 @@ The results can be assigned to an object that has it own print method. The base 
 DIDmultiplegtDYN = importr('DIDmultiplegtDYN')
 did = DIDmultiplegtDYN.did_multiplegt_dyn(df = wagepan, outcome = 'lwage', group = 'nr', time = 'year', treatment = 'union', effects = 5.0, normalized = True, design = [1, "console"], controls = robjects.StrVector(["married", "hours"]))
 
+# Display the results
+print(did)
+
 # Retrieve the ATE
 print(did[1][3][0])
 ```
