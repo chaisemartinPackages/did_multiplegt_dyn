@@ -5,11 +5,14 @@
 #' @importFrom magrittr %>%
 #' @returns A ggplot object.
 #' @noRd
-did_multiplegt_dyn_graph <- function(data) {
-  grmat <- data$mat_res_XX
-  l_XX <- data$l_XX 
-  grmat[l_XX + 1, c(1,3,4)] <- 0
-  grmat <- data.frame(grmat[, c(1,3,4,7)])
+did_multiplegt_dyn_graph <- function(data) {  
+  grmat <- rbind(cbind(data$Effects, 1:nrow(data$Effects)),cbind(data$ATE, 0))
+  if (!is.null(data$Placebos)) {
+    grmat <- rbind(grmat, cbind(data$Placebos, (-1) * 1:nrow(data$Placebos)))
+  }
+  colnames(grmat)[ncol(grmat)] <- "Time"
+  grmat[nrow(data$Effects) + 1, c(1,3,4)] <- 0
+  grmat <- data.frame(grmat[, c(1,3,4,9)])
   did_multiplegt_dyn_plot <- ggplot(grmat,aes(x = .data$Time, y = .data$Estimate, group = 1)) + 
     geom_line(colour = "blue") + 
     geom_errorbar(data = ~dplyr::filter(.x, grmat$Estimate != 0),aes(ymin = .data$LB.CI, ymax = .data$UB.CI), position=position_dodge(0.05), width = 0.2, colour = "red")  + 

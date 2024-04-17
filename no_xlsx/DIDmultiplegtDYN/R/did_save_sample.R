@@ -1,0 +1,50 @@
+#' Option that allows to see which groups were included in the estimation and if they were switcher in/out ot control
+#' @param data data
+#' @param Gn Gn
+#' @param Tn Tn
+#' @import dplyr
+#' @importFrom magrittr %>%
+#' @importFrom rlang .data
+#' @importFrom data.table setnames
+#' @returns The input dataframe df plus two added columns.
+#' @noRd
+did_save_sample <- function(
+    data, 
+    Gn, 
+    Tn
+    ) {
+  df <- data$df
+  suppressWarnings({
+	## keeping only group, time and switcher status (if not missing)
+  df_save <- subset(df, !is.na(df$group) & !is.na(df$time))
+  df_save <- df_save %>% dplyr::select(.data$group, .data$time, .data$S_g_XX, .data$switchers_tag_XX) %>% ungroup()
+	## redefine S_g_XX to show if group is switcher in/out or control	
+  df_save <- data.table::setnames(df_save, old = c("group", "time", "S_g_XX", "switchers_tag_XX"), new = c(Gn, Tn, "did_sample", "did_effect")) 
+  df_save$did_sample <- ifelse(df_save$did_sample == 0, -1, df_save$did_sample)
+  df_save$did_sample <- ifelse(is.na(df_save$did_sample), 0, df_save$did_sample)
+  df_save$did_sample <- factor(df_save$did_sample, levels = c(0,1,-1), labels = c("Control", "Switcher-in", "Switchers-out"))
+  })
+	# Return dataset to be merged to main data
+  return(df_save)
+}
+
+#' Adjustment of save_sample output in case of by option
+#' @param obj A did_multiplegt_dyn object
+#' @returns The input dataframe df plus two added columns.
+#' @noRd
+adj_save_sample <- function(obj) {
+  saved_sample <- obj$by_level_1$save_sample
+  obj$by_level_1$save_sample <- NULL
+  if (length(obj$by_levels) > 1) {
+    for (j in 2:length(obj$by_levels)) {
+      saved_sample <- rbind(saved_sample, obj[[paste0("by_level_", j)]]$save_sample)
+      obj[[paste0("by_level_", j)]]$save_sample <- NULL
+    }
+  }
+  saved_sample <- saved_sample[order(saved_sample[[obj$args$group]], saved_sample[[obj$args$time]]), , drop = FALSE]
+  rownames(saved_sample) <- NULL
+  obj <- append(obj, list(saved_sample))
+  return(obj)
+}
+
+

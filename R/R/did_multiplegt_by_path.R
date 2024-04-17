@@ -64,7 +64,9 @@ did_multiplegt_by_path <- function(
     T_max_XX <- data$T_max_XX
     path_index <- data$df[c("group", "time", "time_XX", "treatment_XX", "F_g_XX")]
     data <- NULL
-
+    if (by_path == -1) {
+        by_path <- nrow(design_base$design_mat)
+    }
     design_set <- design_base$design_mat[1:min(by_path, nrow(design_base$design_mat)), ]
     if (by_path > nrow(design_base$design_mat)) {
         message(sprintf("You requested %.0f treatment paths, but there are only %.0f paths in your data. The program will continue with the latter number of treatment paths."))

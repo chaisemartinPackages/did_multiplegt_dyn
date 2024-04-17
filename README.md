@@ -8,7 +8,7 @@ Estimation in Difference-in-Difference (DID) designs with multiple groups and pe
 ## Short description
 
 Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, and with a potentially non-binary treatment that may increase 
-or decrease multiple times.  This is a beta version of the command. New options will be added soon, and some of the options already provided are not fully stabilized yet.
+or decrease multiple times.  
 
 ## Setup
 
@@ -19,8 +19,7 @@ ssc install did_multiplegt_dyn, replace
 
 ### R
 ```s
-install.packages("DIDmultipletDYN")
-
+install.packages("DIDmultiplegtDYN")
 ```
 
 ## Syntax
@@ -82,7 +81,7 @@ For all "switchers", namely groups that experience a change of their treatment o
 
 **predict_het(***varlist*, *numlist***)**: (R, list with 2 args: char or vector of char, -1 or vector of positive integers)  when this option is specified, the command outputs tables showing whether the group-level and time-invariant variables in the char varlist predict groups' estimated event-study effects. With the second argument is void (R: set to -1), with this option the command produces one table per event-study effect estimated, each displaying the coefficients from regressions of the group-level estimate of the event-study effect on the variables in the char varlist. The p-value of a test on the null hypothesis that all heterogeneity estimates are equal to zero is shown below each table. If you are only interested in predicting a subset of the event-study effects estimated, you can specify those inside an integer vector as the second argument. This option cannot be specified with **normalized** and when the controls option is specified. See Section 1.5 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details.
 
-**date_first_switch(**\[*by_baseline_treat*\], *path* **)**: (R, list with 2 args: char in ("", "by_baseline_treat"), char path) the option reports the dates at which switchers experience their first treatment change, and how many groups experienced a first change at each date. The reference population are switchers for which the last event-study effect can be estimated. If "by_baseline_treat" is specified as the first argument, separate tables are displayed for each level of the period-one treatment. Results can be printed in the Stata console specifying "console" in the second argument. Alternatively, the output can be stored in an Excel file providing a valid file path in the second argument.
+**date_first_switch(**\[*by_baseline_treat*\], *path***)**: (R, list with 2 args: char in ("", "by_baseline_treat"), char path) the option reports the dates at which switchers experience their first treatment change, and how many groups experienced a first change at each date. The reference population are switchers for which the last event-study effect can be estimated. If "by_baseline_treat" is specified as the first argument, separate tables are displayed for each level of the period-one treatment. Results can be printed in the Stata console specifying "console" in the second argument. Alternatively, the output can be stored in an Excel file providing a valid file path in the second argument.
 
 **same_switchers**: if this option is specified and the user requests that at least two effects be estimated, the command will restrict the estimation of the event-study effects to switchers for which all effects can be estimated, to avoid compositional changes.
 
