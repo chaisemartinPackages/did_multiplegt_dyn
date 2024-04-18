@@ -41,3 +41,5 @@ First official R release.
 ## Changes in version 1.0.8
 
 + Changed display with weight option
+
++ Integration with honestdid via the "coef" output in the assigned object

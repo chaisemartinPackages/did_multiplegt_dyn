@@ -305,6 +305,8 @@ did_multiplegt_dyn <- function(
 
     temp_obj <- list(df_est$did_multiplegt_dyn)
     names(temp_obj)[length(temp_obj)] <- "results"
+    temp_obj <- append(temp_obj, list(df_est$coef))
+    names(temp_obj)[length(temp_obj)] <- "coef"
 
     if (!is.null(bootstrap)) {
       message(sprintf("\nBootstrap, %.0f reps:", bootstrap))
