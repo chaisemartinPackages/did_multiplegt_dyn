@@ -403,7 +403,7 @@ suppressWarnings({
       mutate(avg_post_switch_treat_XX_temp = sum(.data$treatment_XX_v1, na.rm = TRUE)) %>% ungroup()
   df <- df %>% dplyr::select(-.data$treatment_XX_v1)
 
-  df$count_time_post_switch_XX_temp <- (df$time_XX >= df$F_g_XX & df$time_XX <= df$T_g_XX & !is.na( df$treatment_XX))
+  df$count_time_post_switch_XX_temp <- (df$time_XX >= df$F_g_XX & df$time_XX <= df$T_g_XX & !is.na(df$treatment_XX))
  
   df <- df %>% group_by(.data$group_XX) %>%
       mutate(count_time_post_switch_XX = sum(.data$count_time_post_switch_XX_temp, na.rm = TRUE)) %>% ungroup()
@@ -634,8 +634,6 @@ suppressWarnings({
             }
             
           }
-        assign(paste0("coefs_sq_", l, "_XX"), get(paste0("coefs_sq_", l, "_XX")), inherits = TRUE)
-        assign(paste0("useful_res_", l, "_XX"), get(paste0("useful_res_", l, "_XX")), inherits = TRUE)
         }
 
     # Fill up store_singular_XX, with correct values of statu quo and not the levels
@@ -744,7 +742,7 @@ suppressWarnings({
     (switchers == "out" & (is.na(L_a_XX) | L_a_XX == 0)) | 
     (switchers == "" &  ((is.na(L_u_XX) | L_u_XX == 0) & (is.na(L_a_XX) | L_a_XX == 0)))
     ) {
-    stop("No treatment effect can be estimated. This is because Assumption 1 in de Chaisemartin & D'Haultfoeuille (2023) is not satisfied in the data used forestimation, given the options requested. If this is caused by your baseline treatement being continuous you can try using the option continuous() which allows for a continous period-one treatement.")
+    stop("No treatment effect can be estimated.\n  This is because Design Restriction 1 in de Chaisemartin & D'Haultfoeuille (2024) is not satisfied in the data, given the options requested.\n  This may be due to the fact that groups' period-one treatment is continuous, or takes a large number of values, and you have not specified the continuous option.\n  If so, you can try to specify this option.\n  If the issue persists even with this option, this means that all groups experience their first treatment change at the same date.\n  In this situation, estimators of de Chaisemartin & D'Haultfoeuille (2024) cannot be used.")
   }
 
   ## Checking that the number of dynamic and placebo effects requested by user
@@ -1445,6 +1443,7 @@ if (!is.null(cluster)) {
 
 ###### Performing a test to see whether all placebos are jointly equal to 0
 all_Ns_pl_not_zero <- NA
+all_delta_pl_not_zero <- NA
 ## Test can only be run when at least two placebos requested:
 if (l_placebo_XX != 0 & l_placebo_XX > 1) {
 	## If test is feasible, initalize scalar at 0
@@ -1686,6 +1685,40 @@ if (effects_equal == TRUE & l_XX > 1) {
   message("Some effects could not be estimated. Therefore, the test of equality of effects could not be computed.")
 }
 }
+
+###### Storing coefficients, variances and covariances of the estimators
+l_tot_XX <- l_XX + l_placebo_XX
+didmgt_vcov <- matrix(NA, nrow = l_tot_XX, ncol = l_tot_XX)
+mat_names <- 
+colnames(didmgt_vcov) <- rownames(didmgt_vcov) <- sapply(1:l_tot_XX, function(x) ifelse(x <= l_XX, paste0("Effect_",x), paste0("Placebo_",x-l_XX))) 
+for (i in 1:l_XX) {
+  if (isFALSE(normalized)) {
+    df[[paste0("U_Gg_var_comb_",i,"_XX")]] <- df[[paste0("U_Gg_var_glob_",i,"_XX")]]
+  } else {
+    df[[paste0("U_Gg_var_comb_",i,"_XX")]] <- df[[paste0("U_Gg_var_glob_",i,"_XX")]]/ get(paste0("delta_D_",i,"_global_XX"))
+  }
+}
+if (l_placebo_XX != 0) {
+  for (i in 1:l_placebo_XX) {
+    if (isFALSE(normalized)) {
+      df[[paste0("U_Gg_var_comb_",l_XX + i,"_XX")]] <- df[[paste0("U_Gg_var_glob_pl_",i,"_XX")]]
+    } else {
+      df[[paste0("U_Gg_var_comb_",l_XX + i,"_XX")]] <- df[[paste0("U_Gg_var_glob_pl_",i,"_XX")]]/get(paste0("delta_D_pl_",i,"_global_XX"))
+    }
+  }
+}
+
+for (i in 1:l_tot_XX) {
+  didmgt_vcov[i,i] <- mat_res_XX[i + (i>l_XX),2]^2
+  j <- 1
+  while (j < i) {
+    df[[paste0("U_Gg_var_comb_",i,"_",j,"_2_XX")]] <- (df[[paste0("U_Gg_var_comb_",i,"_XX")]] + df[[paste0("U_Gg_var_comb_",j,"_XX")]])^2 * df$first_obs_by_gp_XX
+    var_temp <- sum(df[[paste0("U_Gg_var_comb_",i,"_",j,"_2_XX")]], na.rm = TRUE)/G_XX^2
+    didmgt_vcov[i,j] <- didmgt_vcov[j,i] <- (var_temp - mat_res_XX[i + (i>l_XX),2]^2 - mat_res_XX[j + (j>l_XX),2]^2)/2
+    df[[paste0("U_Gg_var_comb_",i,"_",j,"_2_XX")]] <- var_temp <- NULL
+    j <- j + 1
+  }
+}
  
 ###### Returning the results of the estimation
 
@@ -1756,6 +1789,7 @@ if (isTRUE(normalized)) {
   }
 }
 
+coef <- list(b = mat_res_XX[c(1:l_XX, (l_XX+2):nrow(mat_res_XX)), 1], vcov = didmgt_vcov)
 
 ret <- list(
   df,
@@ -1770,6 +1804,8 @@ if (placebo!= 0) {
   ret <- append(ret, l_placebo_XX)
   ret_names <- c(ret_names, "l_placebo_XX")
 }
+ret <- append(ret, list(coef))
+ret_names <- c(ret_names, "coef")
 
 names(ret) <- ret_names
 ret
