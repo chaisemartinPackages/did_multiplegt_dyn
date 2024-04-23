@@ -117,6 +117,14 @@ Estimation of event-study Difference-in-Difference (DID) estimators in designs w
 For all "switchers", namely groups that experience a change of their treatment over the study period, let \eqn{F_g} denote the first time period when g's treatment changes. The command computes the non-normalized event-study estimators \eqn{\text{DID}_\ell}. \eqn{\text{DID}_1} is the average, across all switchers, of DID estimators comparing the \eqn{F_{g-1}} to \eqn{F_g} outcome evolution of \eqn{g} to that of groups with the same period-one treatment as \eqn{g} but whose treatment has not changed yet at \eqn{F_g}. More generally, \eqn{\text{DID}_l} is the average, across all switchers, of DID estimators comparing the \eqn{F_{g-1}} to \eqn{F_{g-1+\ell}} outcome evolution of \eqn{g} to that of groups with the same period-one treatment as \eqn{g} but whose treatment has not changed yet at \eqn{F_{g-1+\ell}}. Non-normalized event-study effects are average effects of having been exposed to a weakly higher treatment dose for \eqn{\ell} periods, where the magnitude and timing of the incremental treatment doses can vary across groups. The command also computes the normalized event-study estimators \eqn{\text{DID}^n_\ell}, that normalize \eqn{\text{DID}_\ell} by the average total incremental treatment dose received by switchers from \eqn{F_{g-1}} to \eqn{F_{g-1+\ell}} with respect to their period-one treatment. This normalization ensures that \eqn{DID^n_\ell} estimates a weighted average of the effects of the current treatment and of its \eqn{\ell-1} first lags on the outcome. The command also computes an estimated average total effect per unit of treatment, where "total effect" refers to the sum of the effects of a treatment increment, at the time when it takes place and at later periods, see Section 3.3 of de Chaisemartin and D'Haultfoeuille (2024) for further details. Finally, the command also computes placebo estimators, that average DIDs comparing the outcome evolution of switcher \eqn{g} and of its control groups, from \eqn{F_{g-1}} to \eqn{F_{g-1-\ell}}, namely before g's treatment changes for the first time. Those placebos can be used to test the parallel trends and no-anticipation assumptions under which the estimators computed by \code{did_multiplegt_dyn()} are unbiased.
 }
 
+\section{Contacts}{
+
+
+Github repository: \href{https://github.com/chaisemartinPackages/did_multiplegt_dyn}{chaisemartinPackages/did_multiplegt_dyn}
+
+Mail: \href{mailto:chaisemartin.packages@gmail.com}{chaisemartin.packages@gmail.com}
+}
+
 \section{FAQ}{
 
 \strong{\code{did_multiplegt_dyn()} does not output exactly the same results as \code{did_multiplegt()}, is this normal?}

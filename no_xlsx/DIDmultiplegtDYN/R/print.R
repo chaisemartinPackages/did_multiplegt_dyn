@@ -19,7 +19,11 @@ print.did_multiplegt_dyn <- function(x, ...) {
             ref <- x
         } else {
             ref <- x[[paste0("by_level_",b)]]
-            section <- paste(" By",x$args$by, "=", by_levels[b], "###")
+            if (!is.null(x$args[["by"]])) {
+                section <- paste(" By",x$args$by, "=", by_levels[b], "###")
+            } else if (!is.null(x$args[["by_path"]])) {
+                section <- paste0(" By treatment path: (", by_levels[b],") ", "###")
+            }
             cat(noquote(strrep("#", 70 - nchar(section) - 1)));cat(section);
             cat("\n");cat("\n");
         }
@@ -27,7 +31,7 @@ print.did_multiplegt_dyn <- function(x, ...) {
         cat(noquote(strrep("-", 70)));cat("\n");
         cat(strrep(" ", 7));cat("Estimation of treatment effects: Event-study effects");cat("\n");
         cat(noquote(strrep("-", 70)));cat("\n");
-        mat_print(ref$results$Effects)
+        mat_print(ref$results$Effects[, 1:(6 + ((!is.null(x$args$weight))*2))])
         cat("\n")
 
         if (!is.null(ref$results$p_equality_effects)) {
@@ -42,9 +46,11 @@ print.did_multiplegt_dyn <- function(x, ...) {
 
         } else {
             cat(noquote(strrep("-", 70)));cat("\n");
-            cat(strrep(" ", 4));cat("Estimation of treatment effects: ATE per treatment unit");cat("\n");
+            cat(strrep(" ", 4));cat("Average cumulative (total) effect per treatment unit");cat("\n");
             cat(noquote(strrep("-", 70)));cat("\n");
-            mat_print(ref$results$ATE)
+            mat_print(ref$results$ATE[, 1:(6 + ((!is.null(x$args$weight))*2))])
+            cat(sprintf("Average number of time periods over which a treatment effect is accumulated: %.4f", ref$results$delta_D_avg_total))
+            cat("\n")
         }
         cat("\n")
 
@@ -52,7 +58,7 @@ print.did_multiplegt_dyn <- function(x, ...) {
             cat(noquote(strrep("-", 70)));cat("\n");
             cat(strrep(" ", 4));cat(" Testing the parallel trends and no anticipation assumptions");cat("\n");
             cat(noquote(strrep("-", 70)));cat("\n");
-            mat_print(ref$results$Placebos)
+            mat_print(ref$results$Placebos[, 1:(6 + ((!is.null(x$args$weight))*2))])
             if (is.null(x$args$bootstrap)) {
                 cat("\n")
                 cat(sprintf("Test of joint nullity of the placebos : p-value = %.4f", ref$results$p_jointplacebo))
@@ -179,7 +185,7 @@ mat_print <- function(mat) {
     } else {
         dis <- vector(length = length(mat))
         dis[1:4] <- sprintf("%s", format(round(mat[1:4], 5), big.mark=",", scientific=FALSE, trim=TRUE))
-        dis[5:6] <- sprintf("%s", format(round(mat[5:6], 0), big.mark=",", scientific=FALSE, trim=TRUE))
+        dis[5:length(mat)] <- sprintf("%s", format(round(mat[5:length(mat)], 0), big.mark=",", scientific=FALSE, trim=TRUE))
         names(dis) <- names(mat)
         print(noquote(dis[ , drop = FALSE]))
     }
