@@ -110,6 +110,11 @@ A list of class did_multiplegt_dyn containing the arguments used, the results fo
 \description{
 Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, with a potentially non-binary treatment that may increase or decrease multiple times.
 }
+\section{Disclaimer}{
+
+This version of did_multiplegt_dyn is based off the 1.0.8v available on CRAN. This version addresses rJava issues in Linux and MacOS terminals by shutting down the the excel print features built in the \code{design()} and \code{date_first_switch()} options. These features were based on the 'xlsx' library, which depends on rJava. The output of these two options can be still saved in xlsx format using other libraries and retrieving the tables from the assigned object.
+}
+
 \section{Overview}{
 
 \code{did_multiplegt_dyn()} estimates the effect of a treatment on an outcome, using group-(e.g. county- or state-) level panel data. The panel may be unbalanced: not all groups have to be observed at every period. The data may also be at a more disaggregated level than the group level (e.g. individual-level wage data to measure the effect of a regional-level minimum-wage on individuals' wages). The command computes the DID event-study estimators introduced in de Chaisemartin and D'Haultfoeuille (2024). It can be used with a binary and absorbing (staggered) treatment but it can also be used with a non-binary treatment (discrete or continuous) that can increase or decrease multiple times, even if lagged treatments affect the outcome, and if the current and lagged treatments have heterogeneous effects, across space and/or over time. The event-study estimators computed by the command rely on a no-anticipation and parallel trends assumptions.
