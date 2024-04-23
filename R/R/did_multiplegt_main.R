@@ -1789,7 +1789,7 @@ if (isTRUE(normalized)) {
   }
 }
 
-coef <- list(b = mat_res_XX[c(1:l_XX, (l_XX+2):nrow(mat_res_XX)), 1], vcov = didmgt_vcov)
+coef <- list(b = mat_res_XX[-(l_XX+1), 1], vcov = didmgt_vcov)
 
 ret <- list(
   df,

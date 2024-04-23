@@ -258,12 +258,16 @@ did_multiplegt_dyn_core <- function(
     df[paste0("distance_to_switch_", i, "_wXX")] <- 
     df[[paste0("distance_to_switch_", i, "_XX")]] * df$N_gt_XX
     df <- df %>% group_by(.data$time_XX) %>% mutate(!!paste0("N", increase_XX,"_t_", i, "_XX") := sum(.data[[paste0("distance_to_switch_", i, "_wXX")]], na.rm = TRUE))
+    df <- df %>% group_by(.data$time_XX) %>% mutate(!!paste0("N_dw", increase_XX,"_t_", i, "_XX") := sum(.data[[paste0("distance_to_switch_", i, "_XX")]], na.rm = TRUE))
 
     #### Computing N^1_\ell/N^0_\ell.
     assign(paste0("N",increase_XX,"_",i,"_XX"), 0)
+    assign(paste0("N",increase_XX,"_dw_",i,"_XX"), 0)
     for (t in t_min_XX:T_max_XX) {
       assign(paste0("N",increase_XX,"_",i,"_XX"), 
         get(paste0("N",increase_XX,"_",i,"_XX")) + mean(df[[paste0("N", increase_XX,"_t_", i, "_XX")]][df$time_XX == t], na.rm = TRUE))
+      assign(paste0("N",increase_XX,"_dw_",i,"_XX"), 
+        get(paste0("N",increase_XX,"_dw_",i,"_XX")) + mean(df[[paste0("N_dw", increase_XX,"_t_", i, "_XX")]][df$time_XX == t], na.rm = TRUE))
     }
 
     #### Creating N^1_{t,\ell,g}/N^0_{t,\ell,g}: Variable counting number of groups \ell periods away from switch at t, and with same D_{g,1} and trends_nonparam.
@@ -770,15 +774,20 @@ did_multiplegt_dyn_core <- function(
 
         ## Creating a variable counting the number of groups \ell periods away from switch at t
         df <- df %>% group_by(.data$time_XX) %>% mutate(!!paste0("N", increase_XX,"_t_placebo_", i, "_XX") := sum(.data[[paste0("dist_to_switch_pl_", i, "_wXX")]], na.rm = TRUE))
+        df <- df %>% group_by(.data$time_XX) %>% mutate(!!paste0("N", increase_XX,"_t_placebo_", i, "_dwXX") := sum(.data[[paste0("dist_to_switch_pl_", i, "_XX")]], na.rm = TRUE))
 
         #### Computing N^1_\ell/N^0_\ell. for the placebos
         ## Initializing the N1_`i'_XX/N0_`i'_XX scalar at 0. 
         assign(paste0("N",increase_XX,"_placebo_",i,"_XX"), 0)
+        assign(paste0("N",increase_XX,"_dw_placebo_",i,"_XX"), 0)
         for (t in t_min_XX:T_max_XX) {
           assign(paste0("N",increase_XX,"_placebo_",i,"_XX"), 
             get(paste0("N",increase_XX,"_placebo_",i,"_XX")) + mean(df[[paste0("N", increase_XX,"_t_placebo_", i, "_XX")]][df$time_XX == t], na.rm = TRUE))
+          assign(paste0("N",increase_XX,"_dw_placebo_",i,"_XX"), 
+            get(paste0("N",increase_XX,"_dw_placebo_",i,"_XX")) + mean(df[[paste0("N", increase_XX,"_t_placebo_", i, "_dwXX")]][df$time_XX == t], na.rm = TRUE))
         }
         assign(paste0("N",increase_XX,"_placebo_",i,"_XX"), get(paste0("N",increase_XX,"_placebo_",i,"_XX")))
+        assign(paste0("N",increase_XX,"_dw_placebo_",i,"_XX"), get(paste0("N",increase_XX,"_dw_placebo_",i,"_XX")))
 
         ## Creating N^1_{t,\ell,g}/N^0_{t,\ell,g} for the placebos: Variable counting number of groups \ell periods away from switch at t, and with same D_{g,1} and trends_nonparam.
         df <- joint_trends(df, c("time_XX", "d_sq_XX"), trends_nonparam)
@@ -1065,6 +1074,7 @@ did_multiplegt_dyn_core <- function(
           df[[paste0("delta_D_",i,"_temp_XX")]])] <- 0
 
         df[paste0("delta_D_",i,"_XX")] <- sum(df[[paste0("delta_D_",i,"_temp_XX")]], na.rm = TRUE)
+        df[paste0("delta_D_g_",i,"_XX")] <- df[paste0("delta_D_",i,"_temp_XX")] * (get(paste0("N",increase_XX,"_",i,"_XX"))/df$N_gt_XX)
         df <- df %>% dplyr::select(-.data[[paste0("delta_D_",i,"_temp_XX")]])
 
         ## Computing the numerator of U^+_{G,g}: summing up the U_{G,g,l}s, after weighting them

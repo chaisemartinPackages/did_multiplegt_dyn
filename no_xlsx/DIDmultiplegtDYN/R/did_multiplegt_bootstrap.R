@@ -55,6 +55,7 @@ did_multiplegt_bootstrap <- function(
   bootstrap, 
   base
 ){
+
     bresults_effects <- NULL
     bresults_ATE <- NULL
     bresults_placebo <- NULL
@@ -69,11 +70,13 @@ did_multiplegt_bootstrap <- function(
         bresults_placebo <- matrix(NA, nrow = bootstrap, ncol = n_placebo)
     }
 
-    bdf <- data.frame(cbind(df[[group]], 1:nrow(df)))
-    colnames(bdf) <- c(group, "id")
+    bs_group <- ifelse(!is.null(cluster), cluster, group)
+
+    bdf <- data.frame(cbind(df[[bs_group]], 1:nrow(df)))
+    colnames(bdf) <- c(bs_group, "id")
     xtset <- list()
-    for (l in levels(factor(bdf[[group]]))) {
-        xtset[[l]] <- subset(bdf, bdf[[group]] == l)[["id"]]
+    for (l in levels(factor(bdf[[bs_group]]))) {
+        xtset[[l]] <- subset(bdf, bdf[[bs_group]] == l)[["id"]]
     }
 
     for (j in 1:bootstrap) {
@@ -104,7 +107,7 @@ did_multiplegt_bootstrap <- function(
             }
         }
         res <- df_est <- NULL
-        progressBar(j)
+        progressBar(j, bootstrap)
     }
 
     ci_level <- ci_level / 100
