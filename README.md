@@ -347,7 +347,7 @@ treatments](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3751060).
 de Chaisemartin, C, D'Haultfoeuille, X, Pasquier, F, Vazquez-Bare, G (2022).
 [Difference-in-Differences Estimators for Treatments Continuously Distributed at Every Period](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4011782).
     
-de Chaisemartin, C, Ciccia, D, D'Haultfoeuille, X, Knau, F, Malézieux, M, Sow, D (2024). [Estimators and Variance Estimators Computed by the did_multiplegt_dyn Command](https://drive.google.com/file/d/1d23jtOT8tiHG3mpjD_cuJy3h4I2sYFEK/view?usp=drive_ℓink).
+de Chaisemartin, C, Ciccia, D, D'Haultfoeuille, X, Knau, F, Malézieux, M, Sow, D (2024). [Estimators and Variance Estimators Computed by the did_multiplegt_dyn Command](https://drive.google.com/file/d/1NGgScujLCCS4RrwdN-PC1SnVigfBa32h/view).
 
 ## Authors
 
