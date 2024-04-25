@@ -22,6 +22,15 @@ ssc install did_multiplegt_dyn, replace
 install.packages("DIDmultiplegtDYN")
 ```
 
+#### R (no_xlsx)
+
+Several users have reported issues in the installation of DIDmultiplegtDYN due to the fact that one of the dependency ('xlsx') relies on the 'rJava' library, which seems to be unstable on MacOS and several Linux distros. To circumvent this issue, we maintain a version of DIDmultiplegtDYN in the no_xlsx folder. This version preserves all the features of the DIDmultiplegtDYN distribution currently available on CRAN, except saving the output of the design and date_first_switch options in an Excel document. The user can still retrieve the options' output by assigning the DIDmultiplegtDYN object and browsing its content. 
+
+```s
+library(devtools)
+devtools::install_github("chaisemartinPackages/did_multiplegt_dyn/no_xlsx/DIDmultiplegtDYN")
+```
+
 ## Syntax
 
 ### Stata
@@ -338,7 +347,7 @@ treatments](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3751060).
 de Chaisemartin, C, D'Haultfoeuille, X, Pasquier, F, Vazquez-Bare, G (2022).
 [Difference-in-Differences Estimators for Treatments Continuously Distributed at Every Period](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4011782).
     
-de Chaisemartin, C, Ciccia, D, D'Haultfoeuille, X, Knau, F, Malézieux, M, Sow, D (2024). [Estimators and Variance Estimators Computed by the did_multiplegt_dyn Command](https://drive.google.com/file/d/1d23jtOT8tiHG3mpjD_cuJy3h4I2sYFEK/view?usp=drive_ℓink).
+de Chaisemartin, C, Ciccia, D, D'Haultfoeuille, X, Knau, F, Malézieux, M, Sow, D (2024). [Estimators and Variance Estimators Computed by the did_multiplegt_dyn Command](https://drive.google.com/file/d/1NGgScujLCCS4RrwdN-PC1SnVigfBa32h/view).
 
 ## Authors
 
