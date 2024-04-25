@@ -22,6 +22,15 @@ ssc install did_multiplegt_dyn, replace
 install.packages("DIDmultiplegtDYN")
 ```
 
+#### R (no_xlsx)
+
+Several users have reported issues in the installation of DIDmultiplegtDYN due to the fact that one of the dependency ('xlsx') relies on the 'rJava' library, which seems to be unstable on MacOS and several Linux distros. To circumvent this issue, we maintain a version of DIDmultiplegtDYN in the no_xlsx folder. This version preserves all the features of the DIDmultiplegtDYN distribution currently available on CRAN, except saving the output of the design and date_first_switch options in an Excel document. The user can still retrieve the options' output by assigning the DIDmultiplegtDYN object and browsing its content. 
+
+```s
+library(devtools)
+devtools::install_github("chaisemartinPackages/did_multiplegt_dyn/no_xlsx/DIDmultiplegtDYN")
+```
+
 ## Syntax
 
 ### Stata
