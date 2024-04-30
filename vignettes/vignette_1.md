@@ -2,7 +2,7 @@
 
 ## Part I: Data Generation 
 
-<div style="background-color: rgb(50, 50, 50);">
+<div style="background-color: rgb(0, 100, 50);">
 
 ```r
 set.seed(123)
