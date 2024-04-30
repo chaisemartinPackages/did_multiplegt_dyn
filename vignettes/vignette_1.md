@@ -3,6 +3,7 @@
 ## Part I: Data Generation 
 
 <div style="background-color: rgb(50, 50, 50);">
+
 ```r
 set.seed(123)
 TT <- 20; GG <- 5
