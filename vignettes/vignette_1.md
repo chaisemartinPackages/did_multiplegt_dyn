@@ -2,14 +2,14 @@
 
 ## Part I: Data Generation 
 
-<table class = "fixed">
+<table style = "table-layoutfixed;width:800px;">
   <tr>
     <th>Stata</th>
     <th>R</th>
   </tr>
   <tr>
-    <td style="word-wrap:break-word;width:400px;">
-    <pre><code>
+    <td>
+    <pre><code style ="width:500px;">
     clear
     set seed 0
     local TT = 20
@@ -20,8 +20,8 @@
     sort G T
     </pre></code>
     </td>
-    <td style="word-wrap:break-word;width:400px;">
-    <pre><code>
+    <td>
+    <pre><code style ="width:500px;">
       set.seed(0)
       TT <- 20; GG <- 5
       df <- data.frame(id = 1:(GG*TT))
