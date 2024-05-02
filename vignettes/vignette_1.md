@@ -15,7 +15,7 @@ Let's take the case of a researcher wanting to estimate the effect of the insedi
 | B     |2005 |0.45  |.           |0        |
 | B     |2007 |0.50  |.           |0        |
 
-The treatment variable can be defined as $1\lbrace\text{Year} \geq \text{LeadChangeYr}, \text{Party} = A\rbrace$. The effect of leadership change after $\ell$ years can be stimated by comparing the 2003-to-(2003+ $\ell$) change in the shares of treated party $A$ with the 2003-to-(2003+ $\ell$) change in the shares of control party $B$. Notice that the year of the first treatment change (2004) is not in the data. Hence, we cannot compute the first dynamic effect. The same holds true for 2006 and 2008. With the dataset above, it is possible to estimate only the second and fourth (2007) event-study effect. 
+The treatment variable can be defined as $1\lbrace\text{Year} \geq \text{LeadChangeYr}, \text{Party} = A\rbrace$. The effect of leadership change after $\ell$ years can be estimated by comparing the 2003-to-(2003+ $\ell$) change in the shares of treated party $A$ with the 2003-to-(2003+ $\ell$) change in the shares of control party $B$. Notice that the year of the first treatment change (2004) is not in the data. Hence, we cannot compute the first dynamic effect. The same holds true for 2006 and 2008. With the dataset above, it is possible to estimate only the second and fourth (2007) event-study effect. 
 
 Assume now that the dataset includes another party, $C$, that has experienced a leadership change in 2005:
 
@@ -31,7 +31,7 @@ Assume now that the dataset includes another party, $C$, that has experienced a 
 | C     |2005 |0.10  |2005        |1        |
 | C     |2007 |0.05  |2005        |1        |
 
-The treatment variable is now defined $1\lbrace\text{Year} \geq \text{LeadChangeYr}, \text{Party} \in (A, C)\rbrace$. As before, due to the missing outcome, we can only make 2003-to-2005 and 2003-to-2007 comparisons. However, we can leverage the fact that the event occured in different years for the two treated groups, even though they share the same treatment path in the dataset above at the election-year level. Specifically, the 2003 will correspond to the first dynamic effect for party $C$ (that has )
+The treatment variable is now defined $1\lbrace\text{Year} \geq \text{LeadChangeYr}, \text{Party} \in (A, C)\rbrace$. As before, due to the missing outcome, we can only make 2003-to-2005 and 2003-to-2007 comparisons. However, we can leverage the fact that the event occured in different years for the two treated groups, even though they share the same treatment path in the dataset above at the election-year level. Specifically, the 2003-to-2005 effect will correspond to the first dynamic effect for party $C$ and the 2003-to-2007 effect to the third dynamic effect.
 
 ## General Case with Stata and R code
 
