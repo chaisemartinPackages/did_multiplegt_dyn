@@ -2,22 +2,40 @@
 
 In several circumstances, data about certain outcomes can only be collected discountinously. For instance, electoral outcomes are recorded only during election years.This may often contrast with the data availability of the treatments. Instantaneous treatments can be staggerized and imputed to subsequent periods. Continuous treatments can be monitored at very disaggregated units of time. In general, it is possible that the treatment is observed more frequently than the outcome. As a result, outcomes will be missing on regular intervals. 
 
-Let's take the case of a researcher wanting to estimate the effect of the insediation of a new party leader on electoral performance. Party $A$ has changed its main candidate in 2004. The natural design for this application is an event-study at the year level. The treatment variable can be defined as $1\lbrace\text{Year} \geq 2004, \text{Party} = A\rbrace$. The effect of leadership change after $\ell$ years can be stimated by comparing the 2003-to-(2003+ $\ell$) change in the shares of treated party $A$ with the 2003-to-(2003+ $\ell$) change in the shares of control party $B$. Assume that we have biannual election data as follows:
+## A toy example
 
-| Party |Year |Share |Treatment|
-| ----: |----:|----: |----:    |
-| A     |2003 |0.40  |0        |
-| A     |2005 |0.35  |1        |
-| A     |2007 |0.25  |1        |
-| B     |2003 |0.40  |0        |
-| B     |2005 |0.45  |0        |
-| B     |2007 |0.50  |0        |
+Let's take the case of a researcher wanting to estimate the effect of the insediation of a new party leader on electoral performance. Party $A$ has changed its main candidate in 2004. The natural design for this application is an event-study at the year level. Assume that we have biannual election data as follows:
 
-Notice that the year of the first treatment change (2004) is not in the data. Hence, we cannot compute the first dynamic effect. The same holds true for 2006 and 2008. With the dataset above, it is possible to estimate only the second and fourth (2007) event-study effect. 
+| Party |Year |Share |LeadChangeYr|Treatment|
+| ----: |----:|----: |----:       |----:    |
+| A     |2003 |0.40  |2004        |0        |
+| A     |2005 |0.35  |2004        |1        |
+| A     |2007 |0.25  |2004        |1        |
+| B     |2003 |0.40  |.           |0        |
+| B     |2005 |0.45  |.           |0        |
+| B     |2007 |0.50  |.           |0        |
 
+The treatment variable can be defined as $1\lbrace\text{Year} \geq \text{LeadChangeYr}, \text{Party} = A\rbrace$. The effect of leadership change after $\ell$ years can be stimated by comparing the 2003-to-(2003+ $\ell$) change in the shares of treated party $A$ with the 2003-to-(2003+ $\ell$) change in the shares of control party $B$. Notice that the year of the first treatment change (2004) is not in the data. Hence, we cannot compute the first dynamic effect. The same holds true for 2006 and 2008. With the dataset above, it is possible to estimate only the second and fourth (2007) event-study effect. 
 
+Assume now that the dataset includes another party, $C$, that has experienced a leadership change in 2005:
 
-## Part I: Data Generation 
+| Party |Year |Share |LeadChangeYr|Treatment|
+| ----: |----:|----: |----:       |----:    |
+| A     |2003 |0.40  |2004        |0        |
+| A     |2005 |0.35  |2004        |1        |
+| A     |2007 |0.30  |2004        |1        |
+| B     |2003 |0.40  |.           |0        |
+| B     |2005 |0.45  |.           |0        |
+| B     |2007 |0.50  |.           |0        |
+| C     |2003 |0.15  |2005        |0        |
+| C     |2005 |0.10  |2005        |1        |
+| C     |2007 |0.05  |2005        |1        |
+
+The treatment variable is now defined $1\lbrace\text{Year} \geq \text{LeadChangeYr}, \text{Party} \in (A, C)\rbrace$. As before, due to the missing outcome, we can only make 2003-to-2005 and 2003-to-2007 comparisons. However, we can leverage the fact that the event occured in different years for the two treated groups, even though they share the same treatment path in the dataset above at the election-year level. Specifically, the 2003 will correspond to the first dynamic effect for party $C$ (that has )
+
+## General Case with Stata and R code
+
+### Part I: Data Generation 
 
 <table>
   <tr>
