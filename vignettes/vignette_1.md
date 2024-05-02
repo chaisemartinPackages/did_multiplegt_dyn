@@ -1,7 +1,3 @@
----
-output: html_document
----
-
 # Outcome observed less frequently than the treatment
 
 ## Part I: Data Generation 
