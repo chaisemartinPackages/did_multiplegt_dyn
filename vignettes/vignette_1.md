@@ -1,10 +1,16 @@
+---
+output: html_document
+---
+
 # Outcome observed less frequently than the treatment
 
 ## Part I: Data Generation 
 
-<div style="background-color: rgb(0, 100, 50);">
+## Example 1 {.tabset}
 
-```r
+### R
+
+```{.r}
 set.seed(123)
 TT <- 20; GG <- 5
 df <- data.frame(id = 1:(GG*TT))
@@ -13,4 +19,8 @@ df$T <- floor((df$id-1)/GG)
 df$id <- NULL
 df <- df[order(df$G, df$T), ]
 ```
-</div>
+
+### Stata
+```{.applescript}
+
+```
