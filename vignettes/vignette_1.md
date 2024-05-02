@@ -1,5 +1,14 @@
 # Outcome observed less frequently than the treatment
 
+In several circumstances, data about certain outcomes cannot be collected at every period where the related treatment is recorded. For instance, electoral outcomes are recorded only during election years. Let's take the case of a researcher wanting to estimate the dynamic effect of some variable or event on the electoral standing of some party or candidate using a DiD design. Treatments can be recorded more frequently than electoral data. As a result, even with yearly data, outcomes will be missing on regular intervals. 
+
+Let's take the case of two parties, $A$ and $B$. Assume that the share of each party at some biannual election is the following:
+| Party |Year |Share |
+| A     |2003 |0.50  |
+| A     |2005 |0.35  |
+| B     |2003 |0.40  |
+| B     |2005 |0.45  |
+
 ## Part I: Data Generation 
 
 <table>
@@ -9,7 +18,7 @@
   </tr>
   <tr>
     <td>
-    <pre style = "width:500px;height:200px"><code>
+    <pre><code>
     clear
     set seed 0
     local TT = 20
@@ -21,7 +30,7 @@
     </pre></code>
     </td>
     <td>
-    <pre style = "width:500px;;height:200px"><code>
+    <pre><code>
       set.seed(0)
       TT <- 20; GG <- 5
       df <- data.frame(id = 1:(GG*TT))
