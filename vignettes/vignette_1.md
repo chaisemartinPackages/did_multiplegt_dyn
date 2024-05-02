@@ -2,36 +2,35 @@
 
 ## Part I: Data Generation 
 
-<table>
-<tr>
-<th>Stata</th>
-<th>R</th>
-</tr>
-<tr>
-<td>
-
-```
-clear
-set seed 0
-local TT = 20
-local GG = 5
-set obs `=`TT' * `GG''
-gen G = mod(_n-1,`GG') + 1
-gen T = floor((_n-1)/`GG')
-sort G T
-```
-</td>
-<td>
-
-```
-  set.seed(0)
-  TT <- 20; GG <- 5
-  df <- data.frame(id = 1:(GG*TT))
-  df$G <- ((df$id-1) %% GG)+1
-  df$T <- floor((df$id-1)/GG)
-  df$id <- NULL
-  df <- df[order(df$G, df$T), ]
-```
-</td>
-</tr>
+<table class = "fixed">
+  <tr>
+    <th>Stata</th>
+    <th>R</th>
+  </tr>
+  <tr>
+    <td style="word-wrap:break-word;width:400px;">
+    <pre><code>
+    clear
+    set seed 0
+    local TT = 20
+    local GG = 5
+    set obs `=`TT' * `GG''
+    gen G = mod(_n-1,`GG') + 1
+    gen T = floor((_n-1)/`GG')
+    sort G T
+    </pre></code>
+    </td>
+    <td style="word-wrap:break-word;width:400px;">
+    <pre><code>
+      set.seed(0)
+      TT <- 20; GG <- 5
+      df <- data.frame(id = 1:(GG*TT))
+      df$G <- ((df$id-1) %% GG)+1
+      df$T <- floor((df$id-1)/GG)
+      df$id <- NULL
+      df <- df[order(df$G, df$T), ]
+    </pre></code>
+    </td>
+  </tr>
 </table>
+
