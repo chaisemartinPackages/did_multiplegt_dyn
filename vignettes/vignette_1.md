@@ -2,7 +2,7 @@
 
 ## Part I: Data Generation 
 
-<table style = "table-layoutfixed;width:800px;">
+<table>
   <tr>
     <th>Stata</th>
     <th>R</th>
