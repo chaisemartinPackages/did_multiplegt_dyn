@@ -2,7 +2,6 @@
 
 ## Part I: Data Generation 
 
-## Example 1
 <table>
 <tr>
 <th>Stata</th>
@@ -24,7 +23,7 @@ sort G T
 </td>
 <td>
 
-```r
+```
   set.seed(0)
   TT <- 20; GG <- 5
   df <- data.frame(id = 1:(GG*TT))
