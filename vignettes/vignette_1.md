@@ -9,7 +9,7 @@
   </tr>
   <tr>
     <td>
-    <pre><code style ="width:500px;">
+    <pre style = "width:500px;height:200px"><code>
     clear
     set seed 0
     local TT = 20
@@ -21,7 +21,7 @@
     </pre></code>
     </td>
     <td>
-    <pre><code style ="width:500px;">
+    <pre style = "width:500px;;height:200px"><code>
       set.seed(0)
       TT <- 20; GG <- 5
       df <- data.frame(id = 1:(GG*TT))
