@@ -46,6 +46,7 @@ Following this method, we can estimate up to 4 dynamic effects with our data. Fi
 
 <p>
   <img src="https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/assets/vignette_1_Stata_fig1.jpg" alt>
+  
   <em>Fig 1.</em>
 </p>
 
