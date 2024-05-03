@@ -35,11 +35,11 @@ gr export "assets/vignette_1_Stata_fig1.jpg", replace
 
 clear
 set seed 123
-local TT = 20
-local GG = 5
-set obs `=`TT' * `GG''
-gen G = mod(_n-1,`GG') + 1
-gen T = floor((_n-1)/`GG')
+scalar TT = 20
+scalar GG = 5
+set obs `= TT * GG'
+gen G = mod(_n-1,GG) + 1
+gen T = floor((_n-1)/GG)
 sort G T
 
 gen D = 0
@@ -60,7 +60,8 @@ bys G: egen never_treated = max(at_least_one_D_change)
 replace never_treated = 1 - never_treated
 bys G: egen F_g_temp = min(T * D_change) if D_change != 0
 bys G: egen F_g = mean(F_g_temp)
-replace F_g = `TT' + 1 if missing(F_g)
+sum T
+replace F_g = r(max) + 1 if missing(F_g)
 
 gen subsample = mod(F_g, 4) + 1
 gen model_subset = subsample * at_least_one_D_change
@@ -70,13 +71,12 @@ browse
 
 keep if !missing(Y)
 
-local effects = 2
-mat define res = J(4*`effects', 6, .)
-local r_effects ""
+scalar effects = 2
+mat define res = J(4 * effects, 6, .)
 forv j=1/4 {
     did_multiplegt_dyn Y G T at_least_one_D_change ///
-     if inlist(model_subset, 0, `j'), effects(`effects') graph_off
-    forv i = 1/`effects'{
+     if inlist(model_subset, 0, `j'), effects(`=effects') graph_off
+    forv i = 1/`=effects' {
         mat adj = mat_res_XX[`i',1..6]
         forv c =1/6 {
             mat res[`j'+(`i'-1)*4,`c'] = adj[1, `c']

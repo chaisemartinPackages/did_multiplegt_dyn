@@ -35,7 +35,7 @@ Assume now that the dataset includes another party, $C$, that has experienced a 
 | C     |2005 |0.10  |2005        |1        |
 | C     |2007 |0.05  |2005        |1        |
 
-The treatment variable is now defined $1\lbrace\text{Year} \geq \text{LeadChangeYr}, \text{Party} \in (A, C)\rbrace$. As before, we can make two actual-versus-status quo comparisons for party $C$ against $B$, i.e. 2004-to-2005 and 2004-to-2007. However, we do not observe the outcome in 2004. This is where the parallel trends assumption comes handy. Let $Y^i_t$ be the outcome of party $i$ in year $t$. For further clarity, we denote unobservable outcomes as $\mathring{Y}^i_t.$ The expectation of the 2004-to-2005 comparison can be decomposed as follows:
+The treatment variable is now defined $1\lbrace\text{Year} \geq \text{LeadChangeYr}, \text{Party} \in (A, C)\rbrace$. As before, we can make two actual-versus-status quo comparisons for party $C$ against $B$, i.e. 2004-to-2005 and 2004-to-2007. However, we do not observe the outcome in 2004. This is where the parallel trends assumption comes handy. Let $Y^i_t$ be the outcome of party $i \in \lbrace A,B,C\rbrace$ in year $t$. For further clarity, we denote unobservable outcomes as $\mathring{Y}^i_t.$ The expectation of the 2004-to-2005 comparison can be decomposed as follows:
 
 $$
 \begin{align*}
@@ -66,6 +66,7 @@ In the next section, we show step-by-step how to adapt the method described abov
 > + Group variable $\to$ "G"
 > + Time variable $\to$ "T"
 > + Treatment variable $\to$ "D"
+> Also, your group and time variables should be mapped to positive integers (in Stata, `egen group`, in R, `cur_group_id()`).
 >
 > Then, you can skip to [Part II](#part-ii-data-adjustment).
 
@@ -81,11 +82,11 @@ We use a DGP with five groups and 20 periods. We can observe the outcome every f
     <pre><code>
     clear
     set seed 123
-    local TT = 20
-    local GG = 5
-    set obs `=`TT' * `GG''
-    gen G = mod(_n-1,`GG') + 1
-    gen T = floor((_n-1)/`GG')
+    scalar TT = 20
+    scalar GG = 5
+    set obs `= TT * GG'
+    gen G = mod(_n-1,GG) + 1
+    gen T = floor((_n-1)/GG)
     sort G T
     gen D = 0
     forv j=2/5 {
@@ -142,7 +143,7 @@ We need to generate partition the $(g,t)$ cells in our data according to whether
     </td>
     <td>
     <pre><code>
-    df$D0 <- df$D[(df$G-1)*TT+1]
+    df$D0 <- df$D[(df$G-1)*length(levels(factor(df$T)))+1]
     df$D_change <- as.numeric(abs(df$D - df$D0) != 0)
     df <- df %>% group_by(.data$G) %>% 
       mutate(at_least_one_D_change = cumsum(.data$D_change)) %>% ungroup()
@@ -169,7 +170,8 @@ We generate a variable (F_g) equal to the earliest period when there has been a 
     replace never_treated = 1 - never_treated
     bys G: egen F_g_temp = min(T * D_change) if D_change != 0
     bys G: egen F_g = mean(F_g_temp)
-    replace F_g = `TT' + 1 if missing(F_g)
+    sum T
+    replace F_g = r(max) + 1 if missing(F_g)
     gen subsample = mod(F_g, 4) + 1
     gen model_subset = subsample * at_least_one_D_change
     </pre></code>
@@ -178,7 +180,7 @@ We generate a variable (F_g) equal to the earliest period when there has been a 
     <pre><code>
     df <- df %>% group_by(.data$G) %>% 
     mutate(never_treated = as.numeric(sum(.data$D_change, na.rm = TRUE) == 0)) %>%
-    mutate(F_g = ifelse(.data$never_treated == 1, TT+1, 
+    mutate(F_g = ifelse(.data$never_treated == 1, max(df$T, na.rm = TRUE) +1, 
       min(ifelse(.data$D_change == 0, NA, .data$T * .data$D_change), na.rm = TRUE))) %>% 
         ungroup()
     df$subsample <- (df$F_g %% 4) + 1
