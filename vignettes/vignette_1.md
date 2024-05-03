@@ -225,8 +225,7 @@ Once the dataset has only non missing outcomes, we can run `did_multiplegt_dyn` 
     mat define res = J(4*`effects', 6, .)
     local r_effects ""
     forv j=1/4 {
-        did_multiplegt_dyn Y G T at_least_one_D_change ///
-         if inlist(model_subset, 0, `j'), effects(`effects') graph_off
+        did_multiplegt_dyn Y G T at_least_one_D_change if inlist(model_subset, 0, `j'), effects(`effects') graph_off
         forv i = 1/`effects'{
             mat adj = mat_res_XX[`i',1..6]
             forv c =1/6 {
