@@ -43,7 +43,9 @@ $$
 where in the last equality we use the assumption that all the groups experience the same untreated outcome evolution (party $C$ gets treated only in 2005, while group $B$ remains always untreated). As a result, we can estimate any dynamic effect using the most recent non-missing untreated outcome as the status quo outcome as long as the corresponding actual outcome is non-missing. This allows us to use group $C$ to estimate all the other missing dynamic effects from the previous dataset. Specifically, the 2004-to-2005 effect will correspond to the first dynamic effect for party $C$ and the 2004-to-2007 effect to the third dynamic effect.
 
 Following this method, we can estimate up to 4 dynamic effects with our data. Figure 1 displays the combined event-study plot from our toy example.
-![vignette_1_Stata_fig1.jpg]()
+
+![vignette_1_Stata_fig1.jpg](https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/assets/vignette_1_Stata_fig1.jpg)
+*Fig 1.*
 
 
 
