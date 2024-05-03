@@ -114,13 +114,7 @@ We use a DGP with five groups and 20 periods. We can observe the outcome every f
 </table>
 
 ### Part II: Data Adjustment
-We need to generate partition the $(g,t)$ cells in our data according to whether and when they switch treatment. Keep in mind that, since the outcome is observable every 4 periods, we need to generate a variable with four values earmarking (g,t) cells such that:
-1. treatment has never changed since the start of the panel or treatment has changed (at least once) at t and the change occurred in a non-missing outcome year
-2. treatment has never changed since the start of the panel or treatment has changed (at least once) at t and the change occurred the year before a non-missing outcome year
-3. treatment has never changed since the start of the panel or treatment has changed (at least once) at t and the change occurred two years before a non-missing outcome year
-4. treatment has never changed since the start of the panel or treatment has changed (at least once) at t and the change occurred three years before a non-missing outcome year
-
-To generate this partition, we can do as follows:
+We need to generate partition the $(g,t)$ cells in our data according to whether and when they switch treatment. Keep in mind that, since the outcome is observable every 4 periods, we need to generate a variable at the (g,t) level through which we can earmark not-yet-switchers (here including never-switchers) and switchers in either a non-missing year or 1, 2, or 3 periods before a non-missing year. To generate this partition, we can move along the following steps.
 
 #### a) Identify whether treatment has changed within each group
 
