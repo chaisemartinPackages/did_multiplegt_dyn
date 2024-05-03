@@ -61,13 +61,13 @@ In the next section, we show step-by-step how to adapt the method described abov
 ### Part I: Data Generation 
 
 > [!IMPORTANT]
-> If you are following this tutorial with a dataset, make sure to rename your variables of interest as follows:
+> If you wish to use this tutorial on some data, make sure to rename your variables of interest as follows:
 > + Outcome variable $\to$ "Y"
 > + Group variable $\to$ "G"
 > + Time variable $\to$ "T"
 > + Treatment variable $\to$ "D"
-
-Then, you can skip to [Part II](#part-ii-data-adjustment).
+>
+> Then, you can skip to [Part II](#part-ii-data-adjustment).
 
 We use a DGP with five groups and 20 periods. We can observe the outcome every fourth period. It is enough to replace 4 with any other interval to generalize the code below. Group 1 never switches, while groups 2 to 5 switch at periods 4 to 7 (group id + 2). The untreated outcome is uniformly distributed and increases by a factor of 100 after the first treatment switch.
 
@@ -123,7 +123,7 @@ We use a DGP with five groups and 20 periods. We can observe the outcome every f
 </table>
 
 ### Part II: Data Adjustment
-We need to generate partition the $(g,t)$ cells in our data according to whether and when they switch treatment. Keep in mind that, since the outcome is observable every 4 periods, we need to generate a variable at the (g,t) level through which we can earmark not-yet-switchers (here including never-switchers) and switchers in either a non-missing year or 1, 2, or 3 periods before a non-missing year. To generate this partition, we can move along the following steps.
+We need to generate partition the $(g,t)$ cells in our data according to whether and when they switch treatment. Keep in mind that the outcome is observable every 4 periods. We need to generate a variable at the (g,t) level through which we can earmark not-yet-switchers (here including never-switchers) and switchers in either a non-missing year or 1, 2, or 3 periods before a non-missing year. We will use the values of this variable to run `did_multiplegt_dyn` on subsets of our data. To define this partition, we can move along the following steps.
 
 #### a) Identify whether treatment has changed within each group
 
@@ -203,6 +203,50 @@ We generate a variable (F_g) equal to the earliest period when there has been a 
     <td>
     <pre><code>
     df <- subset(df, !is.na(df$Y))
+    </pre></code>
+    </td>
+  </tr>
+</table>
+
+### Part III: Estimation
+Once the dataset has only non missing outcomes, we can run `did_multiplegt_dyn` a number of times equal to the interval in the original data between non-missing outcomes (4 in our case). For the $n$-th run, we keep a subset of our data correspoding to observations having model_subset equal to 0 (not-yet-switchers) or $n$ (switchers in the $n$-th partition). In this way, we are able to redefine the indices of the effects. For instance, in groups with $n = 1$ (i.e. switching on a year where the outcome can be observed), the first effect computed by `did_multiplegt_dyn` matches their first dynamic effect, but the second matches their fifth dynamic effect (consider the case of party $C$ in the [toy example](#a-toy-example) above).
+
+<table>
+  <tr>
+    <th>Stata</th>
+    <th>R</th>
+  </tr>
+  <tr>
+    <td>
+    <pre><code>
+    local effects = 2
+    mat define res = J(4*`effects', 6, .)
+    local r_effects ""
+    forv j=1/4 {
+        did_multiplegt_dyn Y G T at_least_one_D_change if inlist(model_subset, 0, `j'), effects(`effects') graph_off
+        forv i = 1/`effects'{
+            mat adj = mat_res_XX[`i',1..6]
+            forv c =1/6 {
+                mat res[`j'+(`i'-1)*4,`c'] = adj[1, `c']
+            }
+        }
+    }
+    mat li res
+    </pre></code>
+    </td>
+    <td>
+    <pre><code>
+    library(DIDmultiplegtDYN)
+    effects <- 2
+    table <- NULL
+    for (j in 1:4) {
+        temp <- did_multiplegt_dyn(subset(df, df$model_subset %in% c(0, j)), "Y", "G", "T", "at_least_one_D_change", graph_off = TRUE, effects = effects)
+        rownames(temp$results$Effects) <- sapply(1:temp$results$N_Effects, function(x) paste0("Effect_",  j + (x-1) * 4))
+        table <- rbind(table, temp$results$Effects)
+    }
+    rown <- unlist(strsplit(rownames(table), "_")) 
+    table <- cbind(table, as.numeric(rown[rown != "Effect"]))
+    print(table[order(table[,ncol(table)]),1:(ncol(table)-1)])
     </pre></code>
     </td>
   </tr>
