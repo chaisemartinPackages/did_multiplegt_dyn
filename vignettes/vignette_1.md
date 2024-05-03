@@ -2,6 +2,10 @@
 
 In several circumstances, data about certain outcomes can only be collected discountinously. For instance, electoral outcomes are recorded only during election years.This may often contrast with the data availability of the treatments. Instantaneous treatments can be staggerized and imputed to subsequent periods. Continuous treatments can be monitored at very disaggregated units of time. In general, it is possible that the treatment is observed more frequently than the outcome. As a result, outcomes will be missing on regular intervals. 
 
+#### Sections
++ [A toy example](#a-toy-example)
++ [General Case with Stata and R code](#general-case-with-stata-and-r-code)
+
 ## A toy example
 
 Let's take the case of a researcher wanting to estimate the effect of the insediation of a new party leader on electoral performance. Party $A$ has changed its main candidate in 2004. The natural design for this application is an event-study at the year level. Assume that we have biannual election data as follows:
@@ -42,7 +46,7 @@ E[(Y^C_{2005} - Y^C_{2003}) -  (Y^B_{2005}  - Y^B_{2003})] \\\
 \end{align*}
 $$
 
-where in the last equality we use the assumption that all the groups experience the same untreated outcome evolution (party $C$ gets treated only in 2005, while group $B$ remains always untreated). As a result, we can estimate any dynamic effect using the most recent non-missing untreated outcome as the status quo outcome as long as the corresponding actual outcome is non-missing. This allows us to use group $C$ to estimate all the other missing dynamic effects from the previous dataset. Specifically, the 2004-to-2005 effect will correspond to the first dynamic effect for party $C$ and the 2004-to-2007 effect to the third dynamic effect.
+where in the last equality we use the assumption that all the groups experience the same untreated outcome evolution (party $C$ gets treated in 2005, while group $B$ remains always untreated). As a result, we can estimate any dynamic effect using the most recent non-missing untreated outcome as the status quo outcome as long as the corresponding actual outcome is non-missing. This allows us to use group $C$ to estimate all the other missing dynamic effects from the previous dataset. Specifically, the 2004-to-2005 effect will correspond to the first dynamic effect for party $C$ and the 2004-to-2007 effect to the third dynamic effect.
 
 Following this method, we can estimate up to 4 dynamic effects with our data. The figure below shows the combined event-study plot from our toy example.
 
@@ -110,7 +114,7 @@ We use a DGP with five groups and 20 periods. We can observe the outcome every f
 </table>
 
 ### Part II: Data Adjustment
-We need to generate partition the $(g,t)$ cells in our data according to whether and when they switch treatment. Keep in mind that, since the outcome is observable every 4 periods, we need to generate four indicators which point to (g,t) cells such that:
+We need to generate partition the $(g,t)$ cells in our data according to whether and when they switch treatment. Keep in mind that, since the outcome is observable every 4 periods, we need to generate a variable with four values earmarking (g,t) cells such that:
 1. treatment has never changed since the start of the panel or treatment has changed (at least once) at t and the change occurred in a non-missing outcome year
 2. treatment has never changed since the start of the panel or treatment has changed (at least once) at t and the change occurred the year before a non-missing outcome year
 3. treatment has never changed since the start of the panel or treatment has changed (at least once) at t and the change occurred two years before a non-missing outcome year
@@ -148,8 +152,7 @@ As in the DGP description, the group 2 has at least one treatment change startin
 
 #### b) Identify when treatment changed for the first time
 
-We generate a variable (F_g) equal to the earliest period when there has been a treatment change. For never switchers we use the same convention as de Chaisemartin & D'Haultfoeuille (2024) and set F_g = number of periods + 1. Let's use the modulus operator to check whether the F_g falls on a 4th period or 1/2/3 years after (There are several ways to do this!). Each year where the outcome is not missing takes value 1. Since the outcome is non-missing every 4 years, we just check whether the period is divisible by 4. If yes, the modulus operator by 4 yields 0. If not, it yield the remainder from dividing by 4. This remainder is always between 1 and 3. So, it is enough to increase the remainder by 1 to obtain 4 distinct values such that the corresponding observations with non missing outcome (every fourth period) have value 1, obs after them value 2 and so on.
-Lastly, we multiply the subset variable by the indicator for at least one change in D to obtain the partition variable.
+We generate a variable (F_g) equal to the earliest period when there has been a treatment change. For never switchers we use the same convention as de Chaisemartin & D'Haultfoeuille (2024) and set F_g = number of periods + 1. Let's use the modulus operator to check whether the F_g falls on a 4th period or 1/2/3 years after. Each year where the outcome is not missing takes value 1. Since the outcome is non-missing every 4 years, we just check whether the period is divisible by 4. If yes, the modulus operator by 4 yields 0. If not, it yield the remainder from dividing by 4. This remainder is always between 1 and 3. So, it is enough to increase the remainder by 1 to obtain 4 distinct values such that the corresponding observations with non missing outcome (every fourth period) have value 1, observations after them take value 2 and so on. Lastly, we multiply the subset variable by the indicator for at least one change in D to obtain the partition variable.
 
 <table>
   <tr>
