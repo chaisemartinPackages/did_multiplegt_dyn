@@ -72,8 +72,11 @@ library(DIDmultiplegtDYN)
 effects <- 2
 table <- NULL
 for (j in 1:4) {
-    temp <- did_multiplegt_dyn(subset(df, df$model_subset %in% c(0, j)), "Y", "G", "T", "at_least_one_D_change", graph_off = TRUE, effects = effects)
-    rownames(temp$results$Effects) <- sapply(1:temp$results$N_Effects, function(x) paste0("Effect_",  j + (x-1) * 4))
+    temp <- did_multiplegt_dyn(
+        subset(df, df$model_subset %in% c(0, j)), "Y", "G", "T", "at_least_one_D_change", 
+        graph_off = TRUE, effects = effects)
+    rownames(temp$results$Effects) <- 
+        sapply(1:temp$results$N_Effects, function(x) paste0("Effect_",  j + (x-1) * 4))
     table <- rbind(table, temp$results$Effects)
 }
 rown <- unlist(strsplit(rownames(table), "_")) 

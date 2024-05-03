@@ -223,7 +223,8 @@ Once the dataset has only non missing outcomes, we can run `did_multiplegt_dyn` 
     mat define res = J(4*`effects', 6, .)
     local r_effects ""
     forv j=1/4 {
-        did_multiplegt_dyn Y G T at_least_one_D_change if inlist(model_subset, 0, `j'), effects(`effects') graph_off
+        did_multiplegt_dyn Y G T at_least_one_D_change ///
+         if inlist(model_subset, 0, `j'), effects(`effects') graph_off
         forv i = 1/`effects'{
             mat adj = mat_res_XX[`i',1..6]
             forv c =1/6 {
@@ -240,8 +241,11 @@ Once the dataset has only non missing outcomes, we can run `did_multiplegt_dyn` 
     effects <- 2
     table <- NULL
     for (j in 1:4) {
-        temp <- did_multiplegt_dyn(subset(df, df$model_subset %in% c(0, j)), "Y", "G", "T", "at_least_one_D_change", graph_off = TRUE, effects = effects)
-        rownames(temp$results$Effects) <- sapply(1:temp$results$N_Effects, function(x) paste0("Effect_",  j + (x-1) * 4))
+        temp <- did_multiplegt_dyn(
+          subset(df, df$model_subset %in% c(0, j)), "Y", "G", "T", "at_least_one_D_change", 
+          graph_off = TRUE, effects = effects)
+        rownames(temp$results$Effects) <- 
+          sapply(1:temp$results$N_Effects, function(x) paste0("Effect_",  j + (x-1) * 4))
         table <- rbind(table, temp$results$Effects)
     }
     rown <- unlist(strsplit(rownames(table), "_")) 
