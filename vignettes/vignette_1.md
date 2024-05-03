@@ -1,6 +1,6 @@
 # Outcome observed less frequently than the treatment
 
-In several circumstances, data about certain outcomes can only be collected discountinously. For instance, electoral outcomes are recorded only during election years.This may often contrast with the data availability of the treatments. Instantaneous treatments can be staggerized and imputed to subsequent periods. Continuous treatments can be monitored at very disaggregated units of time. In general, it is possible that the treatment is observed more frequently than the outcome. As a result, outcomes will be missing on regular intervals. 
+In several circumstances, data about certain outcomes can only be collected discountinously. For instance, electoral outcomes are recorded only during election years. This may often contrast with the data availability of the treatments. Instantaneous treatments can be staggerized and imputed to subsequent periods. Continuous treatments can be monitored at very disaggregated units of time. In general, it is possible that the treatment is observed more frequently than the outcome. In this tutorial, we show how to use of the estimator from de Chaisemartin & D'Haultfoeuille (2024) with outcomes periodically missing. 
 
 #### Sections
 + [A toy example](#a-toy-example)
