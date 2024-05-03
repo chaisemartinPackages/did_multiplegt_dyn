@@ -19,7 +19,7 @@ Let's take the case of a researcher wanting to estimate the effect of the insedi
 | B     |2005 |0.45  |.           |0        |
 | B     |2007 |0.50  |.           |0        |
 
-The treatment variable can be defined as $1\lbrace\text{Year} \geq \text{LeadChangeYr}, \text{Party} = A\rbrace$. The effect of leadership change after $\ell$ years can be estimated by comparing the 2003-to-(2003+ $\ell$) change in the shares of treated party $A$ with the 2003-to-(2003+ $\ell$) change in the shares of control party $B$. Notice that the year of the first treatment change (2004) is not in the data. Hence, we cannot compute the first dynamic effect. The same holds true for 2006 and 2008. With the dataset above, it is possible to estimate only the second and fourth (2007) event-study effect. 
+The treatment variable can be defined as $1\lbrace\text{Year} \geq \text{LeadChangeYr}, \text{Party} = A\rbrace$. The effect of leadership change after $\ell$ years can be estimated by comparing the 2003-to-(2003+ $\ell$) change in the shares of treated party $A$ with the 2003-to-(2003+ $\ell$) change in the shares of control party $B.$ Notice that the year of the first treatment change (2004) is not in the data. Hence, we cannot compute the first dynamic effect. The same holds true for 2006 and 2008. With the dataset above, it is possible to estimate only the second and fourth (2007) event-study effect. 
 
 Assume now that the dataset includes another party, $C$, that has experienced a leadership change in 2005:
 
@@ -35,7 +35,7 @@ Assume now that the dataset includes another party, $C$, that has experienced a 
 | C     |2005 |0.10  |2005        |1        |
 | C     |2007 |0.05  |2005        |1        |
 
-The treatment variable is now defined $1\lbrace\text{Year} \geq \text{LeadChangeYr}, \text{Party} \in (A, C)\rbrace$. As before, we can make two actual-versus-status quo comparisons for party $C$ against $B$, i.e. 2004-to-2005 and 2004-to-2007. However, we do not observe the outcome in 2004. This is where the parallel trends assumption comes handy. Let $Y^i_t$ be the outcome of party $i$ in year $t$. For further clarity, we denote unobservable outcomes as $\mathring{Y}^i_t$. The expectation of the 2004-to-2005 comparison can be decomposed as follows:
+The treatment variable is now defined $1\lbrace\text{Year} \geq \text{LeadChangeYr}, \text{Party} \in (A, C)\rbrace$. As before, we can make two actual-versus-status quo comparisons for party $C$ against $B$, i.e. 2004-to-2005 and 2004-to-2007. However, we do not observe the outcome in 2004. This is where the parallel trends assumption comes handy. Let $Y^i_t$ be the outcome of party $i$ in year $t$. For further clarity, we denote unobservable outcomes as $\mathring{Y}^i_t.$ The expectation of the 2004-to-2005 comparison can be decomposed as follows:
 
 $$
 \begin{align*}
@@ -46,7 +46,7 @@ E[(Y^C_{2005} - Y^C_{2003}) -  (Y^B_{2005}  - Y^B_{2003})] \\\
 \end{align*}
 $$
 
-where in the last equality we use the assumption that all the groups experience the same untreated outcome evolution (party $C$ gets treated in 2005, while group $B$ remains always untreated). As a result, we can estimate any dynamic effect using the most recent non-missing untreated outcome as the status quo outcome as long as the corresponding actual outcome is non-missing. This allows us to use group $C$ to estimate all the other missing dynamic effects from the previous dataset. Specifically, the 2004-to-2005 effect will correspond to the first dynamic effect for party $C$ and the 2004-to-2007 effect to the third dynamic effect.
+where in the last equality we use the assumption that all the groups experience the same untreated outcome evolution (party $C$ gets treated in 2005, while party $B$ remains always untreated). As a result, we can estimate any dynamic effect using the most recent non-missing untreated outcome as the status quo outcome as long as the corresponding actual outcome is non-missing. This allows us to use group $C$ to estimate all the other missing dynamic effects from the previous dataset. Specifically, the 2004-to-2005 effect will correspond to the first dynamic effect for party $C$ and the 2004-to-2007 effect to the third dynamic effect.
 
 Following this method, we can estimate up to 4 dynamic effects with our data. The figure below shows the combined event-study plot from our toy example.
 
