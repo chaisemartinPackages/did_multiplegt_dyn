@@ -45,7 +45,7 @@ where in the last equality we use the assumption that all the groups experience 
 Following this method, we can estimate up to 4 dynamic effects with our data. Figure 1 displays the combined event-study plot from our toy example.
 
 <p>
-  <img src="/assets/vignette_1_Stata_fig1.jpg" alt>
+  <img src="https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/assets/vignette_1_Stata_fig1.jpg" alt>
   <figcaption>Fig 1.</figcaption>
 </p>
 
