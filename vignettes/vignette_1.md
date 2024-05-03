@@ -44,10 +44,10 @@ where in the last equality we use the assumption that all the groups experience 
 
 Following this method, we can estimate up to 4 dynamic effects with our data. Figure 1 displays the combined event-study plot from our toy example.
 
-![vignette_1_Stata_fig1.jpg](https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/assets/vignette_1_Stata_fig1.jpg)
-*Fig 1.*
-
-
+<p>
+  <img src="https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/assets/vignette_1_Stata_fig1.jpg" alt>
+  <em>Fig 1.</em>
+</p>
 
 ## General Case with Stata and R code
 
