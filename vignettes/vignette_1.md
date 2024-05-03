@@ -80,44 +80,44 @@ We use a DGP with five groups and 20 periods. We can observe the outcome every f
   <tr>
     <td>
     <pre><code>
-    clear
-    set seed 123
-    scalar TT = 20
-    scalar GG = 5
-    set obs `= TT * GG'
-    gen G = mod(_n-1,GG) + 1
-    gen T = floor((_n-1)/GG)
-    sort G T
-    gen D = 0
-    forv j=2/5 {
-        replace D = 1 if G == `j' & T == `j' + 2
-    }
-    bys G: gen D_stag = sum(D)
-    gen Y = uniform() * (1 + 100*D_stag) if mod(T,4) == 0
-    drop D_stag
-    browse
+clear
+set seed 123
+scalar TT = 20
+scalar GG = 5
+set obs `= TT * GG'
+gen G = mod(_n-1,GG) + 1
+gen T = floor((_n-1)/GG)
+sort G T
+gen D = 0
+forv j=2/5 {
+    replace D = 1 if G == `j' & T == `j' + 2
+}
+bys G: gen D_stag = sum(D)
+gen Y = uniform() * (1 + 100*D_stag) if mod(T,4) == 0
+drop D_stag
+browse
     </pre></code>
     </td>
     <td>
     <pre><code>
-    library(dplyr)
-    set.seed(123)
-    TT <- 20; GG <- 5
-    df <- data.frame(id = 1:(GG*TT))
-    df$G <- ((df$id-1) %% GG)+1
-    df$T <- floor((df$id-1)/GG)
-    df$id <- NULL
-    df <- df[order(df$G, df$T), ]
-    df$D <- 0
-    for (v in c(2,3,4,5)) {
-        df$D <- ifelse(df$G == v & df$T == v+2, 1, df$D)
-    }
-    df <- df %>% group_by(.data$G) %>% 
-      mutate(D_stag = cumsum(.data$D)) %>% ungroup()
-    df$Y <- ifelse(df$T %% 4 == 0, 
-      runif(n = nrow(df)) * (1 + 100*df$D_stag), NA)
-    df$D_stag <- NULL
-    View(df)
+library(dplyr)
+set.seed(123)
+TT <- 20; GG <- 5
+df <- data.frame(id = 1:(GG*TT))
+df$G <- ((df$id-1) %% GG)+1
+df$T <- floor((df$id-1)/GG)
+df$id <- NULL
+df <- df[order(df$G, df$T), ]
+df$D <- 0
+for (v in c(2,3,4,5)) {
+    df$D <- ifelse(df$G == v & df$T == v+2, 1, df$D)
+}
+df <- df %>% group_by(.data$G) %>% 
+  mutate(D_stag = cumsum(.data$D)) %>% ungroup()
+df$Y <- ifelse(df$T %% 4 == 0, 
+  runif(n = nrow(df)) * (1 + 100*df$D_stag), NA)
+df$D_stag <- NULL
+View(df)
     </pre></code>
     </td>
   </tr>
@@ -136,17 +136,17 @@ We need to generate partition the $(g,t)$ cells in our data according to whether
   <tr>
     <td>
     <pre><code>
-    bys G: gen D0 = D[1]
-    gen D_change = abs(D - D0) != 0
-    bys G: gen at_least_one_D_change = sum(D_change)
+bys G: gen D0 = D[1]
+gen D_change = abs(D - D0) != 0
+bys G: gen at_least_one_D_change = sum(D_change)
     </pre></code>
     </td>
     <td>
     <pre><code>
-    df$D0 <- df$D[(df$G-1)*length(levels(factor(df$T)))+1]
-    df$D_change <- as.numeric(abs(df$D - df$D0) != 0)
-    df <- df %>% group_by(.data$G) %>% 
-      mutate(at_least_one_D_change = cumsum(.data$D_change)) %>% ungroup()
+df$D0 <- df$D[(df$G-1)*length(levels(factor(df$T)))+1]
+df$D_change <- as.numeric(abs(df$D - df$D0) != 0)
+df <- df %>% group_by(.data$G) %>% 
+  mutate(at_least_one_D_change = cumsum(.data$D_change)) %>% ungroup()
     </pre></code>
     </td>
   </tr>
@@ -166,25 +166,25 @@ We generate a variable (F_g) equal to the earliest period when there has been a 
   <tr>
     <td>
     <pre><code>
-    bys G: egen never_treated = max(at_least_one_D_change)
-    replace never_treated = 1 - never_treated
-    bys G: egen F_g_temp = min(T * D_change) if D_change != 0
-    bys G: egen F_g = mean(F_g_temp)
-    sum T
-    replace F_g = r(max) + 1 if missing(F_g)
-    gen subsample = mod(F_g, 4) + 1
-    gen model_subset = subsample * at_least_one_D_change
+bys G: egen never_treated = max(at_least_one_D_change)
+replace never_treated = 1 - never_treated
+bys G: egen F_g_temp = min(T * D_change) if D_change != 0
+bys G: egen F_g = mean(F_g_temp)
+sum T
+replace F_g = r(max) + 1 if missing(F_g)
+gen subsample = mod(F_g, 4) + 1
+gen model_subset = subsample * at_least_one_D_change
     </pre></code>
     </td>
     <td>
     <pre><code>
-    df <- df %>% group_by(.data$G) %>% 
-    mutate(never_treated = as.numeric(sum(.data$D_change, na.rm = TRUE) == 0)) %>%
-    mutate(F_g = ifelse(.data$never_treated == 1, max(df$T, na.rm = TRUE) +1, 
-      min(ifelse(.data$D_change == 0, NA, .data$T * .data$D_change), na.rm = TRUE))) %>% 
-        ungroup()
-    df$subsample <- (df$F_g %% 4) + 1
-    df$model_subset <- df$subsample * df$at_least_one_D_change
+df <- df %>% group_by(.data$G) %>% 
+mutate(never_treated = as.numeric(sum(.data$D_change, na.rm = TRUE) == 0)) %>%
+mutate(F_g = ifelse(.data$never_treated == 1, max(df$T, na.rm = TRUE) +1, 
+  min(ifelse(.data$D_change == 0, NA, .data$T * .data$D_change), na.rm = TRUE))) %>% 
+    ungroup()
+df$subsample <- (df$F_g %% 4) + 1
+df$model_subset <- df$subsample * df$at_least_one_D_change
     </pre></code>
     </td>
   </tr>
@@ -199,12 +199,12 @@ We generate a variable (F_g) equal to the earliest period when there has been a 
   <tr>
     <td>
     <pre><code>
-    keep if !missing(Y)
+keep if !missing(Y)
     </pre></code>
     </td>
     <td>
     <pre><code>
-    df <- subset(df, !is.na(df$Y))
+df <- subset(df, !is.na(df$Y))
     </pre></code>
     </td>
   </tr>
@@ -221,37 +221,37 @@ Once the dataset has only non missing outcomes, we can run `did_multiplegt_dyn` 
   <tr>
     <td>
     <pre><code>
-    local effects = 2
-    mat define res = J(4*`effects', 6, .)
-    local r_effects ""
-    forv j=1/4 {
-        did_multiplegt_dyn Y G T at_least_one_D_change if inlist(model_subset, 0, `j'), effects(`effects') graph_off
-        forv i = 1/`effects'{
-            mat adj = mat_res_XX[`i',1..6]
-            forv c =1/6 {
-                mat res[`j'+(`i'-1)*4,`c'] = adj[1, `c']
-            }
+local effects = 2
+mat define res = J(4*`effects', 6, .)
+local r_effects ""
+forv j=1/4 {
+    did_multiplegt_dyn Y G T at_least_one_D_change if inlist(model_subset, 0, `j'), effects(`effects') graph_off
+    forv i = 1/`effects'{
+        mat adj = mat_res_XX[`i',1..6]
+        forv c =1/6 {
+            mat res[`j'+(`i'-1)*4,`c'] = adj[1, `c']
         }
     }
-    mat li res
+}
+mat li res
     </pre></code>
     </td>
     <td>
     <pre><code>
-    library(DIDmultiplegtDYN)
-    effects <- 2
-    table <- NULL
-    for (j in 1:4) {
-        temp <- did_multiplegt_dyn(
-          subset(df, df$model_subset %in% c(0, j)), "Y", "G", "T", "at_least_one_D_change", 
-          graph_off = TRUE, effects = effects)
-        rownames(temp$results$Effects) <- 
-          sapply(1:temp$results$N_Effects, function(x) paste0("Effect_",  j + (x-1) * 4))
-        table <- rbind(table, temp$results$Effects)
-    }
-    rown <- unlist(strsplit(rownames(table), "_")) 
-    table <- cbind(table, as.numeric(rown[rown != "Effect"]))
-    print(table[order(table[,ncol(table)]),1:(ncol(table)-1)])
+library(DIDmultiplegtDYN)
+effects <- 2
+table <- NULL
+for (j in 1:4) {
+    temp <- did_multiplegt_dyn(
+      subset(df, df$model_subset %in% c(0, j)), "Y", "G", "T", "at_least_one_D_change", 
+      graph_off = TRUE, effects = effects)
+    rownames(temp$results$Effects) <- 
+      sapply(1:temp$results$N_Effects, function(x) paste0("Effect_",  j + (x-1) * 4))
+    table <- rbind(table, temp$results$Effects)
+}
+rown <- unlist(strsplit(rownames(table), "_")) 
+table <- cbind(table, as.numeric(rown[rown != "Effect"]))
+print(table[order(table[,ncol(table)]),1:(ncol(table)-1)])
     </pre></code>
     </td>
   </tr>
