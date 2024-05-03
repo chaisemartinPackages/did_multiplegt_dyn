@@ -35,10 +35,12 @@ The treatment variable is now defined $1\lbrace\text{Year} \geq \text{LeadChange
 
 $$
 \begin{align*}
+
 & E[(Y^C_{2005} - \mathring{Y}^C_{2004}) - (Y^B_{2005} - \mathring{Y}^B_{2004})] \\
 = & E[(Y^C_{2005} - Y^C_{2003} +  Y^C_{2003} - \mathring{Y}^C_{2004}) - (Y^B_{2005}  - Y^B_{2003} +  Y^B_{2003} - \mathring{Y}^B_{2004})]  \\
 = & E[(Y^C_{2005} - Y^C_{2003}) -  (Y^B_{2005}  - Y^B_{2003})] - E[(\mathring{Y}^C_{2004} - Y^C_{2003})  - (\mathring{Y}^B_{2004} - Y^B_{2003})] \\
 = & E[(Y^C_{2005} - Y^C_{2003}) -  (Y^B_{2005}  - Y^B_{2003})] \\
+
 \end{align*}
 $$
 where in the last equality we use the assumption that all the groups experience the same untreated outcome evolution (party $C$ gets treated only in 2005, while group $B$ remains always untreated). As a result, we can estimate any dynamic effect using the most recent non-missing untreated outcome as the status quo outcome as long as the corresponding actual outcome is non-missing. This allows us to use group $C$ to estimate all the other missing dynamic effects from the previous dataset. Specifically, the 2004-to-2005 effect will correspond to the first dynamic effect for party $C$ and the 2004-to-2007 effect to the third dynamic effect.
