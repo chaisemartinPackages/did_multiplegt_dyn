@@ -60,6 +60,15 @@ In the next section, we show step-by-step how to adapt the method described abov
 
 ### Part I: Data Generation 
 
+> [!IMPORTANT]
+> If you are following this tutorial with a dataset, make sure to rename your variables of interest as follows:
+> + Outcome variable $\to$ "Y"
+> + Group variable $\to$ "G"
+> + Time variable $\to$ "T"
+> + Treatment variable $\to$ "D"
+
+Then, you can skip to [Part II](#part-ii-data-adjustment).
+
 We use a DGP with five groups and 20 periods. We can observe the outcome every fourth period. It is enough to replace 4 with any other interval to generalize the code below. Group 1 never switches, while groups 2 to 5 switch at periods 4 to 7 (group id + 2). The untreated outcome is uniformly distributed and increases by a factor of 100 after the first treatment switch.
 
 <table>
