@@ -147,7 +147,7 @@ df <- df %>% group_by(.data$G) %>%
 
 #### b) Identify when treatment changed for the first time
 
-We generate a variable F_g equal to the period when group g's treatment changes for the first time. The modulus of F_g divided by 4 is equal to zero is g's treatment changed for the first time in a period when the outcome is non missing, it is equal to 1 (resp. 2, 3) if g's treatmet changed for the first time 3 (resp. 2, 1) periods before a period when the outcome is non missing. We use this modulus to create the aforementioned partition variable. 
+We generate a variable F_g equal to the period when group g's treatment changes for the first time. The modulus of F_g divided by 4 is equal to zero is g's treatment changed for the first time in a period when the outcome is non missing, it is equal to 1 (resp. 2, 3) if g's treatment changed for the first time 3 (resp. 2, 1) periods before a period when the outcome is non missing. We use this modulus to create the aforementioned partition variable. 
 
 <table>
   <tr>
