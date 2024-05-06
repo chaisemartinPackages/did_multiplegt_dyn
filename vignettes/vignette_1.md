@@ -116,6 +116,7 @@ We need to generate a variable through which we partition our population into 5 
 + C) Groups whose treatment changes for the first time one period before a period where the outcome is non-missing
 + D) Groups whose treatment changes for the first time two periods before a period where the outcome is non-missing
 + E) Groups whose treatment changes for the first time three periods before a period where the outcome is non-missing
++ 
 Then, we will use the values of this variable to run `did_multiplegt_dyn` on subsamples A) and B), then on subsamples A) and C), etc.
 
 #### a) Identify whether treatment has changed within each group
