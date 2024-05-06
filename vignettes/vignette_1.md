@@ -53,7 +53,8 @@ In the next section, we show how to use `did_multiplegt_dyn` to produce an event
 > + Group variable $\to$ "G"
 > + Time variable $\to$ "T"
 > + Treatment variable $\to$ "D"
-> Also, your group and time variables should be mapped to positive integers (in Stata, `egen group`, in R, `cur_group_id()`).
+>   
+> Also, your group and time variables should be positive integers (in Stata, `egen group`, in R, `cur_group_id()`).
 
 We use a DGP with five groups and 20 periods. We can observe the outcome every fourth period. If the outcome is observed at a different frequency in your application, you just need to replace 4 by the corresponding integer in the code below. Group 1's treatment never switches, while groups 2 to 5 switch at periods 4 to 7 (group id + 2). The untreated outcome is uniformly distributed and increases by 100 after the first treatment switch.
 
