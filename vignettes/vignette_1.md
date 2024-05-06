@@ -110,7 +110,13 @@ View(df)
 </table>
 
 ### Part II: Data Adjustment
-We need to partition the groups in our data according to whether and when they switch treatment. Keep in mind that the outcome is observable every 4 periods. We need to generate a variable at the (g,t) level through which we can earmark not-yet-switchers and switchers in either a non-missing period or 1, 2, or 3 periods after a non-missing period. We will use the values of this variable to run `did_multiplegt_dyn` on subsets of our data. To define this partition, we can move along the following steps.
+We need to generate a variable through which we partition our population into 5 subsamples: 
++ A) Groups whose treatment never changes (never switchers)
++ B) Groups whose treatment changes for the first time at a time period where the outcome is non-missing
++ C) Groups whose treatment changes for the first time one period before a period where the outcome is non-missing
++ D) Groups whose treatment changes for the first time two periods before a period where the outcome is non-missing
++ E) Groups whose treatment changes for the first time three periods before a period where the outcome is non-missing
+Then, we will use the values of this variable to run `did_multiplegt_dyn` on subsamples A) and B), then on subsamples A) and C), etc.
 
 #### a) Identify whether treatment has changed within each group
 
@@ -140,7 +146,7 @@ df <- df %>% group_by(.data$G) %>%
 
 #### b) Identify when treatment changed for the first time
 
-We generate a variable (F_g) equal to the period when group g's treatment changes for the first time. The modulus of F_g divided by 4 is equal to zero is g's treatment changed for the first time in a period when the outcome is non missing, it is equal to 1 (resp. to 2, to 3) if g's treatmet changed for the first time 1 (resp. to 2, to 3) period after a period when the outcome is non missing. We create a variable equal to that modulus, and to 4 for groups whose treatment never changes. 
+We generate a variable F_g equal to the period when group g's treatment changes for the first time. The modulus of F_g divided by 4 is equal to zero is g's treatment changed for the first time in a period when the outcome is non missing, it is equal to 1 (resp. 2, 3) if g's treatmet changed for the first time 3 (resp. 2, 1) periods before a period when the outcome is non missing. We use this modulus to create the aforementioned partition variable. 
 
 <table>
   <tr>
@@ -155,9 +161,10 @@ replace never_treated = 1 - never_treated
 bys G: egen F_g_temp = min(T * D_change) if D_change != 0
 bys G: egen F_g = mean(F_g_temp)
 sum T
-replace F_g = r(max) + 1 if missing(F_g)
-gen subsample = mod(F_g, 4) + 1
-gen model_subset = subsample * at_least_one_D_change
+gen subsample_temp = mod(F_g, 4)
+gen subsample=4-subsample_temp
+replace subsample=subsample+1
+replace subsample=0 if never_treated ==1 
     </pre></code>
     </td>
     <td>
@@ -195,7 +202,10 @@ df <- subset(df, !is.na(df$Y))
 </table>
 
 ### Part III: Estimation
-Once the dataset has only non missing outcomes, we can run `did_multiplegt_dyn` a number of times equal to the interval in the original data between non-missing outcomes (4 in our case). For the $n$-th run, we keep a subset of our data correspoding to observations having model_subset equal to 0 (not-yet-switchers) or $n$ (switchers in the $n$-th partition). In this way, we are able to redefine the indices of the effects. For instance, in groups with $n = 1$ (i.e. switching on a period where the outcome can be observed), the first effect computed by `did_multiplegt_dyn` matches their first dynamic effect, but the second matches their fifth dynamic effect (consider the case of party $C$ in the [toy example](#a-toy-example) above).
+Once the dataset has only non missing outcomes, we run `did_multiplegt_dyn` 4 times: 
++ First, we keep groups in subsamples A) and B) (subsample=0 or subsample=1). In that subsample, the first event-study effect is an effect of one period of exposure to treatment, the second event-study effect is an effect of five periods of exposure, etc.
++ Then, we keep groups in subsamples A) and C) (subsample=0 or subsample=2). In that subsample, the first event-study effect is an effect of two periods of exposure to treatment, the second event-study effect is an effect of six periods of exposure, etc.
++ etc. 
 
 <table>
   <tr>
