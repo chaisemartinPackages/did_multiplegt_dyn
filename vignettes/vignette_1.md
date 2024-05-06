@@ -41,7 +41,7 @@ In this example, naively applying the event-study estimators from de Chaisemarti
   <img src="https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/assets/vignette_1_Stata_fig1.jpg" alt>
 </p>
 
-In the next section, we show step-by-step how to use `did_multiplegt_dyn` to produce an event-study graph without averaging effects of different exposure lengths whenever the outcome is observed less frequently than the treatment. For each step, we also report the correspondent block of the full length [Stata](https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/src/vignette_1_Stata.do) and [R](https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/src/vignette_1_R.R) code.
+In the next section, we show how to use `did_multiplegt_dyn` to produce an event-study graph without averaging effects of different exposure lengths whenever the outcome is observed less frequently than the treatment. For each step, we also report the correspondent block of the full length [Stata](https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/src/vignette_1_Stata.do) and [R](https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/src/vignette_1_R.R) code.
 
 ## General Case with Stata and R code
 
