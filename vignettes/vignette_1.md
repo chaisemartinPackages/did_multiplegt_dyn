@@ -19,7 +19,7 @@ Let's take the case of a researcher wanting to estimate the effect of the induct
 | B     |2005 |0.45  |.           |0        |
 | B     |2007 |0.50  |.           |0        |
 
-The treatment variable can be defined as $1\lbrace\text{period} \geq \text{LeadChangeYr}, \text{Party} = A\rbrace$. Under a parallel-trends assumption, for $\ell=2$ and $\ell=4$, the effect of leadership change after $\ell$ periods can be estimated by a difference-in-difference comparing the 2003-to-(2003+ $\ell$) change in the vote share of treated party $A$ to the 2003-to-(2003+ $\ell$) change in the vote share of control party $B.$ However, for $\ell=1,3$, this DID cannot be computed, because elections do not happen in 2003+ $\ell$.
+Under a parallel-trends assumption, for $\ell=2$ and $\ell=4$, the effect of leadership change after $\ell$ periods can be estimated by a difference-in-difference comparing the 2003-to-(2003+ $\ell$) change in the vote share of treated party $A$ to the 2003-to-(2003+ $\ell$) change in the vote share of control party $B.$ However, for $\ell=1,3$, this DID cannot be computed, because elections do not happen in 2003+ $\ell$.
 
 Assume now that the dataset includes another party, $C$, that has experienced a leadership change in 2005:
 
