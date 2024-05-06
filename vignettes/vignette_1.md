@@ -110,7 +110,7 @@ View(df)
 </table>
 
 ### Part II: Data Adjustment
-We need to partition the $(g,t)$ cells in our data according to whether and when they switch treatment. Keep in mind that the outcome is observable every 4 periods. We need to generate a variable at the (g,t) level through which we can earmark not-yet-switchers and switchers in either a non-missing period or 1, 2, or 3 periods after a non-missing period. We will use the values of this variable to run `did_multiplegt_dyn` on subsets of our data. To define this partition, we can move along the following steps.
+We need to partition the groups in our data according to whether and when they switch treatment. Keep in mind that the outcome is observable every 4 periods. We need to generate a variable at the (g,t) level through which we can earmark not-yet-switchers and switchers in either a non-missing period or 1, 2, or 3 periods after a non-missing period. We will use the values of this variable to run `did_multiplegt_dyn` on subsets of our data. To define this partition, we can move along the following steps.
 
 #### a) Identify whether treatment has changed within each group
 
