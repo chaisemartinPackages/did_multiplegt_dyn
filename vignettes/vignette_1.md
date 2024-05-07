@@ -170,7 +170,7 @@ bys G: egen F_g = mean(F_g_temp)
 sum T
 replace F_g = r(max) + 1 if missing(F_g)
 gen subsample = (4 - mod(F_g, 4)) * (mod(F_g, 4) != 0) + 1
-replace subsample=0 if at_least_one_D_change ==1 
+replace subsample = 0 if at_least_one_D_change == 0
     </pre></code>
     </td>
     <td>
