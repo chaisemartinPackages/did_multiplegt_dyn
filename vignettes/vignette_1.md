@@ -257,7 +257,7 @@ print(table[order(table[,ncol(table)]),1:(ncol(table)-1)])
   </tr>
 </table>
 
-### Part IV: Comparison with naive `did_multiplegt_dyn`
+### Part IV: Comparison with naive did_multiplegt_dyn
 Running `did_multiplegt_dyn` on the collapsed data only yields biased point estimates for the event-study coefficients. Let us take the case of a slightly different DGP, where $$Y_{g,t} = U (1 + \sum_{t'\leq t} D_{(g,t')})$$ with $U \sim U(0,1)$. The outcome is now increasing in the cumulative treatment received over time.  We increase the groups to 1000 over the same 20 periods, whereas $Y_{g,t}$ is non missing only at every fourth period. As before, we let groups switch around the fourth period to study the estimator under periodically missing outcomes. We keep all the groups whose index is divisible by 5 as never-switchers. The following code blocks generate a random sample from this DGP.
 
 <table>
