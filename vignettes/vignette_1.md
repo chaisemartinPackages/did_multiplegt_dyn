@@ -44,10 +44,10 @@ Assume now that the dataset includes another party, $C$, that has experienced a 
 In this example, naively applying the event-study estimators from de Chaisemartin & D'Haultfoeuille (2024) would yield a first event-study estimator that averages the effect of one period of exposure to treatment for party C with the effect of two periods of exposure for party A. Similarly, the second event-study estimator averages the effect of three periods of exposure to treatment for party C with the effect of four periods of exposure for party A. Instead, we can estimate the effect of $\ell$ periods of exposure to leadership change for $\ell=1$ and $\ell=3$, using a DID estimator comparing the 2003-to-(2003+ $1+\ell$) change in the vote share of treated party $C$ to the 2003-to-(2003+ $1+\ell$) change in the vote share of control party $B.$ This DID estimator uses the 2003 voting rate, the most recent non-missing outcome before C gets treated, as the baseline outcome. Combining these DID estimators with those comparing parties A and B, we are now able to estimate four event-study effects, without averaging effects of different exposure lengths, with effects $\ell=1$ and $\ell=3$ applying to Party C, while effects $\ell=2$ and $\ell=4$ apply to Party A. The figure below shows the combined event-study plot from our toy example.
 
 <p>
-  <img src="https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/assets/vignette_1_Stata_fig1.jpg" alt>
+  <img src="https://github.com/chaisemartinPackages/did_multiplegt_dyn/blob/main/vignettes/assets/vignette_1_Stata_fig1.jpg" alt>
 </p>
 
-In the next section, we show how to use `did_multiplegt_dyn` to produce an event-study graph without averaging effects of different exposure lengths whenever the outcome is observed less frequently than the treatment. For each step, we also report the corresponding block of [Stata](https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/src/vignette_1_Stata.do) and [R](https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/src/vignette_1_R.R) code.
+In the next section, we show how to use `did_multiplegt_dyn` to produce an event-study graph without averaging effects of different exposure lengths whenever the outcome is observed less frequently than the treatment. For each step, we also report the corresponding block of [Stata](https://github.com/chaisemartinPackages/did_multiplegt_dyn/blob/main/vignettes/src/vignette_1_Stata.do) and [R](https://github.com/chaisemartinPackages/did_multiplegt_dyn/blob/main/vignettes/src/vignette_1_R.R) code.
 
 ## General Case with Stata and R code
 
@@ -442,7 +442,7 @@ print(out_plot)
 
 The resulting graph should look like this:
 <p>
-  <img src="https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/assets/vignette_1_Stata_fig2.jpg" alt>
+  <img src="https://github.com/chaisemartinPackages/did_multiplegt_dyn/blob/main/vignettes/assets/vignette_1_Stata_fig2.jpg" alt>
 </p>
 
 ---
