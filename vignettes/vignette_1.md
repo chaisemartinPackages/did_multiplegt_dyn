@@ -8,7 +8,7 @@ In many circumstances, the outcome is observed less frequently than the treatmen
   - [Part I: Data Generation](#part-i-data-generation)
   - [Part II: Data Adjustment](#part-ii-data-adjustment)
   - [Part III: Estimation](#part-iii-estimation)
-  - [Part IV: Comparison with naive did_multiplegt_dyn](#part-iv-comparison-with-naive-did_multiplegt_dyn-and-graph-output)
+  - [Part IV: Comparison with naive did_multiplegt_dyn](#part-iv-comparison-with-naive-did_multiplegt_dyn)
   - [Part V: Graph output](#part-v-graph-output)
 
 
