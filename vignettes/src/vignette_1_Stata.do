@@ -151,5 +151,7 @@ svmat res
 gen rel_time = _n-1 if !missing(res1)
 tw rcap res3 res4 rel_time, lc(blue) || ///
 connected res1 rel_time, mc(blue) lc(blue) || ///
-, xtitle("# periods after first switch") yline(0) ytitle("dynamic effects") leg(off)
+, xtitle("Relative time to last period before treatment changes (t=0)") ///
+title("DID, from last period before treatment changes (t=0) to t") ///
+ytitle(" ") leg(off) 
 gr export "assets/vignette_1_Stata_fig2.jpg", replace

@@ -83,7 +83,7 @@ rown <- unlist(strsplit(rownames(table), "_"))
 table <- cbind(table, as.numeric(rown[rown != "Effect"]))
 print(table[order(table[,ncol(table)]),1:(ncol(table)-1)])
 
-## Bigger Data for graphs
+# Bigger Data for graphs
 set.seed(123)
 library(dplyr)
 library(DIDmultiplegtDYN)
@@ -109,7 +109,6 @@ mutate(F_g = ifelse(.data$never_treated == 1, max(df$T, na.rm = TRUE) +1, min(if
 df$subsample <- (4 - (df$F_g %% 4)) * (df$F_g %% 4 != 0) + 1
 df$subsample <- df$subsample * df$at_least_one_D_change
 df <- subset(df, !is.na(df$Y))
-View(df)
 
 effects <- 2
 table <- NULL
@@ -124,3 +123,18 @@ for (j in 1:4) {
 rown <- unlist(strsplit(rownames(table), "_")) 
 table <- cbind(table, as.numeric(rown[rown != "Effect"]))
 print(table[order(table[,ncol(table)]),1:(ncol(table)-1)])
+
+library(ggplot2)
+table <- table[order(table[,ncol(table)]), ]
+table <- rbind(rep(0, ncol(table)), table)
+colnames(table)[ncol(table)] <- "Time"
+table <- as.data.frame(table)
+out_plot <- ggplot(table, aes(x = .data$Time, y = .data$Estimate, group = 1)) + 
+geom_line(colour = "blue") +
+geom_errorbar(data = ~dplyr::filter(.x, table$Estimate != 0), aes(ymin = .data[["LB CI"]], ymax = .data[["UB CI"]]), 
+position=position_dodge(0.05), width = 0.2, colour = "red") + 
+geom_point(colour = "blue") + 
+ggtitle("DID, from last period before treatment changes (t=0) to t") + 
+xlab("Relative time to last period before treatment changes (t=0)") +
+theme(plot.title = element_text(hjust = 0.5))
+print(out_plot)

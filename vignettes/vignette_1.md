@@ -407,11 +407,49 @@ print(table[order(table[,ncol(table)]),1:(ncol(table)-1)])
 
 ### Part V: Graph output
 
+The output of the loop above is a matrix, which can be turned into an event-study plot very easily. In R, we use the ggplot2 library, while in Stata we use the built-in gr commands.
+<table>
+  <tr>
+    <th>Stata</th>
+    <th>R</th>
+  </tr>
+  <tr>
+    <td>
+    <pre><code>
+mat res = (0,0,0,0,0,0) \ res
+svmat res
+gen rel_time = _n-1 if !missing(res1)
+tw rcap res3 res4 rel_time, lc(blue) || ///
+connected res1 rel_time, mc(blue) lc(blue) || ///
+, xtitle("Relative time to last period before treatment changes (t=0)") ///
+title("DID, from last period before treatment changes (t=0) to t") ///
+yline(0) ytitle(" ") leg(off) 
+    </pre></code>
+    </td>
+    <td>
+    <pre><code>
+library(ggplot2)
+table <- table[order(table[,ncol(table)]), ]
+table <- rbind(rep(0, ncol(table)), table)
+colnames(table)[ncol(table)] <- "Time"
+table <- as.data.frame(table)
+out_plot <- ggplot(table, aes(x = .data$Time, y = .data$Estimate, group = 1)) + 
+geom_line(colour = "blue") +
+geom_errorbar(data = ~dplyr::filter(.x, table$Estimate != 0), aes(ymin = .data[["LB CI"]], ymax = .data[["UB CI"]]), 
+position=position_dodge(0.05), width = 0.2, colour = "red") + 
+geom_point(colour = "blue") + 
+ggtitle("DID, from last period before treatment changes (t=0) to t") + 
+xlab("Relative time to last period before treatment changes (t=0)") +
+theme(plot.title = element_text(hjust = 0.5))
+print(out_plot)
+    </pre></code>
+    </td>
+  </tr>
+</table>
 
+The resulting graph should look like this:
+<p>
+  <img src="https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/assets/vignette_1_Stata_fig2.jpg" alt>
+</p>
 
-
-
-
-
-
-
+---
