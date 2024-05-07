@@ -8,6 +8,7 @@
 #' @param placebo placebo
 #' @param ci_level ci_level
 #' @param switchers switchers
+#' @param only_never_switchers only_never_switchers
 #' @param trends_nonparam trends_nonparam
 #' @param weight weight
 #' @param controls controls
@@ -48,6 +49,7 @@ did_multiplegt_main <- function(
   placebo, 
   ci_level, 
   switchers, 
+  only_never_switchers,
   trends_nonparam, 
   weight, 
   controls, 
@@ -922,7 +924,7 @@ suppressWarnings({
       ## Perform the estimation of effects and placebos outside of the loop on 
       ## number of effects if trends_lin not specified
       if (isFALSE(trends_lin)) {
-        data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
+        data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, only_never_switchers = only_never_switchers, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
 
         df <- data$df
         data$df <- NULL
@@ -943,7 +945,7 @@ suppressWarnings({
       ## Note that if the option trends_lin was specified, same_switchers must also be specified.
 
         if (isTRUE(trends_lin)) {
-          data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = i, placebo = 0, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
+          data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = i, placebo = 0, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, only_never_switchers = only_never_switchers, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
 
           df <- data$df
           data$df <- NULL
@@ -983,7 +985,7 @@ suppressWarnings({
         for (i in 1:l_placebo_XX) {
 
           if (isTRUE(trends_lin)) {
-            data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = i, placebo = i, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
+            data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = i, placebo = i, switchers_core = "in", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, only_never_switchers = only_never_switchers, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
 
             df <- data$df
             data$df <- NULL
@@ -1025,7 +1027,7 @@ suppressWarnings({
     if (!is.na(L_a_XX) & L_a_XX != 0) {
 
       if (isFALSE(trends_lin)) {
-        data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se, continuous = continuous)
+        data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = l_XX, placebo = l_placebo_XX, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, only_never_switchers = only_never_switchers, normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se, continuous = continuous)
 
         df <- data$df
         data$df <- NULL
@@ -1043,7 +1045,7 @@ suppressWarnings({
       for (i in 1:l_XX) {
 
         if (isTRUE(trends_lin)) {
-          data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = i, placebo = 0, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
+          data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = i, placebo = 0, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = FALSE, only_never_switchers = only_never_switchers, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
 
           df <- data$df
           data$df <- NULL
@@ -1078,7 +1080,7 @@ suppressWarnings({
         for (i in 1:l_placebo_XX) {
 
           if (isTRUE(trends_lin)) {
-            data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = i, placebo = i, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
+            data <- did_multiplegt_dyn_core(df, outcome = "outcome_XX", group = "group_XX", time = "time_XX", treatment = "treatment_XX", effects = i, placebo = i, switchers_core = "out", trends_nonparam = trends_nonparam, controls = controls, same_switchers = TRUE, same_switchers_pl = TRUE, only_never_switchers = only_never_switchers, normalized = normalized, globals = globals, const = const, trends_lin = trends_lin, controls_globals = controls_globals, less_conservative_se = less_conservative_se, continuous = continuous)
 
             df <- data$df
             data$df <- NULL

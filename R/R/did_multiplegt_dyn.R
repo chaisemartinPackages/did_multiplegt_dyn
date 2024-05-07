@@ -26,6 +26,7 @@
 #' @param same_switchers (logical) if this option is specified and the user requests that at least two effects be estimated, the command will restrict the estimation of the event-study effects to switchers for which all effects can be estimated, to avoid compositional changes.
 #' @param same_switchers_pl (logical, requires \code{same_switchers = TRUE}) the command restricts the estimation of event-study and placebo effects to switchers for which all event-study and placebos effects can be estimated. 
 #' @param switchers (char in ("", "in", "out")) one may be interested in estimating separately the treatment effect of switchers-in, whose average treatment after they switch is larger than their baseline treatment, and of switchers-out, whose average treatment after they switch is lower than their baseline treatment. In that case, one should run the command first with the \code{switchers = "in"} option, and then with the \code{switchers = "out"} option.
+#' @param only_never_switchers (logical) if this option is specified, the command estimates the event-study effects using only never-switchers as control units.
 #' @param ci_level (int) with this option you can change the level of the confidence intervals displayed in the output tables and the graphs. The default value is fixed at 95, yielding a 95% coverage.
 #' @param graph_off (logical) when this option is specified, the command does not print a graph. Regardless, a ggplot object will be still generated and stored in the did_multiplegt_dyn class object.
 #' @param save_results (char) if this option is specified, the command saves the estimators requested, their standard error, their 95% confidence interval, and the number of observations used in the estimation in a separate data set, at the location specified in the char argument.
@@ -168,6 +169,7 @@ did_multiplegt_dyn <- function(
     same_switchers = FALSE, 
     same_switchers_pl = FALSE, 
     switchers = "", 
+    only_never_switchers = FALSE,
     ci_level = 95, 
     graph_off = FALSE,
     save_results = NULL, 
@@ -276,7 +278,7 @@ did_multiplegt_dyn <- function(
   }
 
   if (!is.null(by_path)) {
-    data <- did_multiplegt_by_path(df = df, outcome = outcome, group =  group, time =  time, treatment = treatment, effects = effects, placebo = placebo, ci_level = ci_level,switchers = switchers, trends_nonparam = trends_nonparam, weight = weight, controls = controls, dont_drop_larger_lower = dont_drop_larger_lower, drop_if_d_miss_before_first_switch = drop_if_d_miss_before_first_switch, cluster = cluster, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, effects_equal = effects_equal, save_results = save_results, normalized = normalized, predict_het = predict_het, trends_lin = trends_lin, less_conservative_se = less_conservative_se, continuous = continuous, by_path = by_path)
+    data <- did_multiplegt_by_path(df = df, outcome = outcome, group =  group, time =  time, treatment = treatment, effects = effects, placebo = placebo, ci_level = ci_level,switchers = switchers, trends_nonparam = trends_nonparam, weight = weight, controls = controls, dont_drop_larger_lower = dont_drop_larger_lower, drop_if_d_miss_before_first_switch = drop_if_d_miss_before_first_switch, cluster = cluster, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, only_never_switchers = only_never_switchers, effects_equal = effects_equal, save_results = save_results, normalized = normalized, predict_het = predict_het, trends_lin = trends_lin, less_conservative_se = less_conservative_se, continuous = continuous, by_path = by_path)
 
     df <- data$df
     by_levels <- data$path
@@ -308,7 +310,7 @@ did_multiplegt_dyn <- function(
       df_main <- df
     }
 
-    df_est <- did_multiplegt_main(df = df_main, outcome = outcome, group =  group, time =  time, treatment = treatment, effects = effects, placebo = placebo, ci_level = ci_level,switchers = switchers, trends_nonparam = trends_nonparam, weight = weight, controls = controls, dont_drop_larger_lower = dont_drop_larger_lower, drop_if_d_miss_before_first_switch = drop_if_d_miss_before_first_switch, cluster = cluster, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, effects_equal = effects_equal, save_results = save_results, normalized = normalized, predict_het = predict_het, trends_lin = trends_lin, less_conservative_se = less_conservative_se, continuous = continuous)
+    df_est <- did_multiplegt_main(df = df_main, outcome = outcome, group =  group, time =  time, treatment = treatment, effects = effects, placebo = placebo, ci_level = ci_level,switchers = switchers, trends_nonparam = trends_nonparam, weight = weight, controls = controls, dont_drop_larger_lower = dont_drop_larger_lower, drop_if_d_miss_before_first_switch = drop_if_d_miss_before_first_switch, cluster = cluster, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, only_never_switchers = only_never_switchers, effects_equal = effects_equal, save_results = save_results, normalized = normalized, predict_het = predict_het, trends_lin = trends_lin, less_conservative_se = less_conservative_se, continuous = continuous)
 
     temp_obj <- list(df_est$did_multiplegt_dyn)
     names(temp_obj)[length(temp_obj)] <- "results"
@@ -317,7 +319,7 @@ did_multiplegt_dyn <- function(
 
     if (!is.null(bootstrap)) {
       message(sprintf("\nBootstrap, %.0f reps:", bootstrap))
-      temp_obj$results <- did_multiplegt_bootstrap(df = df_main, outcome = outcome, group =  group, time =  time, treatment = treatment, effects = effects, placebo = placebo, ci_level = ci_level,switchers = switchers, trends_nonparam = trends_nonparam, weight = weight, controls = controls, dont_drop_larger_lower = dont_drop_larger_lower, drop_if_d_miss_before_first_switch = drop_if_d_miss_before_first_switch, cluster = cluster, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, effects_equal = FALSE, save_results = NULL, normalized = normalized, predict_het = predict_het, trends_lin = trends_lin, less_conservative_se = less_conservative_se, continuous = continuous, bootstrap = bootstrap, base = temp_obj$results)
+      temp_obj$results <- did_multiplegt_bootstrap(df = df_main, outcome = outcome, group =  group, time =  time, treatment = treatment, effects = effects, placebo = placebo, ci_level = ci_level,switchers = switchers, trends_nonparam = trends_nonparam, weight = weight, controls = controls, dont_drop_larger_lower = dont_drop_larger_lower, drop_if_d_miss_before_first_switch = drop_if_d_miss_before_first_switch, cluster = cluster, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, only_never_switchers = only_never_switchers, effects_equal = FALSE, save_results = NULL, normalized = normalized, predict_het = predict_het, trends_lin = trends_lin, less_conservative_se = less_conservative_se, continuous = continuous, bootstrap = bootstrap, base = temp_obj$results)
     }
 
     if (!is.null(design)) {

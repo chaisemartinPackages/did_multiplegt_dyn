@@ -29,6 +29,7 @@ did_multiplegt_dyn(
   same_switchers = FALSE,
   same_switchers_pl = FALSE,
   switchers = "",
+  only_never_switchers = FALSE,
   ci_level = 95,
   graph_off = FALSE,
   save_results = NULL,
@@ -87,6 +88,8 @@ did_multiplegt_dyn(
 \item{same_switchers_pl}{(logical, requires \code{same_switchers = TRUE}) the command restricts the estimation of event-study and placebo effects to switchers for which all event-study and placebos effects can be estimated.}
 
 \item{switchers}{(char in ("", "in", "out")) one may be interested in estimating separately the treatment effect of switchers-in, whose average treatment after they switch is larger than their baseline treatment, and of switchers-out, whose average treatment after they switch is lower than their baseline treatment. In that case, one should run the command first with the \code{switchers = "in"} option, and then with the \code{switchers = "out"} option.}
+
+\item{only_never_switchers}{(logical) if this option is specified, the command estimates the event-study effects using only never-switchers as control units.}
 
 \item{ci_level}{(int) with this option you can change the level of the confidence intervals displayed in the output tables and the graphs. The default value is fixed at 95, yielding a 95\% coverage.}
 
