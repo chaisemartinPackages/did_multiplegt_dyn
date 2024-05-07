@@ -416,7 +416,7 @@ svmat res
 gen rel_time = _n-1 if !missing(res1)
 local xtitle "Relative time to last period before treatment changes (t=0)"
 local title "DID, from last period before treatment changes (t=0) to t"
-tw rcap res3 res4 rel_time, lc(blue) || connected res1 rel_time, mc(blue) lc(blue) ||, xtitle("`xtitle'") title("`title'") yline(0) ytitle(" ") leg(off) 
+tw rcap res3 res4 rel_time, lc(blue) || connected res1 rel_time, mc(blue) lc(blue) ||, xtitle("`xtitle'") title("`title'") leg(off) 
     </pre></code>
     </td>
     <td>
