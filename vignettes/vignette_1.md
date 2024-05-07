@@ -414,11 +414,9 @@ The output of the loop above is a matrix, which can be turned into an event-stud
 mat res = (0,0,0,0,0,0) \ res
 svmat res
 gen rel_time = _n-1 if !missing(res1)
-tw rcap res3 res4 rel_time, lc(blue) || ///
-connected res1 rel_time, mc(blue) lc(blue) || ///
-, xtitle("Relative time to last period before treatment changes (t=0)") ///
-title("DID, from last period before treatment changes (t=0) to t") ///
-yline(0) ytitle(" ") leg(off) 
+local xtitle "Relative time to last period before treatment changes (t=0)"
+local title "DID, from last period before treatment changes (t=0) to t"
+tw rcap res3 res4 rel_time, lc(blue) || connected res1 rel_time, mc(blue) lc(blue) ||, xtitle("`xtitle'") title("`title'") yline(0) ytitle(" ") leg(off) 
     </pre></code>
     </td>
     <td>
