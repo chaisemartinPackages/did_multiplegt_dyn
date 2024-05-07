@@ -288,7 +288,6 @@ forv j= 0/3 {
 bys G: gen D_stag_temp = sum(D)
 bys G: gen D_stag = sum(D_stag_temp)
 gen Y = uniform() * (1 + D_stag)
-bys G: replace Y = sum(Y)
 replace Y = . if mod(T, 4) != 0
 drop D_stag*
 bys G: gen D0 = D[1]
