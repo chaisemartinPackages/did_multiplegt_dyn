@@ -5,6 +5,12 @@ In many circumstances, the outcome is observed less frequently than the treatmen
 #### Sections
 + [A toy example](#a-toy-example)
 + [General Case with Stata and R code](#general-case-with-stata-and-r-code)
+  - [Part I: Data Generation](#part-i-data-generation)
+  - [Part II: Data Adjustment](#part-ii-data-adjustment)
+  - [Part III: Estimation](#part-iii-estimation)
+  - [Part IV: Comparison with naive did_multiplegt_dyn](#part-iv-comparison-with-naive-did_multiplegt_dyn-and-graph-output)
+  - [Part V: Graph output](#part-v-graph-output)
+
 
 ## A toy example
 
@@ -109,13 +115,13 @@ View(df)
   </tr>
 </table>
 
-### Part II: Data Adjustment
-We need to generate a variable through which we partition our population into 5 subsamples: 
-+ A) Groups whose treatment never changes (never switchers)
-+ B) Groups whose treatment changes for the first time at a time period where the outcome is non-missing
-+ C) Groups whose treatment changes for the first time one period before a period where the outcome is non-missing
-+ D) Groups whose treatment changes for the first time two periods before a period where the outcome is non-missing
-+ E) Groups whose treatment changes for the first time three periods before a period where the outcome is non-missing
+### Part II: Data Adjustment 
+For switchers (i.e. groups whose treatment changes before the end of the panel), we refer to $(g,t)$ cells such that $t$ is lower than (equal to or higher than) the first period where their treatment changes as *pre-switch cells* (resp. *post-switch cells*). We need to generate a variable through which we partition our population of $(g,t)$ cells into 5 subsamples:
++ A) All $(g,t)$ cells of groups whose treatment does not change (never-switchers) plus all pre-switch cells;
++ B) Post-switch cells of groups whose treatment changes for the first time at a time period where the outcome is non-missing;
++ C) Post-switch cells of groups whose treatment changes for the first time one period before a period where the outcome is non-missing;
++ D) Post-switch cells of groups whose treatment changes for the first time two periods before a period where the outcome is non-missing;
++ E) Post-switch cells of groups whose treatment changes for the first time three periods before a period where the outcome is non-missing.
   
 Then, we will use the values of this variable to run `did_multiplegt_dyn` on subsamples A) and B), then on subsamples A) and C), etc.
 
@@ -147,7 +153,7 @@ df <- df %>% group_by(.data$G) %>%
 
 #### b) Identify when treatment changed for the first time
 
-We generate a variable F_g equal to the period when group g's treatment changes for the first time. The modulus of F_g divided by 4 is equal to zero is g's treatment changed for the first time in a period when the outcome is non missing, it is equal to 1 (resp. 2, 3) if g's treatment changed for the first time 3 (resp. 2, 1) periods before a period when the outcome is non missing. We use this modulus to create the aforementioned partition variable. 
+We generate a variable F_g equal to the period when group g's treatment changes for the first time. The modulus of F_g divided by 4 is equal to zero is g's treatment changed for the first time in a period when the outcome is non missing, it is equal to 1 (resp. 2, 3) if g's treatment changed for the first time 3 (resp. 2, 1) periods before a period when the outcome is non missing. The aforementioned partition variable is 0 for never-switchers and pre-switch cells of switchers. For post-switch cells of groups switching on a period divisible by 4, it is equal to 1. Lastly, for post-switch cells of groups switching 1, 2 or 3 periods prior to a non-missing outcome period, it is equal to 4 minus their modulus plus 1.
 
 <table>
   <tr>
@@ -162,10 +168,9 @@ replace never_treated = 1 - never_treated
 bys G: egen F_g_temp = min(T * D_change) if D_change != 0
 bys G: egen F_g = mean(F_g_temp)
 sum T
-gen subsample_temp = mod(F_g, 4)
-gen subsample=4-subsample_temp
-replace subsample=subsample+1
-replace subsample=0 if never_treated ==1 
+replace F_g = r(max) + 1 if missing(F_g)
+gen subsample = (4 - mod(F_g, 4)) * (mod(F_g, 4) != 0) + 1
+replace subsample = 0 if at_least_one_D_change == 0
     </pre></code>
     </td>
     <td>
@@ -175,8 +180,8 @@ mutate(never_treated = as.numeric(sum(.data$D_change, na.rm = TRUE) == 0)) %>%
 mutate(F_g = ifelse(.data$never_treated == 1, max(df$T, na.rm = TRUE) +1, 
   min(ifelse(.data$D_change == 0, NA, .data$T * .data$D_change), na.rm = TRUE))) %>% 
     ungroup()
-df$subsample <- (df$F_g %% 4) + 1
-df$model_subset <- df$subsample * df$at_least_one_D_change
+df$subsample <- (4 - (df$F_g %% 4)) * (df$F_g %% 4 != 0) + 1
+df$subsample <- df$subsample * df$at_least_one_D_change
     </pre></code>
     </td>
   </tr>
@@ -220,7 +225,7 @@ local effects = 2
 mat define res = J(4*`effects', 6, .)
 local r_effects ""
 forv j=1/4 {
-    did_multiplegt_dyn Y G T at_least_one_D_change if inlist(model_subset, 0, `j'), effects(`effects') graph_off
+    did_multiplegt_dyn Y G T at_least_one_D_change if inlist(subsample, 0, `j'), effects(`effects') graph_off
     forv i = 1/`effects'{
         mat adj = mat_res_XX[`i',1..6]
         forv c =1/6 {
@@ -238,7 +243,7 @@ effects <- 2
 table <- NULL
 for (j in 1:4) {
     temp <- did_multiplegt_dyn(
-      subset(df, df$model_subset %in% c(0, j)), "Y", "G", "T", "at_least_one_D_change", 
+      subset(df, df$subsample %in% c(0, j)), "Y", "G", "T", "at_least_one_D_change", 
       graph_off = TRUE, effects = effects)
     rownames(temp$results$Effects) <- 
       sapply(1:temp$results$N_Effects, function(x) paste0("Effect_",  j + (x-1) * 4))
@@ -252,5 +257,192 @@ print(table[order(table[,ncol(table)]),1:(ncol(table)-1)])
   </tr>
 </table>
 
+### Part IV: Comparison with naive `did_multiplegt_dyn`
+Running `did_multiplegt_dyn` on the collapsed data only yields biased point estimates for the event-study coefficients. Let us take the case of a slightly different DGP, where $$Y_{g,t} = U (1 + \sum_{t'\leq t} D_{(g,t')})$$ with $U \sim U(0,1)$. The outcome is now increasing in the cumulative treatment received over time.  We increase the groups to 1000 over the same 20 periods, whereas $Y_{g,t}$ is non missing only at every fourth period. As before, we let groups switch around the fourth period to study the estimator under periodically missing outcomes. We keep all the groups whose index is divisible by 5 as never-switchers. The following code blocks generate a random sample from this DGP.
 
+<table>
+  <tr>
+    <th>Stata</th>
+    <th>R</th>
+  </tr>
+  <tr>
+    <td>
+    <pre><code>
+clear
+set seed 123
+scalar TT = 20
+scalar GG = 1000
+set obs `= TT * GG'
+gen G = mod(_n-1,GG) + 1
+gen T = floor((_n-1)/GG)
+sort G T
+gen D = 0
+forv j= 0/3 {
+    replace D = 1 if mod(G, 4) == `j' & T == `j' + 2 & mod(G, 5) != 0
+}
+bys G: gen D_stag_temp = sum(D)
+bys G: gen D_stag = sum(D_stag_temp)
+gen Y = uniform() * (1 + D_stag)
+replace Y = . if mod(T, 4) != 0
+drop D_stag*
+bys G: gen D0 = D[1]
+gen D_change = abs(D - D0) != 0
+bys G: gen at_least_one_D_change = sum(D_change)
+bys G: egen never_treated = max(at_least_one_D_change)
+replace never_treated = 1 - never_treated
+bys G: egen F_g_temp = min(T * D_change) if D_change != 0
+bys G: egen F_g = mean(F_g_temp)
+sum T
+replace F_g = r(max) + 1 if missing(F_g)
+gen subsample = (4 - mod(F_g, 4)) * (mod(F_g,4) != 0) + 1
+replace subsample = 0 if at_least_one_D_change == 0
+sort G T
+keep if !missing(Y)
+    </pre></code>
+    </td>
+    <td>
+    <pre><code>
+set.seed(123)
+library(dplyr)
+library(DIDmultiplegtDYN)
+TT <- 20; GG <- 1000
+df <- data.frame(id = 1:(GG*TT))
+df$G <- ((df$id-1) %% GG)+1
+df$T <- floor((df$id-1)/GG)
+df$id <- NULL
+df <- df[order(df$G, df$T), ]
+df$D <- 0
+for (v in 0:3) {
+    df$D <- ifelse(df$G %% 4 == v & df$T == v+2 & df$G %% 5 != 0, 1, df$D)
+}
+df <- df %>% group_by(.data$G) %>% mutate(D_stag_temp = cumsum(.data$D)) %>% ungroup()
+df <- df %>% group_by(.data$G) %>% mutate(D_stag = cumsum(.data$D_stag_temp)) %>% ungroup()
+df$Y <- ifelse(df$T %% 4 == 0, runif(n = nrow(df)) * (1 + df$D_stag), NA)
+df$D_stag <- NULL
+df$D0 <- df$D[(df$G-1)*length(levels(factor(df$T)))+1]
+df$D_change <- as.numeric(abs(df$D - df$D0) != 0)
+df <- df %>% group_by(.data$G) %>% mutate(at_least_one_D_change = cumsum(.data$D_change)) %>% ungroup()
+df <- df %>% group_by(.data$G) %>% 
+mutate(never_treated = as.numeric(sum(.data$D_change, na.rm = TRUE) == 0)) %>%
+mutate(F_g = ifelse(.data$never_treated == 1, max(df$T, na.rm = TRUE) +1, min(ifelse(.data$D_change == 0, NA, .data$T * .data$D_change), na.rm = TRUE))) %>% ungroup()
+df$subsample <- (4 - (df$F_g %% 4)) * (df$F_g != 4) + 1
+df$subsample <- df$subsample * df$at_least_one_D_change
+df <- subset(df, !is.na(df$Y))
+    </pre></code>
+    </td>
+  </tr>
+</table>
 
+From the definition of the DGP, the average treatment effect of being treated for $\ell$ periods should be equal to $\ell/2$, i.e. the average of $U$ times $\ell$. However, we get a way higher point estimate for $\ell = 1$ when we run `did_multiplegt_dyn` on the full sample:
+
+<table>
+  <tr>
+    <th>Stata</th>
+    <th>R</th>
+  </tr>
+  <tr>
+    <td>
+    <pre><code>
+did_multiplegt_dyn Y G T at_least_one_D_change, graph_off effects(1)
+    </pre></code>
+    </td>
+    <td>
+    <pre><code>
+did_multiplegt_dyn(df, "Y", "G", "T", "at_least_one_D_change", graph_off = TRUE, effects = 1)
+    </pre></code>
+    </td>
+  </tr>
+</table>
+
+This is due to the fact that effect one averages the treatment effects of groups that have switched up to 3 periods before the first switch detected in collapsed data. Instead, running the loop above with the partitioned data yields the correct point estimates
+
+<table>
+  <tr>
+    <th>Stata</th>
+    <th>R</th>
+  </tr>
+  <tr>
+    <td>
+    <pre><code>
+local effects = 2
+mat define res = J(4*`effects', 6, .)
+local r_effects ""
+forv j=1/4 {
+    did_multiplegt_dyn Y G T at_least_one_D_change if inlist(subsample, 0, `j'), effects(`effects') graph_off
+    forv i = 1/`effects'{
+        mat adj = mat_res_XX[`i',1..6]
+        forv c =1/6 {
+            mat res[`j'+(`i'-1)*4,`c'] = adj[1, `c']
+        }
+    }
+}
+mat li res
+    </pre></code>
+    </td>
+    <td>
+    <pre><code>
+library(DIDmultiplegtDYN)
+effects <- 2
+table <- NULL
+for (j in 1:4) {
+    temp <- did_multiplegt_dyn(
+      subset(df, df$subsample %in% c(0, j)), "Y", "G", "T", "at_least_one_D_change", 
+      graph_off = TRUE, effects = effects)
+    rownames(temp$results$Effects) <- 
+      sapply(1:temp$results$N_Effects, function(x) paste0("Effect_",  j + (x-1) * 4))
+    table <- rbind(table, temp$results$Effects)
+}
+rown <- unlist(strsplit(rownames(table), "_")) 
+table <- cbind(table, as.numeric(rown[rown != "Effect"]))
+print(table[order(table[,ncol(table)]),1:(ncol(table)-1)])
+    </pre></code>
+    </td>
+  </tr>
+</table>
+
+### Part V: Graph output
+
+The output of the loop above is a matrix, which can be turned into an event-study plot very easily. In R, we use the ggplot2 library, while in Stata we use the built-in gr commands.
+<table>
+  <tr>
+    <th>Stata</th>
+    <th>R</th>
+  </tr>
+  <tr>
+    <td>
+    <pre><code>
+mat res = (0,0,0,0,0,0) \ res
+svmat res
+gen rel_time = _n-1 if !missing(res1)
+local xtitle "Relative time to last period before treatment changes (t=0)"
+local title "DID, from last period before treatment changes (t=0) to t"
+tw rcap res3 res4 rel_time, lc(blue) || connected res1 rel_time, mc(blue) lc(blue) ||, xtitle("`xtitle'") title("`title'") leg(off) 
+    </pre></code>
+    </td>
+    <td>
+    <pre><code>
+library(ggplot2)
+table <- table[order(table[,ncol(table)]), ]
+table <- rbind(rep(0, ncol(table)), table)
+colnames(table)[ncol(table)] <- "Time"
+table <- as.data.frame(table)
+out_plot <- ggplot(table, aes(x = .data$Time, y = .data$Estimate, group = 1)) + 
+geom_line(colour = "blue") +
+geom_errorbar(data = ~dplyr::filter(.x, table$Estimate != 0), aes(ymin = .data[["LB CI"]], ymax = .data[["UB CI"]]), 
+position=position_dodge(0.05), width = 0.2, colour = "red") + 
+geom_point(colour = "blue") + 
+ggtitle("DID, from last period before treatment changes (t=0) to t") + 
+xlab("Relative time to last period before treatment changes (t=0)") +
+theme(plot.title = element_text(hjust = 0.5))
+print(out_plot)
+    </pre></code>
+    </td>
+  </tr>
+</table>
+
+The resulting graph should look like this:
+<p>
+  <img src="https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/assets/vignette_1_Stata_fig2.jpg" alt>
+</p>
+
+---

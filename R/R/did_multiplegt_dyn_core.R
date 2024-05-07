@@ -11,6 +11,7 @@
 #' @param controls controls
 #' @param same_switchers same_switchers
 #' @param same_switchers_pl same_switchers_pl
+#' @param only_never_switchers only_never_switchers
 #' @param normalized normalized
 #' @param globals globals
 #' @param const constants
@@ -37,6 +38,7 @@ did_multiplegt_dyn_core <- function(
     controls, 
     same_switchers, 
     same_switchers_pl, 
+    only_never_switchers,
     normalized,
     globals,
     const,
@@ -177,6 +179,10 @@ did_multiplegt_dyn_core <- function(
     ## Identifying the control (g,t)s in the estimation of dynamic effect i 
     df[paste0("never_change_d_", i, "_XX")] <- as.numeric(df$F_g_XX > df$time_XX)
     df[[paste0("never_change_d_", i, "_XX")]] <- ifelse(is.na(df[[paste0("diff_y_", i, "_XX")]]), NA,  df[[paste0("never_change_d_", i, "_XX")]]) 
+
+    if (isTRUE(only_never_switchers)) {
+     df[[paste0("never_change_d_", i, "_XX")]] <- ifelse(df$F_g_XX > df$time_XX & df$F_g_XX < T_max_XX + 1 & !is.null(df[[paste0("diff_y_",i,"_XX")]]), 0, df[[paste0("never_change_d_", i, "_XX")]])
+    }
 
     ## Creating N^g_t:
     ## number of control groups for g at t

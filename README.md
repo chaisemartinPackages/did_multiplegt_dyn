@@ -3,12 +3,15 @@ Estimation in Difference-in-Difference (DID) designs with multiple groups and pe
 
 [Short description](#Short-description) | [Setup](#Setup) | [Syntax](#Syntax) | [Description](#Description)
 
-[Options](#Options) | [Example](#Example) | [FAQ](#FAQ) | [References](#References ) | [Authors](#Authors)
+[Options](#Options) | [Example](#Example) | [FAQ](#FAQ) | [References](#References) | [Authors](#Authors)
 
 ## Short description
 
-Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, and with a potentially non-binary treatment that may increase 
-or decrease multiple times.  
+Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, and with a potentially non-binary treatment that may increase or decrease multiple times.  
+
+## NEW: Vignettes
+
++ [did_multiplegt_dyn with periodically missing outcomes: a tutorial with toy electoral data (Stata, R)](https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/vignette_1.md)
 
 ## Setup
 
@@ -212,7 +215,7 @@ summary(did_multiplegt_dyn(
 ))
 ```
 
-## :question: FAQ
+## FAQ
 
  > :question: *did_multiplegt_dyn does not output exactly the same results as did_multiplegt, is this normal?*
 
@@ -336,7 +339,7 @@ Yes. The command already outputs the average total treatment effect, that is, th
     treatment change.  Finally, you can just compute un-normalized event-study estimators with
     $\tilde{Y}$ as the outcome.
 
-## :bookmark_tabs: References
+## References
 
 de Chaisemartin, C, D'Haultfoeuille, X (2024).  [Difference-in-Differences Estimators of
 Intertemporal Treatment Effects](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3731856).

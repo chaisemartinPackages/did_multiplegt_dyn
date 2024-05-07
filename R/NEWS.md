@@ -43,3 +43,7 @@ First official R release.
 + Changed display with weight option
 
 + Integration with honestdid via the "coef" output in the assigned object
+
+## Changes in version 1.0.9
+
++ Added only_never_switchers option

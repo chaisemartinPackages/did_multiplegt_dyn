@@ -16,6 +16,7 @@
 #' @param cluster cluster
 #' @param same_switchers same_switchers
 #' @param same_switchers_pl same_switchers_pl
+#' @param only_never_switchers only_never_switchers
 #' @param effects_equal effects_equal
 #' @param save_results save_results
 #' @param normalized normalized
@@ -45,6 +46,7 @@ did_multiplegt_bootstrap <- function(
   cluster, 
   same_switchers, 
   same_switchers_pl,
+  only_never_switchers,
   effects_equal, 
   save_results, 
   normalized,
@@ -84,7 +86,7 @@ did_multiplegt_bootstrap <- function(
         df_boot <- df_boot[order(df_boot[[group]], df_boot[[time]]), ]
         rownames(df_boot) <- 1:nrow(df_boot)
         suppressMessages({
-        df_est <- did_multiplegt_main(df = df_boot, outcome = outcome, group =  group, time =  time, treatment = treatment, effects = effects, placebo = placebo, ci_level = ci_level,switchers = switchers, trends_nonparam = trends_nonparam, weight = weight, controls = controls, dont_drop_larger_lower = dont_drop_larger_lower, drop_if_d_miss_before_first_switch = drop_if_d_miss_before_first_switch, cluster = cluster, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, effects_equal = effects_equal, save_results = save_results, normalized = normalized, predict_het = predict_het, trends_lin = trends_lin, less_conservative_se = less_conservative_se, continuous = continuous)})
+        df_est <- did_multiplegt_main(df = df_boot, outcome = outcome, group =  group, time =  time, treatment = treatment, effects = effects, placebo = placebo, ci_level = ci_level,switchers = switchers, trends_nonparam = trends_nonparam, weight = weight, controls = controls, dont_drop_larger_lower = dont_drop_larger_lower, drop_if_d_miss_before_first_switch = drop_if_d_miss_before_first_switch, cluster = cluster, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, only_never_switchers = only_never_switchers, effects_equal = effects_equal, save_results = save_results, normalized = normalized, predict_het = predict_het, trends_lin = trends_lin, less_conservative_se = less_conservative_se, continuous = continuous)})
 
         res <- df_est$did_multiplegt_dyn
         for (i in 1:ncol(bresults_effects)) {
