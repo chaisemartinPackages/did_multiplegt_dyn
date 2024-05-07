@@ -8,7 +8,7 @@ In many circumstances, the outcome is observed less frequently than the treatmen
   - [Part I: Data Generation](#part-i-data-generation)
   - [Part II: Data Adjustment](#part-ii-data-adjustment)
   - [Part III: Estimation](#part-iii-estimation)
-  - [Part IV: Comparison with naive `did_multiplegt_dyn`](#part-iv-comparison-with-naive-did_multiplegt_dyn-and-graph-output)
+  - [Part IV: Comparison with naive did_multiplegt_dyn](#part-iv-comparison-with-naive-did_multiplegt_dyn-and-graph-output)
   - [Part V: Graph output](#part-v-graph-output)
 
 
@@ -168,6 +168,7 @@ replace never_treated = 1 - never_treated
 bys G: egen F_g_temp = min(T * D_change) if D_change != 0
 bys G: egen F_g = mean(F_g_temp)
 sum T
+replace F_g = r(max) + 1 if missing(F_g)
 gen subsample = (4 - mod(F_g, 4)) * (mod(F_g, 4) != 0) + 1
 replace subsample=0 if at_least_one_D_change ==1 
     </pre></code>

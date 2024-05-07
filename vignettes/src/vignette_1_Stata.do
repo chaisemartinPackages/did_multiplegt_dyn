@@ -1,5 +1,5 @@
 // A toy example //
-/*
+
 clear
 set obs 9
 gen Party = char(64 + ceil(_n/3))
@@ -29,11 +29,8 @@ scatter res1 ell in 1/4 if mod(_n, 2) == 1, mcolor(blue) msize(1.5) || ///
 , legend(order(2 "Party A's dynamic effects" 3 "Party B's dynamic effects") pos(6) col(2)) ///
 ytitle("dynamic effects") xtitle("# periods after first switch") ylabel(-0.3(0.1)0.1, ) yline(0)
 gr export "assets/vignette_1_Stata_fig1.jpg", replace
-*/
-
 
 // General case //
-/*
 clear
 set seed 123
 scalar TT = 20
@@ -90,7 +87,6 @@ forv j=1/4 {
     }
 }
 mat li res
-*/
 
 // Bigger case for graph //
 
