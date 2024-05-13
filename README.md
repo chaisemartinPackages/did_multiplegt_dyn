@@ -12,6 +12,7 @@ Estimation of event-study Difference-in-Difference (DID) estimators in designs w
 ## Vignettes
 
 + [did_multiplegt_dyn with periodically missing outcomes: a tutorial with toy electoral data (Stata, R)](https://github.com/chaisemartinPackages/did_multiplegt_dyn/blob/main/vignettes/vignette_1.md)
++ [did_multiplegt_dyn and esttab (Stata)](https://github.com/chaisemartinPackages/did_multiplegt_dyn/blob/main/vignettes/vignette_2.md)
 
 ## Setup
 
