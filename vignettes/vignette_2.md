@@ -9,7 +9,7 @@
 
 ## Setup
 
-We test **esttab** via a DGP with 1000 groups and 20 periods. The treatment $D_{g,t}$ is randomly drawn from $\lbrace 0,1\rbrace$ at each $(g,t)$ cell. The outcome $Y_{g,t}$ is a function of $D_{g,t}$ and a time-dependent covariate $X_{g,t}$. We also generate two group-specific variables, $H1_g$ and $H2_g$, to test the output of the integration when **did_multiplegt_dyn** is run with the predict_het option.
+We test **esttab** via a DGP with 1000 groups and 20 periods. The treatment $D_{g,t}$ is randomly drawn from $\lbrace 0,1\rbrace$ at each $(g,t)$ cell. The outcome $Y_{g,t}$ is a function of $D_{g,t}$ and a time-dependent covariate $X_{g,t}$. We also generate two group-specific variables, $H^1_g$ and $H^2_g$, to test the output of the integration when **did_multiplegt_dyn** is run with the predict_het option.
 
 ```applescript
 clear
