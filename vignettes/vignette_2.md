@@ -80,12 +80,12 @@ The first equation box (labeled after the outcome variable) contains the main re
 
 ### Formatting
 
-**esttab** allows for a great deal of customisation. In this last subsection, we show how to improve the formatting of the first table in this tutorial. Specifically,
-+ the scalar/local labels are specified with `s(..., label(...))`;
-+ the format of the floats is changed with `b(fmt)`;
-+ the coefficient labels are set to mirror the notation of de Chaisemartin and D'Haultfoeuille (2024) with `coeflabels(coef "label")`;
-+ LaTeX syntax is accepted in labels via `substitute(\_ _)`;
-+ the space between the column number and the first equation line is erased with `mlabels(,none) collabels(,none)`.
+**esttab** allows for a vast range of customisation. In this last subsection, we show how to improve the formatting of the first table in this tutorial. Specifically, we will change
++ the scalar/local labels, via `s(..., label(...))`;
++ the format of the floats, via `b(fmt)`;
++ the coefficient labels, set to mirror the notation of de Chaisemartin and D'Haultfoeuille (2024) via `coeflabels(coef "label")`;
++ Stata to LaTeX syntax, via `substitute(\_ _)`;
++ the space between the column number and the first equation line, via `mlabels(,none) collabels(,none)`.
 
 Run again the first code block from the [previous subsection](#integration-with-esttab). Then, run the following:
 
