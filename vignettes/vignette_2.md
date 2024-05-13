@@ -76,7 +76,7 @@ In this case, the resulting **esttab** table will be partitioned as follows:
   <image src="https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/assets/reg2.png" alt>
 </p>
 
-The first equation box (labeled by the outcome variable) contains the main results from **did_multiplegt_dyn**, while the equation boxes below show the output from **predict_het()**.
+The first equation box (labeled after the outcome variable) contains the main results from **did_multiplegt_dyn**, while the equation boxes below show the output from **predict_het()**.
 
 ### Formatting
 
