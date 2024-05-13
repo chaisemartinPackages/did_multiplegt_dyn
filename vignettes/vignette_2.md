@@ -5,7 +5,7 @@
 + [Setup](#setup)
 + [Integration with esttab](#integration-with-esttab)
   - [General use](#general-use)
-  - Formatting
+  - [Formatting](#formatting)
 
 ## Setup
 
@@ -53,7 +53,7 @@ est sto model_2
 
 Then, we use **esttab** to save the results in a TeX tabular:
 ```applescript
-esttab model_* using "filename.tex", replace booktabs se
+esttab model_* using "filename.tex", replace booktabs se s(p_joint p_placebo controls)
 ```
 
 The resulting table should look like this:
@@ -76,3 +76,26 @@ In this case, the resulting **esttab** table will be partitioned as follows:
 </p>
 
 The first equation box (labeled by the outcome variable) contains the main results from **did_multiplegt_dyn**, while the equation boxes below show the output from **predict_het()**.
+
+### Formatting
+
+**esttab** allows for a great deal of customisation. In this last subsection, we show how to improve the formatting of the first table in this tutorial. Specifically,
++ the scalar/local labels are specified with `s(..., label(...))`;
++ the format of the floats is changed with `b(fmt)`;
++ the coefficient labels are set to mirror the notation of de Chaisemartin and D'Haultfoeuille (2024) with `coeflabels(coef "label")`;
++ LaTeX syntax is accepted in labels via `substitute(\_ _)`;
++ the space between the column number and the first equation line is erased with `mlabels(,none) collabels(,none)`.
+
+Run again the first code block from the [previous subsection](#integration-with-esttab). Then, run the following:
+
+```
+esttab model_* using "filename.tex", replace booktabs se s(control p_joint p_placebo, label("Controls" "Joint Eq. Effects" "Joint Sig. Placebo"))  b(%9.5fc) coeflabels(Effect_1 "$\hat{\delta}_1$" Effect_2 "$\hat{\delta}_2$" Effect_3 "$\hat{\delta}_3$" Effect_4 "$\hat{\delta}_4$" Effect_5 "$\hat{\delta}_5$" Avg_Tot_Effect "$\hat{\delta}$" Placebo_1 "$\hat{\delta}_1^{pl}$" Placebo_2 "$\hat{\delta}_2^{pl}$" Placebo_3 "$\hat{\delta}_3^{pl}$") substitute(\_ _) mlabels(,none) collabels(,none)
+
+```
+
+The code above yields this table:
+<p>
+  <image src="https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/assets/reg3.png" alt>
+</p>
+
+---

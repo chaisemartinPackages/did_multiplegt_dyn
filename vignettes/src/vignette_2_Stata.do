@@ -32,7 +32,7 @@ est sto model_2
 esttab model_* using "$dir1/vignettes/assets/reg1.tex", replace booktabs se s(p_joint p_placebo controls) standalone
 
 // Refined format
-esttab model_* using "$dir1/vignettes/assets/reg1a.tex", replace booktabs se s(control p_joint p_placebo, label("Controls" "Joint Eq. Effects" "Joint Sig. Placebo"))  b(%9.5fc)coeflabels(Effect_1 "$\hat{\delta}_1$" Effect_2 "$\hat{\delta}_2$" Effect_3 "$\hat{\delta}_3$" Effect_4 "$\hat{\delta}_4$" Effect_5 "$\hat{\delta}_5$" Avg_Tot_Effect "$\hat{\delta}$" Placebo_1 "$\hat{\delta}_1^{pl}$" Placebo_2 "$\hat{\delta}_2^{pl}$" Placebo_3 "$\hat{\delta}_3^{pl}$") substitute(\_ _) mlabels(,none) collabels(,none) standalone
+esttab model_* using "$dir1/vignettes/assets/reg1a.tex", replace booktabs se s(control p_joint p_placebo, label("Controls" "Joint Eq. Effects" "Joint Sig. Placebo"))  b(%9.5fc) coeflabels(Effect_1 "$\hat{\delta}_1$" Effect_2 "$\hat{\delta}_2$" Effect_3 "$\hat{\delta}_3$" Effect_4 "$\hat{\delta}_4$" Effect_5 "$\hat{\delta}_5$" Avg_Tot_Effect "$\hat{\delta}$" Placebo_1 "$\hat{\delta}_1^{pl}$" Placebo_2 "$\hat{\delta}_2^{pl}$" Placebo_3 "$\hat{\delta}_3^{pl}$") substitute(\_ _) mlabels(,none) collabels(,none) standalone
 
 est clear
 
