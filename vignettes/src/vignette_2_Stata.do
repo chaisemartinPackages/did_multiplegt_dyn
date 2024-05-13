@@ -40,7 +40,7 @@ gen H1 = G/GG
 gen H2 = mod(G, TT)
 
 // Predict Het
-did_multiplegt_dyn Y G T D, predict_het(H1 H2, all) graph_off effects_equal effects(3)
+did_multiplegt_dyn Y G T D, predict_het(H1 H2, all) graph_off effects(3)
 est sto model_1
 
-esttab model_* using "$dir1/vignettes/assets/reg2.tex", replace booktabs se b(%9.4fc) noobs standalone
+esttab model_* using "$dir1/vignettes/assets/reg2.tex", replace booktabs se noobs standalone

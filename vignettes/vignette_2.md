@@ -60,3 +60,19 @@ The resulting table should look like this:
 <p>
   <image src="https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/assets/reg1.png" alt>
 </p>
+
+The code above is sufficient to save **did_multiplegt_dyn** output virtually with any option set, except with the **by()** or **by_path()** options, since, by design, the program will return an e(V) and e(b) only for the last level of the *by* variable. A special case occurs with the **predict_het()** option, since the program outputs also the results from regressing the group-level estimates of the event study effects on the variables specified as the option argument. For instance, we can run the following model specification and save the results with **esttab**:
+
+```applescript
+est clear
+did_multiplegt_dyn Y G T D, predict_het(H1 H2, all) graph_off effects(3)
+est sto model_1
+esttab model_* using "filename.tex", replace booktabs se noobs
+```
+
+In this case, the resulting **esttab** table will be partitioned as follows: 
+<p>
+  <image src="https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/assets/reg2.png" alt>
+</p>
+
+The first equation box (labeled by the outcome variable) contains the main results from **did_multiplegt_dyn**, while the equation boxes below show the output from **predict_het()**.
