@@ -30,9 +30,10 @@ gen H2 = mod(G, TT)
 ## Integration with esttab
 
 ### General use
-The normal use of **esttab** requires saving the estimation model (plus eventual scalars/locals) with **estimates store** and then run **esttab** with the models' names as arguments. Let's test these basic features with a **did_multiplegt_dyn** model. We will run two specifications:
+The normal use of **esttab** requires saving the estimation model (plus eventual scalars/locals) with **estimates store** and then runnig **esttab** with the models' names as arguments. Let's test these basic features with a **did_multiplegt_dyn** model. We will run two specifications:
 1. a model with 5 dynamic effects, where we also test for the equality of the event study estimates;
-2. the same model where we also estimate 3 placebos, control for $X_{g,t}$ and test for the joint significance of the placebos.
+2. the same model, but we also estimate 3 placebos, control for $X_{g,t}$ and test for the joint significance of the placebos.
+
 This setting allows us to showcase how to retrieve the estimation results and add scalars/locals from **did_multiplegt_dyn** to **esttab**. 
 
 First, we run **did_multiplegt_dyn** with the specifications above and save the results with **est sto** and the scalars/locals with **estadd**.
