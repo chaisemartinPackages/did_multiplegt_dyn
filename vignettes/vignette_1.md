@@ -8,7 +8,7 @@ In many circumstances, the outcome is observed less frequently than the treatmen
   - [Part I: Data Generation](#part-i-data-generation)
   - [Part II: Data Adjustment](#part-ii-data-adjustment)
   - [Part III: Estimation](#part-iii-estimation)
-  - [Part IV: Comparison with naive did_multiplegt_dyn](#part-iv-comparison-with-naive-did_multiplegt_dyn-and-graph-output)
+  - [Part IV: Comparison with naive did_multiplegt_dyn](#part-iv-comparison-with-naive-did_multiplegt_dyn)
   - [Part V: Graph output](#part-v-graph-output)
 
 
@@ -44,10 +44,10 @@ Assume now that the dataset includes another party, $C$, that has experienced a 
 In this example, naively applying the event-study estimators from de Chaisemartin & D'Haultfoeuille (2024) would yield a first event-study estimator that averages the effect of one period of exposure to treatment for party C with the effect of two periods of exposure for party A. Similarly, the second event-study estimator averages the effect of three periods of exposure to treatment for party C with the effect of four periods of exposure for party A. Instead, we can estimate the effect of $\ell$ periods of exposure to leadership change for $\ell=1$ and $\ell=3$, using a DID estimator comparing the 2003-to-(2003+ $1+\ell$) change in the vote share of treated party $C$ to the 2003-to-(2003+ $1+\ell$) change in the vote share of control party $B.$ This DID estimator uses the 2003 voting rate, the most recent non-missing outcome before C gets treated, as the baseline outcome. Combining these DID estimators with those comparing parties A and B, we are now able to estimate four event-study effects, without averaging effects of different exposure lengths, with effects $\ell=1$ and $\ell=3$ applying to Party C, while effects $\ell=2$ and $\ell=4$ apply to Party A. The figure below shows the combined event-study plot from our toy example.
 
 <p>
-  <img src="https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/assets/vignette_1_Stata_fig1.jpg" alt>
+  <img src="https://github.com/chaisemartinPackages/did_multiplegt_dyn/blob/main/vignettes/assets/vignette_1_Stata_fig1.jpg" alt>
 </p>
 
-In the next section, we show how to use `did_multiplegt_dyn` to produce an event-study graph without averaging effects of different exposure lengths whenever the outcome is observed less frequently than the treatment. For each step, we also report the corresponding block of [Stata](https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/src/vignette_1_Stata.do) and [R](https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/src/vignette_1_R.R) code.
+In the next section, we show how to use `did_multiplegt_dyn` to produce an event-study graph without averaging effects of different exposure lengths whenever the outcome is observed less frequently than the treatment. For each step, we also report the corresponding block of [Stata](https://github.com/chaisemartinPackages/did_multiplegt_dyn/blob/main/vignettes/src/vignette_1_Stata.do) and [R](https://github.com/chaisemartinPackages/did_multiplegt_dyn/blob/main/vignettes/src/vignette_1_R.R) code.
 
 ## General Case with Stata and R code
 
@@ -257,8 +257,8 @@ print(table[order(table[,ncol(table)]),1:(ncol(table)-1)])
   </tr>
 </table>
 
-### Part IV: Comparison with naive `did_multiplegt_dyn`
-Running `did_multiplegt_dyn` on the collapsed data only yields biased point estimates for the event-study coefficients. Let us take the case of a slightly different DGP, where $$Y_{g,t} = U (1 + \sum_{t'\leq t} D_{(g,t')})$$ with $U \sim U(0,1)$. The outcome is now increasing in the cumulative treatment received over time.  We increase the groups to 1000 over the same 20 periods, whereas $Y_{g,t}$ is non missing only at every fourth period. As before, we let groups switch around the fourth period to study the estimator under periodically missing outcomes. We keep all the groups whose index is divisible by 5 as never-switchers. The following code blocks generate a random sample from this DGP.
+### Part IV: Comparison with naive did_multiplegt_dyn
+Running `did_multiplegt_dyn` on the collapsed data only yields biased point estimates for the event-study coefficients. Let us take the case of a slightly different DGP, where $$Y_{g,t} = U (1 + \sum_{t'\leq t} D_{g,t'})$$ with $U \sim U(0,1)$. The outcome is now increasing in the cumulative treatment received over time.  We increase the number of groups to 1000, while keeping 20 periods, and $Y_{g,t}$ is still non missing only at every fourth period. Groups whose index is divisible by 5 as never-switchers. The following code blocks generate a random sample from this DGP.
 
 <table>
   <tr>
@@ -442,7 +442,7 @@ print(out_plot)
 
 The resulting graph should look like this:
 <p>
-  <img src="https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/assets/vignette_1_Stata_fig2.jpg" alt>
+  <img src="https://github.com/chaisemartinPackages/did_multiplegt_dyn/blob/main/vignettes/assets/vignette_1_Stata_fig2.jpg" alt>
 </p>
 
 ---
