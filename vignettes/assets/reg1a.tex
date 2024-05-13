@@ -1,0 +1,49 @@
+% 13 May 2024 15:43:21
+\documentclass[varwidth]{standalone}
+\usepackage{booktabs}
+\begin{document}
+
+{
+\def\sym#1{\ifmmode^{#1}\else\(^{#1}\)\fi}
+\begin{tabular}{l*{2}{c}}
+\toprule
+            &\multicolumn{1}{c}{(1)}         &\multicolumn{1}{c}{(2)}         \\
+\midrule
+$\hat{\delta}_1$&     0.52691\sym{***}&     0.51666\sym{***}\\
+            &   (0.04906)         &   (0.04361)         \\
+\addlinespace
+$\hat{\delta}_2$&     0.33026\sym{***}&     0.30043\sym{***}\\
+            &   (0.06695)         &   (0.06097)         \\
+\addlinespace
+$\hat{\delta}_3$&     0.29919\sym{**} &     0.31371\sym{***}\\
+            &   (0.09947)         &   (0.08300)         \\
+\addlinespace
+$\hat{\delta}_4$&     0.14995         &     0.27208\sym{*}  \\
+            &   (0.13541)         &   (0.13073)         \\
+\addlinespace
+$\hat{\delta}_5$&    -0.01549         &     0.05075         \\
+            &   (0.20492)         &   (0.18652)         \\
+\addlinespace
+$\hat{\delta}$&     0.43566\sym{**} &     0.48863\sym{***}\\
+            &   (0.14371)         &   (0.13127)         \\
+\addlinespace
+$\hat{\delta}_1^{pl}$&                     &     0.07033         \\
+            &                     &   (0.06400)         \\
+\addlinespace
+$\hat{\delta}_2^{pl}$&                     &     0.12237         \\
+            &                     &   (0.12428)         \\
+\addlinespace
+$\hat{\delta}_3^{pl}$&                     &    -0.03396         \\
+            &                     &   (0.25635)         \\
+\midrule
+Controls    &                     &                     \\
+Joint Eq. Effects&     0.00175         &     0.00037         \\
+Joint Sig. Placebo&                     &     0.48840         \\
+\bottomrule
+\multicolumn{3}{l}{\footnotesize Standard errors in parentheses}\\
+\multicolumn{3}{l}{\footnotesize \sym{*} \(p<0.05\), \sym{**} \(p<0.01\), \sym{***} \(p<0.001\)}\\
+\end{tabular}
+}
+
+\end{document}
+
