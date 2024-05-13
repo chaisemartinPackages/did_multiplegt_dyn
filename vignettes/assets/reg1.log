@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2023.12.2)  13 MAY 2024 14:29
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (TeX Live 2023) (preloaded format=pdflatex 2023.12.2)  13 MAY 2024 15:43
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -98,9 +98,9 @@ LaTeX Font Info:    External font `cmex10' loaded for size
 LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <5> on input line 8.
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <8> on input line 44.
+(Font)              <8> on input line 45.
 LaTeX Font Info:    External font `cmex10' loaded for size
-(Font)              <6> on input line 44.
+(Font)              <6> on input line 45.
  [1
 
 {c:/texlive/2023/texmf-var/fonts/map/pdftex/updmap/pdftex.map}] (./reg1.aux)
@@ -112,13 +112,13 @@ L3 programming layer <2023-11-09>
 Here is how much of TeX's memory you used:
  1164 strings out of 474267
  21722 string characters out of 5751465
- 1934558 words of memory out of 5000000
+ 1935558 words of memory out of 5000000
  23411 multiletter control sequences out of 15000+600000
  559892 words of font info for 42 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  57i,11n,71p,352b,292s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <c:/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb><c:/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb><c:/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb><c:/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb><c:/texlive/2023/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb>
-Output written on reg1.pdf (1 page, 53859 bytes).
+Output written on reg1.pdf (1 page, 54335 bytes).
 PDF statistics:
  33 PDF objects out of 1000 (max. 8388607)
  19 compressed objects within 1 object stream

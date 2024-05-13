@@ -3,8 +3,8 @@
 **esttab** is one of the most used Stata packages for retrieving estimation results as formatted tables. In the light of many users' requests, we have made **`did_multiplegt_dyn compatible with esttab`**. This vignette showcases how to use **esttab** in combination with **did_multiplegt_dyn** to save your results in an external file. **esttab** allows for many formats (TeX, html, ...) which can also be accessed with a **did_multiplegt_dyn** output. In this tutorial, we will only focus on LaTeX tabulars.
 
 + [Setup](#setup)
-+ Integration with **esttab**
-  - General use
++ [Integration with esttab](#integration-with-esttab)
+  - [General use](#general-use)
   - Formatting
 
 ## Setup
@@ -27,6 +27,36 @@ gen H1 = G/GG
 gen H2 = mod(G, TT)
 ```
 
+## Integration with esttab
+
+### General use
+The normal use of **esttab** requires to save estimation model (and eventual scalars/locals) with **estimates store** and then run **esttab** with the models' names as arguments. Let's test these basic features with a **did_multiplegt_dyn** model. We will run two specifications:
+1. a model with 5 dynamic effects, where we also test for the equality of the event study estimates;
+2. the same model where we also estimate 3 placebos, control for $X_{g,t}$ and test for the joint significance of the placebos.
+This setting allows us to showcase how to retrieve the estimation results and add scalars/locals from **did_multiplegt_dyn** to **esttab**. 
+
+First, we run **did_multiplegt_dyn** with the specifications above and save the results with **est sto** and the scalars/locals with **estadd**.
+
+```applescript
+est clear
+did_multiplegt_dyn Y G T D, effects(5) graph_off effects_equal
+estadd scalar p_joint = e(p_equality_effects) 
+estadd local controls = "No"
+est sto model_1
+
+did_multiplegt_dyn Y G T D, effects(5) placebo(3) effects_equal controls(X) graph_off
+estadd scalar p_joint = e(p_equality_effects) 
+estadd scalar p_placebo = e(p_jointplacebo)
+estadd local controls = "Yes"
+est sto model_2
+```
+
+Then, we use **esttab** to save the results in a TeX tabular:
+```applescript
+esttab model_* using "filename.tex", replace booktabs se
+```
+
+The resulting table should look like this:
 <p>
   <image src="https://github.com/DiegoCiccia/did_multiplegt_dyn/blob/main/vignettes/assets/reg1.png" alt>
 </p>
