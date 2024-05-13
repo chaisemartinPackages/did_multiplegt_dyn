@@ -1,0 +1,53 @@
+% 13 May 2024 14:29:01
+\documentclass[varwidth]{standalone}
+\usepackage{booktabs}
+\begin{document}
+
+{
+\def\sym#1{\ifmmode^{#1}\else\(^{#1}\)\fi}
+\begin{tabular}{l*{1}{c}}
+\toprule
+            &\multicolumn{1}{c}{(1)}\\
+            &\multicolumn{1}{c}{} \\
+\midrule
+Y           &                     \\
+Effect\_1    &      0.5269\sym{***}\\
+            &    (0.0491)         \\
+\addlinespace
+Effect\_2    &      0.3303\sym{***}\\
+            &    (0.0670)         \\
+\addlinespace
+Effect\_3    &      0.2992\sym{**} \\
+            &    (0.0995)         \\
+\addlinespace
+Avg\_Tot\_Effect&      0.5779\sym{***}\\
+            &    (0.0901)         \\
+\midrule
+Effect\_1    &                     \\
+Var1        &     -0.0345         \\
+            &    (0.1194)         \\
+\addlinespace
+Var2        &      0.0025         \\
+            &    (0.0063)         \\
+\midrule
+Effect\_2    &                     \\
+Var1        &     -0.1328         \\
+            &    (0.1406)         \\
+\addlinespace
+Var2        &      0.0067         \\
+            &    (0.0070)         \\
+\midrule
+Effect\_3    &                     \\
+Var1        &     -0.1417         \\
+            &    (0.1599)         \\
+\addlinespace
+Var2        &     -0.0014         \\
+            &    (0.0082)         \\
+\bottomrule
+\multicolumn{2}{l}{\footnotesize Standard errors in parentheses}\\
+\multicolumn{2}{l}{\footnotesize \sym{*} \(p<0.05\), \sym{**} \(p<0.01\), \sym{***} \(p<0.001\)}\\
+\end{tabular}
+}
+
+\end{document}
+

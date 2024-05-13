@@ -1,0 +1,49 @@
+% 13 May 2024 14:28:59
+\documentclass[varwidth]{standalone}
+\usepackage{booktabs}
+\begin{document}
+
+{
+\def\sym#1{\ifmmode^{#1}\else\(^{#1}\)\fi}
+\begin{tabular}{l*{2}{c}}
+\toprule
+            &\multicolumn{1}{c}{(1)}&\multicolumn{1}{c}{(2)}\\
+            &\multicolumn{1}{c}{} &\multicolumn{1}{c}{} \\
+\midrule
+Effect\_1    &       0.527\sym{***}&       0.517\sym{***}\\
+            &    (0.0491)         &    (0.0436)         \\
+\addlinespace
+Effect\_2    &       0.330\sym{***}&       0.300\sym{***}\\
+            &    (0.0670)         &    (0.0610)         \\
+\addlinespace
+Effect\_3    &       0.299\sym{**} &       0.314\sym{***}\\
+            &    (0.0995)         &    (0.0830)         \\
+\addlinespace
+Effect\_4    &       0.150         &       0.272\sym{*}  \\
+            &     (0.135)         &     (0.131)         \\
+\addlinespace
+Effect\_5    &     -0.0155         &      0.0508         \\
+            &     (0.205)         &     (0.187)         \\
+\addlinespace
+Avg\_Tot\_Effect&       0.436\sym{**} &       0.489\sym{***}\\
+            &     (0.144)         &     (0.131)         \\
+\addlinespace
+Placebo\_1   &                     &      0.0703         \\
+            &                     &    (0.0640)         \\
+\addlinespace
+Placebo\_2   &                     &       0.122         \\
+            &                     &     (0.124)         \\
+\addlinespace
+Placebo\_3   &                     &     -0.0340         \\
+            &                     &     (0.256)         \\
+\midrule
+Joint Eq. Effects&     0.00175         &    0.000370         \\
+Joint Sig. Placebo&                     &       0.488         \\
+\bottomrule
+\multicolumn{3}{l}{\footnotesize Standard errors in parentheses}\\
+\multicolumn{3}{l}{\footnotesize \sym{*} \(p<0.05\), \sym{**} \(p<0.01\), \sym{***} \(p<0.001\)}\\
+\end{tabular}
+}
+
+\end{document}
+
