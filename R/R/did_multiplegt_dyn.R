@@ -181,6 +181,12 @@ did_multiplegt_dyn <- function(
     ) { 
 
   #### General syntax checks ####
+  if (!is.null(cluster)) {
+    if (cluster == group) {
+      cluster <- NULL
+    }
+  }
+
   params <- as.list(match.call())[-1]
   args <- list()
   for (v in names(formals(did_multiplegt_dyn))) {
