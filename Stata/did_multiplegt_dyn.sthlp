@@ -56,23 +56,23 @@ using panel data with multiple groups and periods.
 {title:Description}
 
 {p 4 8}
-{cmd:did_multiplegt_dyn} estimates the effect of a treatment on an outcome,
-using group-(e.g. county- or
-state-) level panel data. The panel may be unbalanced:
-not all groups have to be observed at every period.
-The data may also be at a more disaggregated level than
-the group level (e.g. individual-level wage data
-to measure the effect of a regional-level minimum-wage on individuals' wages).
-The command computes the DID event-study estimators introduced
-in de Chaisemartin and D'Haultfoeuille (2024). It can be used with a binary
-and absorbing (staggered) treatment
-but it can also be used with a non-binary treatment (discrete or continuous)
-that can increase or decrease multiple times,
-even if lagged treatments affect the outcome,
-and if the current and lagged treatments have heterogeneous
-effects, across space and/or over time.
-The event-study estimators computed by the command rely on a no-anticipation
-and parallel trends assumptions.
+{cmd:did_multiplegt_dyn} estimates the effect of a treatment 
+on an outcome, using group-(e.g. county- or state-) level 
+panel data. The command computes the DID event-study estimators 
+introduced in de Chaisemartin and D'Haultfoeuille (2024). 
+Like other recently proposed DID estimation commands ({cmd:csdid}, {cmd:didimputation}, ...), 
+{cmd:did_multiplegt_dyn} can be used with a binary and 
+staggered (absorbing) treatment. But unlike those other commands, 
+{cmd:did_multiplegt_dyn} can also be used with a non-binary treatment
+(discrete or continuous) that can increase or decrease multiple times.
+Lagged treatments may affect the outcome, and the current and lagged 
+treatments may have heterogeneous effects, across space and/or over time. 
+The event-study estimators computed by the command rely on a 
+no-anticipation and parallel trends assumptions. 
+The panel may be unbalanced:  not all groups have to be observed at every period.  
+The data may also be at a more disaggregated level than the group level 
+(e.g. individual-level wage data to measure the effect of a 
+regional-level minimum-wage on individuals' wages). 
 {p_end}
 
 {p 8 8}

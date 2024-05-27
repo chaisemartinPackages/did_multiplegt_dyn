@@ -20,7 +20,6 @@ capture program drop did_multiplegt_dyn
 program did_multiplegt_dyn, eclass
 	version 12.0
 	syntax varlist(min=4 max=4 numeric) [if] [in] [, effects(integer 1) placebo(integer 0) switchers(string) only_never_switchers controls(varlist numeric) trends_nonparam(varlist numeric) weight(varlist numeric max=1) dont_drop_larger_lower NORMALIZED cluster(varlist numeric max=1) graphoptions(string) save_results(string) graph_off same_switchers same_switchers_pl effects_equal  drop_if_d_miss_before_first_switch trends_lin ci_level(integer 95) by(varlist numeric max=1) predict_het(string) design(string) date_first_switch(string)  NORMALIZED_weights CONTinuous(integer 0) save_sample less_conservative_se by_path(string) bootstrap(string)]
-
 ////////// 1. Checking that necessary tools to run command installed, and that syntax correctly specified.	
 		
 ///// Check if gtools is installed, if not present link to install
@@ -2702,6 +2701,58 @@ di as text "{it:Test of joint nullity of the estimates : p-value =} " p_het_`i'_
 
 ///// Store all the ereturns after the last reg was called 
 ereturn clear 
+
+// Modif Felix: Put ereturn post before all the other ereturns
+local minus Av_tot_eff
+local rownames_alt : list rownames-minus
+
+
+matrix colnames didmgt_results_no_avg_XX= `rownames_alt'
+matrix rownames didmgt_Var_all_XX= `rownames_alt'
+matrix colnames didmgt_Var_all_XX= `rownames_alt'
+
+////// Integration with esttab
+matrix b=(didmgt_results_no_avg_XX, scalar(delta_XX))
+mat coln b = `rownames_alt' Avg_Tot_Effect
+local nc = colsof(b)
+matrix V = J(`nc', `nc', 0)
+forv i=1/`=`nc'-1' {
+	forv j =1/`=`nc'-1' {
+		mat V[`i', `j'] = didmgt_Var_all_XX[`i', `j']
+	}
+}
+mat V[`nc', `nc'] = scalar(se_XX)^2
+matrix rownames V = `rownames_alt' Avg_Tot_Effect
+matrix colnames V = `rownames_alt' Avg_Tot_Effect
+
+if "`predict_het'" != "" {
+	local het_rown ""
+	foreach v in `rownames_alt' Avg_Tot_Effect {
+		local het_rown "`het_rown' `1':`v'"
+	}
+	foreach i in `all_effects_XX'{ 
+		local nc = rowsof(effect_het_`i'_XX)
+		local nv = rowsof(V)
+		mat V`i' = J(`nc', `nc', 0)
+		forv j = 1/`nc' {
+			mat b = (b, scalar(effect_het_`i'_XX[`j', 1]))
+			mat V`i'[`j', `j'] = scalar(effect_het_`i'_XX[`j', 2])^2
+		}
+		mat V = (V, J(`nv',`nc', 0)\J(`nc', `nv', 0), V`i')
+		local rnames ""
+		foreach rn in `effect_het_rownames_`i'_XX' {
+			local rnames "`rnames' Effect_`i':`rn'"
+		}
+		local het_rown "`het_rown' `rnames'"
+	}	
+	mat coln b = `het_rown'
+	mat rown V = `het_rown'
+	mat coln V = `het_rown'
+}
+
+ereturn post b V
+
+// Felix: Continue by adding Av_tot_eff to the Var/Cov matrix
 
 forvalue i=1/`=l_XX'{
 capture ereturn scalar Effect_`i' = scalar(DID_`i'_XX)
