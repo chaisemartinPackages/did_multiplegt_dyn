@@ -28,6 +28,7 @@ if _rc{
 	di ""
 	di as error "You have not installed the gtools package which is used within the did_multiplegt_dyn command."
 	di `"{stata "ssc install gtools": Click here to install gtools}"'
+	di as input _continue ""
 	
 	exit
 }	
@@ -41,6 +42,7 @@ if "`trends_lin'"!=""&"`by'"!=""&`continuous'!=0{
 if "`by'"!=""&"`by_path'"!=""{	
 	di as error ""
 	di as error "The options by() and by_path() can not be specified at the same time!"
+	di as input _continue ""
 	exit
 }
 
@@ -48,6 +50,7 @@ if "`by'"!=""&"`by_path'"!=""{
 if `continuous'<0{
 	di ""
 	di as error "The input of the continuous() option has to be a positive integer!"
+	di as input _continue ""
 	
 	exit
 }
@@ -55,6 +58,7 @@ if `continuous'<0{
 if ("`by_path'"!=""&"`graphoptions'"!=""){
 	di ""
 	di as error "by_path() builds on pre-specified graph options so it does not allow for any further inputs in graphoptions()!"
+	di as input _continue ""
 	
 	exit
 }	
@@ -65,6 +69,7 @@ if ("`by_path'"!=""&"`by_path'"!="all"){
 	if _rc{
 	di ""	
 	di as error "The input of the by_path() option has to be {it:all} or a positive integer!"
+	di as input _continue ""
 	
 	exit
 	}
@@ -72,6 +77,7 @@ if ("`by_path'"!=""&"`by_path'"!="all"){
 if `by_path'<=0{
 	di ""
 	di as error "The input of the by_path() option has to be {it:all} or a positive integer!"
+	di as input _continue ""
 	
 	exit
 }
@@ -79,10 +85,12 @@ if `by_path'<=0{
 
 if "`bootstrap'"!=""&`continuous'==0{
 	di as error "You specified the bootstrap option without the continuous option. Please be aware that we strongly recommend to only compute bootstraped standard errors when you want to use the continuous option. Otherwise you can rely on the (much faster) computation of analytical standard errors."	
+	di as input _continue ""
 }
 
 if "`bootstrap'"==""&`continuous'>0{
 	di as error "You specified the continuous option without the bootstrap option. Please be aware that we strongly recommend to compute bootstraped standard errors when you are using the continuous option as the analytical standard errors tend to be very liberal in that case."	
+	di as input _continue ""
 }
 
 // Allow to specify seed with bootstrap
@@ -94,6 +102,7 @@ if "`bootstrap'"!=""{
 		di as error ""
 		di as error "Syntax error in bootstrap option"
 		di as error "Comma required"
+		di as input _continue ""
 		exit
 	}
 
@@ -123,12 +132,14 @@ if `bootstrap_XX'!=0{
 	if _rc{
 	di ""	
 	di as error "The input of the bootstrap() option has to be a positive integer!"
+	di as input _continue ""
 	exit
 	}
 	
 if `bootstrap_XX'<0{
 	di ""
 	di as error "The input of the bootstrap() option has to be a positive integer!"
+	di as input _continue ""
 	exit
 }
 }
@@ -137,6 +148,7 @@ if `bootstrap_XX'<0{
 if "`same_switchers_pl'"!=""&"`same_switchers'"==""{
 	di ""
 	di as error "The same_switchers_pl option only works if same_switchers is specified as well!"
+	di as input _continue ""
 	
 	exit
 }
@@ -145,6 +157,7 @@ if "`same_switchers_pl'"!=""&"`same_switchers'"==""{
 if `continuous'>0&"`design'"!=""{
 	di ""
 	di as error "The design option can not be specified together with the continuous option!"
+	di as input _continue ""
 
 	exit
 }
@@ -296,6 +309,7 @@ if "`by'" !=""{
 		display as error "The variable specified in the option by"
 		display as error "is time-varying. That variable should"
 		display as error "be time-invariant."
+		di as input _continue ""
 		exit
 	}
 }
@@ -349,6 +363,7 @@ if `bootstrap_XX'!=0{
 	if "`less_conservative_se'"!=""{
 		di as error ""
 		di as error "The less_conservative_se option has no effect when bootstrap is specified, therefore it is ignored in this case to save computation time."
+		di as input _continue ""
 		local less_conservative_se ""
 }
 }
@@ -361,6 +376,7 @@ if strpos("`predict_het'", ",") == 0 {
 		di as error ""
 		di as error "Syntax error in predict_het option"
 		di as error "Comma required"
+		di as input _continue ""
 		exit
 	}
 
@@ -379,6 +395,7 @@ if "`normalized'"!=""{
 	di as error "The options normalized and predict_het can not be"
 	di as error "specified at the same time, therefore predict_het"
 	di as error "will be ignored."
+	di as input _continue ""
 }
 
 * Check if predict_het and controls are specified simulataneously
@@ -390,6 +407,7 @@ if "`predict_het'"!=""&"`controls'"!=""{
 	di as error "The options controls() and predict_het can not be"
 	di as error "specified at the same time, therefore predict_het"
 	di as error "will be ignored."
+	di as input _continue ""
 }
 }	
 
@@ -413,6 +431,7 @@ if "`pred_het'" !=""{
 	if "`predict_het_bad'"!=""{
 	display as error "The variable(s) (`predict_het_bad') specified in the option predict_het"
 	display as error "is(are) time-varying, the command will therefore ignore them."
+	di as input _continue ""
 	}
 } 
 
@@ -543,6 +562,7 @@ if r(N)==0{
 	di as error "treatment change at the same date, a situation"
 	di as error "where the estimators of de Chaisemartin & D'Haultfoeuille (2024)"
 	di as error "cannot be used."
+	di as input _continue ""
 
 	exit
 }
@@ -775,6 +795,7 @@ if "`cluster'"!=""{
 	if (scalar(max_cluster_var_XX) >0){
 	di as error ""
 	di as error "The group variable should be nested within the clustering variable."
+	di as input _continue ""
 	exit
 	}
 	
@@ -960,6 +981,7 @@ if ("`store_singular_XX'"!=""){
 	di as error "2. For groups with those values of the baseline treatment, "
 	di as error "two or more of your control variables are perfectly collinear "
 	di as error "in the sample where the regression is run, for instance because those control variables do not vary over time."
+	di as input _continue ""
 }
 
 ///// Values of baseline treatment such that residualization could not be performed at all are dropped.
@@ -1029,6 +1051,7 @@ if ("`switchers'"=="in"&(L_u_XX==.|L_u_XX==0))|("`switchers'"=="out"&(L_a_XX==.|
 	di as error "treatment change at the same date, a situation"
 	di as error "where the estimators of de Chaisemartin & D'Haultfoeuille (2024)"
 	di as error "cannot be used."
+	di as input _continue ""
 		
 	exit
 }
@@ -1082,6 +1105,7 @@ if l_XX<`effects'{
 	di as error "The number of effects requested is too large."
 	di as error "The number of effects which can be estimated is at most " l_XX "."
 	di as error "The command will therefore try to estimate " l_XX " effect(s)."
+	di as input _continue ""
 }
 
 if `placebo'!=0{
@@ -1089,12 +1113,14 @@ if `placebo'!=0{
 		di as error ""
 		di as error "The number of placebos which can be estimated is at most " l_placebo_XX "."
 		di as error "The command will therefore try to estimate " l_placebo_XX " placebo(s)."
+		di as input _continue ""
 	}
 
 	if `effects'<`placebo'{
 		di as error ""
 		di as error "The number of placebo requested cannot be larger than the number of effects requested."
 		di as error "The command cannot compute more than " l_placebo_XX " placebo(s)."
+		di as input _continue ""
 	}
 }
 
@@ -1130,6 +1156,7 @@ if `by_path'>`num_paths_XX'{
 	di ""
 	di as error "You specified a number that exceeds the number of treatment paths in the by_path() option!"
 	di as error "The number of paths is automatically set to the number of treatment paths in the sample."
+	di as input _continue ""
 	
 	local by_path=`num_paths_XX'
 }
@@ -1222,6 +1249,7 @@ graph combine $graph_by_path, title(DID from last period before treatment change
 else{
 	di as error ""
 	di as error "Estimation of at least one treatment path was not possible, therefore no combined graph is produced."
+	di as input _continue ""
 }
 }
 
@@ -1563,6 +1591,7 @@ if N_switchers_effect_`i'_XX==0|N_effect_`i'_XX==0{
 	di as error "Effect_"`i' " cannot be estimated."
 	di as error "There is no switcher or no control"
 	di as error "for this effect."
+	di as input _continue ""
 	
 	local missing_eff_XX `missing_eff_XX' `i'
 }
@@ -1730,6 +1759,7 @@ if N_switchers_placebo_`i'_XX==0|N_placebo_`i'_XX==0{
 	di as error "Placebo_"`i' " cannot be estimated."
 	di as error "There is no switcher or no control"
 	di as error "for this placebo."
+	di as input _continue ""
 	
 	local missing_pl_XX `missing_pl_XX' `i'
 }
@@ -1738,6 +1768,7 @@ if "`normalized'"!=""{
 	di as error ""
 	di as error "Placebo_"`i' " cannot be estimated."
 	di as error "The denominator is missing for this normalized placebo."
+	di as input _continue ""
 	
 	local missing_pl_XX `missing_pl_XX' `i'
 	
@@ -2231,6 +2262,7 @@ forvalue i=1/`total_num_estimates_XX'{
 		di as error "Some placebos/effects could not be estimated."
 		di as error "Therefore, the command will not be compatible"
 		di as error "with the honestdid command."
+		di as input _continue ""
 	}
 
 ///// Performing a test that all placebo are jointly equal to 0.
@@ -2323,6 +2355,7 @@ if (l_placebo_XX!=0)&l_placebo_XX>1{
 		di as error "Some placebos could not be estimated."
 		di as error "Therefore, the test of joint nullity of the placebos "
 		di as error "could not be computed."
+		di as input _continue ""
 	}
 	
 }
@@ -2405,6 +2438,7 @@ if ("`effects_equal'")!=""&l_XX>1{
 		di as error "Some effects could not be estimated."
 		di as error "Therefore, the test of equality of the effects "
 		di as error "could not be computed."
+		di as input _continue ""
 	}
 	
 	}
@@ -2424,20 +2458,20 @@ matrix colnames mat_res_XX= "Estimate" "SE" "LB CI" "UB CI" "N" "Switchers" "tim
 
 ///// Table for the DID_l estimates
 display _newline
-di as input "{hline 80}"
-di as input _skip(13) "Estimation of treatment effects: Event-study effects"
+di "{hline 80}"
+di _skip(13) "{bf:Estimation of treatment effects: Event-study effects}"
 if "`by'" !=""{	
 * Add description with the by variable level if by is specified
-di as input _skip(35) "By: `by' = `val_lab_int_XX'"
+di _skip(35) "{bf:By: `by' = `val_lab_int_XX'}"
 }	
 if "$k"!=""{
 	local k=$k
 	local nb_obs_adj_XX = strlen("${path_`k'_XX}")
-	di as input  _skip(`=42-`nb_obs_adj_XX'') "Path (${path_`k'_XX})"
+	di _skip(`=42-`nb_obs_adj_XX'') "{bf:Path (${path_`k'_XX})}"
 }
-di as input "{hline 80}"
+di "{hline 80}"
 noisily matlist mat_res_XX[1..l_XX, 1..6]
-di as input "{hline 80}"
+di "{hline 80}"
 if l_XX>1&"`effects_equal'"!=""&all_Ns_not_zero==l_XX{
 * When effects_equal is specified show P-value here	
 di as text "{it:Test of equality of the effects : p-value =} " scalar(p_equality_effects)
@@ -2451,20 +2485,20 @@ matrix mat_res_avg_XX=mat_res_XX[l_XX+1, 1..6]
 matrix mat_res_avg_XX=(mat_res_avg_XX, .z )
 matrix colnames mat_res_avg_XX= "Estimate" "SE" "LB CI" "UB CI" "N" "Switch" "x Periods"
 display _newline
-di as input "{hline 80}"
-di as input _skip(15) "Average cumulative (total) effect per treatment unit"
+di "{hline 80}"
+di _skip(15) "{bf:Average cumulative (total) effect per treatment unit}"
 if "`by'" !=""{	
 * Add description with the by variable level if by is specified
-di as input _skip(35) "By: `by' = `val_lab_int_XX'"
+di _skip(35) "{bf:By: `by' = `val_lab_int_XX'}"
 }
 if "$k"!=""{
 	local k=$k
 	local nb_obs_adj_XX = strlen("${path_`k'_XX}")
-	di as input  _skip(`=42-`nb_obs_adj_XX'') "Path (${path_`k'_XX})"
+	di _skip(`=42-`nb_obs_adj_XX'') "{bf:Path (${path_`k'_XX})}"
 }	
-di as input "{hline 80}"
+di "{hline 80}"
 noisily matlist mat_res_avg_XX, nodotz
-di as input "{hline 80}"
+di "{hline 80}"
 
 ///// Preparing computation of average number of cumulated effects
 // Determine max number of effects by group
@@ -2511,9 +2545,9 @@ di as text "{it:Average number of time periods over which a treatment's effect i
 // Output in case trends_lin is specified
 if "`trends_lin'"!=""{
 display _newline
-di as input "{hline 80}"
-di as input _skip(4) "When the option {it:trends_lin} is specified no average effects are reported"
-di as input "{hline 80}"
+di "{hline 80}"
+di _skip(4) "{bf:When the option {it:trends_lin} is specified no average effects are reported}"
+di "{hline 80}"
 }	
 
 ///// Table for the placebo estimates
@@ -2521,20 +2555,20 @@ if l_placebo_XX!=0{
 * Only shown when some placebos are requested
 
 display _newline
-di as input "{hline 80}"
-di as input _skip(10) "Testing the parallel trends and no anticipation assumptions"
+di "{hline 80}"
+di _skip(10) "{bf:Testing the parallel trends and no anticipation assumptions}"
 if "`by'" !=""{	
 * Add description with the by variable level if by is specified	
-di as input _skip(35) "By: `by' = `val_lab_int_XX'"
+di _skip(35) "{bf:By: `by' = `val_lab_int_XX'}"
 }
 if "$k"!=""{
 	local k=$k
 	local nb_obs_adj_XX = strlen("${path_`k'_XX}")
-	di as input  _skip(`=42-`nb_obs_adj_XX'') "Path (${path_`k'_XX})"
+	di  _skip(`=42-`nb_obs_adj_XX'') "{bf:Path (${path_`k'_XX})}"
 }	
-di as input "{hline 80}"
+di "{hline 80}"
 matlist mat_res_XX[l_XX+2...,1..6]
-di as input "{hline 80}"
+di "{hline 80}"
 if (l_placebo_XX>1&all_Ns_pl_not_zero==l_placebo_XX&all_delta_pl_not_zero==l_placebo_XX&"`normalized'"!="")|(l_placebo_XX>1&all_Ns_pl_not_zero==l_placebo_XX&"`normalized'"==""){
 di as text "{it:Test of joint nullity of the placebos : p-value =} " scalar(p_jointplacebo)
 }
@@ -2574,6 +2608,7 @@ local max_test_eff_XX = max(`test_eff_XX')
 		di as error ""
 		di as error "You specified some numbers in predict_het that exceed the number of effects possible to estimate!"
 		di as error "Please specify only numbers that are smaller or equal to the number you request in effects()."
+		di as input _continue ""
 		exit
 	}
 }
@@ -2678,22 +2713,22 @@ matrix rownames effect_het_`i'_XX=`effect_het_rownames_`i'_XX'
 
 // Output the table
 display _newline
-di as input "{hline 80}"
-di as input _skip(25) "Predicting effect heterogeneity"
+di "{hline 80}"
+di _skip(25) "{bf:Predicting effect heterogeneity}"
 if "`by'" !=""{
 * Add description with the by variable level if by is specified		
-di as input _skip(35) "By: `by' = `val_lab_int_XX'"
+di _skip(35) "{bf:By: `by' = `val_lab_int_XX'}"
 }	
-di as input "{hline 80}"
+di "{hline 80}"
 
 // output only the specified effects
 foreach i in `all_effects_XX'{
 display _newline
-di as input "{hline 80}"	
-di as input _skip(37) "Effect_`i'"
-di as input "{hline 80}"
+di "{hline 80}"	
+di _skip(37) "{bf:Effect_`i'}"
+di "{hline 80}"
 matlist effect_het_`i'_XX
-di as input "{hline 80}"
+di "{hline 80}"
 di as text "{it:Test of joint nullity of the estimates : p-value =} " p_het_`i'_hat_XX
 }
 }
@@ -2713,7 +2748,7 @@ matrix colnames didmgt_Var_all_XX= `rownames_alt'
 
 ////// Integration with esttab
 matrix b=(didmgt_results_no_avg_XX, scalar(delta_XX))
-mat coln b = `rownames_alt' Avg_Tot_Effect
+mat coln b = `rownames_alt' Av_tot_eff
 local nc = colsof(b)
 matrix V = J(`nc', `nc', 0)
 forv i=1/`=`nc'-1' {
@@ -2722,12 +2757,12 @@ forv i=1/`=`nc'-1' {
 	}
 }
 mat V[`nc', `nc'] = scalar(se_XX)^2
-matrix rownames V = `rownames_alt' Avg_Tot_Effect
-matrix colnames V = `rownames_alt' Avg_Tot_Effect
+matrix rownames V = `rownames_alt' Av_tot_eff
+matrix colnames V = `rownames_alt' Av_tot_eff
 
 if "`predict_het'" != "" {
 	local het_rown ""
-	foreach v in `rownames_alt' Avg_Tot_Effect {
+	foreach v in `rownames_alt' Av_tot_eff {
 		local het_rown "`het_rown' `1':`v'"
 	}
 	foreach i in `all_effects_XX'{ 
@@ -2801,6 +2836,7 @@ if "`normalized_weights'" != "" {
 		// Error as normalized_weights only works in combination with normalized
 		if "`normalized'" == "" {
 			noi di as err "normalized option required to compute normalized_weights"
+			di as input _continue ""
 			exit
 		}
 
@@ -2866,16 +2902,16 @@ if "`normalized_weights'" != "" {
 	}
 
 	// Output the table
-	noi display _newline
-	di as input "{hline 70}"
-	di as input _skip(15) "Weights on treatment lags"
+	display _newline
+	di "{hline 70}"
+	di _skip(15) "{bf:Weights on treatment lags}"
 	if "`by'" !=""{	
 	* Add description with the by variable level if by is specified	
-	di as input _skip(25) "By: `by' = `val_lab_int_XX'"
+	di _skip(25) "{bf:By: `by' = `val_lab_int_XX'}"
 	}	
-	di as input "{hline 70}"
-	noi matlist weight_mat, format(%9.4fc) lines(rowtotal)
-	noi display _newline		
+	di "{hline 70}"
+	matlist weight_mat, format(%9.4fc) lines(rowtotal)
+	display _newline		
 }
 
 // Saving data for further options as save sample drops variables 
@@ -2939,6 +2975,7 @@ if "`design'" != "" {
 		di as error ""
 		di as error "Syntax error in design option"
 		di as error "Comma required"
+		di as input _continue ""
 		
 		exit
 	}
@@ -3051,56 +3088,62 @@ if "`design'" != "" {
 	foreach v in col row {
 		mat `v'n desmat = ``v'names'
 	}
+	}
 
 	// output in console
 	if "`des_path'" == "console" {		
-		noi display _newline
-		di as input "{hline 80}"
-		di as input _skip(10) "Detection of treatment paths - `des_n' periods after first switch"
+		display _newline
+		di "{hline 80}"
+		di _skip(10) "{bf:Detection of treatment paths - `des_n' periods after first switch}"
 		if "`by'" !=""{	
 			* Add description with the by variable level if by is specified	
-			di as input _skip(35) "By: `by' = `val_lab_int_XX'"
+			di _skip(35) "{bf:By: `by' = `val_lab_int_XX'}"
 		}	
-		di as input "{hline 80}"
-		noi matlist desmat, format(%9.4gc)
-		di as input "{hline 80}"
-		noi di "{it: Treatment paths detected in at least `=strtrim("`des_per'")'% of the switching groups `tot_switch' for which `effects' effects could be estimated.}"
-		noi di "{it: Total % = `=strtrim("`last_p'")' %}"
+		di "{hline 80}"
+		matlist desmat, format(%9.4gc)
+		di "{hline 80}"
+		di "{it: Treatment paths detected in at least `=strtrim("`des_per'")'% of the switching groups `tot_switch' for which `effects' effects could be estimated.}"
+		di "{it: Total % = `=strtrim("`last_p'")' %}"
 		
 		// Get values for the reference line that explains how to read the table 
-		local n_groups = N_XX[1]
-		local d_start = treatment_XX1[1]
-		if `des_n' == 1 {
-			local d_vec : di %9.2gc treatment_XX2[1]
-			local d_vec = strtrim("`d_vec'")
-		}
-		else {
-			local d_vec = "vector ("
-			forv j = 1/`des_n' {
-				local k : di %9.2gc treatment_XX`=`j' + 1'[1]
-				local k = strtrim("`k'")
-				local d_vec = "`d_vec'`k', "
+		qui {
+			local n_groups = N_XX[1]
+			local d_start = treatment_XX1[1]
+			if `des_n' == 1 {
+				local d_vec : di %9.2gc treatment_XX2[1]
+				local d_vec = strtrim("`d_vec'")
 			}
-			local d_vec = substr("`d_vec'", 1, length("`d_vec'")-2) + ")"
+			else {
+				local d_vec = "vector ("
+				forv j = 1/`des_n' {
+					local k : di %9.2gc treatment_XX`=`j' + 1'[1]
+					local k = strtrim("`k'")
+					local d_vec = "`d_vec'`k', "
+				}
+				local d_vec = substr("`d_vec'", 1, length("`d_vec'")-2) + ")"
+			}
 		}
-		noi di as text "{it: Design interpretation (first row):}"
-		noi di as text "{it: `n_groups' groups started with treatment `d_start' and then experienced treatment `d_vec'.}"		
+		di as text "{it: Design interpretation (first row):}"
+		di as text "{it: `n_groups' groups started with treatment `d_start' and then experienced treatment `d_vec'.}"		
 	}
 	
 	// output as excel
 	else if "`des_path'" != "console" & "`des_path'" !=  "" {
 		if "`by'"==""{
-		 putexcel set "`des_path'", replace sheet("Design", replace)
-		 putexcel A1 = matrix(desmat, names)
-		 noi di as input "Design exported to `des_path'"
+		qui {
+			putexcel set "`des_path'", replace sheet("Design", replace)
+			putexcel A1 = matrix(desmat, names)
+		}
+		 di "{bf:Design exported to `des_path'}"
 		}
 		else if "`by'"!=""{
-		 * Create new sheet for each by level when by is specified	
-		 putexcel set "`des_path'", modify sheet("Design `by' = `val_lab_int_XX'", replace)
-		 putexcel A1 = matrix(desmat, names)
-		 noi di as input "Design exported to `des_path'"
+			qui {
+			* Create new sheet for each by level when by is specified	
+			putexcel set "`des_path'", modify sheet("Design `by' = `val_lab_int_XX'", replace)
+			putexcel A1 = matrix(desmat, names)
+			}
+		 di "{bf:Design exported to `des_path'}"
 	}  
-	}
 	}
 }
 
@@ -3121,6 +3164,7 @@ if "`date_first_switch'" != "" {
 	if "`dfs_opt'" != "" & "`dfs_opt'" != "by_baseline_treat" {
 		di as error ""
 		di as error "Only option {bf:by_baseline_treat} allowed"
+		di as input _continue ""
 		exit
 	}
 	
@@ -3129,9 +3173,11 @@ if "`date_first_switch'" != "" {
 	keep if time_XX == F_g_XX 
 	*Keep just 1 observation per group
 	keep `2' `3' F_g_XX d_sq_XX
+	}
 	
 	// When by_baseline_treat is not specified
 	if missing("`dfs_opt'") {
+		qui {
 		// collapse the number of groups by time
 		gcollapse (count) `2', by(`3')
 		tostring `3', replace
@@ -3143,32 +3189,35 @@ if "`date_first_switch'" != "" {
 		// make matrix with the number and share of groups by time
 		mkmat `2' share_XX, matrix(dfs) rownames(`3')
 		mat colnames dfs = #Groups %Groups
+		}
+
 		// output in console
 		if "`dfs_path'" == "console" {		
-			noi display _newline
-			di as input "{hline 48}"
-			di as input _skip(10) "Switching dates"
+			display _newline
+			di "{hline 48}"
+			di  _skip(10) "{bf:Switching dates}"
 			if "`by'" !=""{	
 				* Add description with the by variable level if by is specified
-				di as input _skip(10) "By: `by' = `val_lab_int_XX'"
+				di _skip(10) "{bf:By: `by' = `val_lab_int_XX'}"
 			}	
-			di as input "{hline 48}"
-			noi matlist dfs, format(%9.4gc) rowtitle("Any status quo treat.") twidth(25) // New text
-			di as input "{hline 48}"		
+			di "{hline 48}"
+			matlist dfs, format(%9.4gc) rowtitle("Any status quo treat.") twidth(25) // New text
+			di "{hline 48}"		
+
 			ereturn scalar switch_dates = `=_N'
 		}
 		// output as excel
 		else if "`dfs_path'" != "console" & "`dfs_path'" !=  "" {
 			if "`by'"==""{
-				putexcel set "`dfs_path'", replace sheet("Switching dates", replace)
-				putexcel A1 = matrix(dfs, names)
-				noi di as input "Switching dates exported to `dfs_path'"
+				qui putexcel set "`dfs_path'", replace sheet("Switching dates", replace)
+				qui putexcel A1 = matrix(dfs, names)
+				di "{bf:Switching dates exported to `dfs_path'}"
 			}
 			else if "`by'"!=""{
 				* Create new sheet for each by level when by is specified	
-				putexcel set "`dfs_path'", modify sheet("Switching dates `by' = `val_lab_int_XX'", replace)
-				putexcel A1 = matrix(dfs, names)
-				noi di as input "Switching dates exported to `dfs_path'"
+				qui putexcel set "`dfs_path'", modify sheet("Switching dates `by' = `val_lab_int_XX'", replace)
+				qui putexcel A1 = matrix(dfs, names)
+				di "{bf:Switching dates exported to `dfs_path'}"
 			}
 		}		
 	}
@@ -3176,40 +3225,48 @@ if "`date_first_switch'" != "" {
 	// When by_baseline_treat is specified
 	else {
 		// collapse, but this time by time and status quo treatment
+		qui {
 		gcollapse (count) `2', by(`3' d_sq_XX)
 		tostring `3', replace
 		gegen tot_share_XX = sum(`2'), by(d_sq_XX)
 		gen share_XX = `2'/tot_share_XX * 100
 		sort d_sq_XX `3'
+		}
 		
-		noi display _newline
+		display _newline
 		if "`dfs_path'" == "console" {
-			di as input "{hline 48}"
-			di as input _skip(10) "Switching dates"
-			di as input "{hline 48}"
+			di "{hline 48}"
+			di _skip(10) "{bf:Switching dates}"
+			di "{hline 48}"
 		}
 		
 		// make matrix with the number and share of groups by time, one for each level of status quo treatment
-		tostring d_sq_XX, replace
-		levelsof d_sq_XX, local(levels_d_sq_XX)
-		local i = 1
+		qui {
+			tostring d_sq_XX, replace
+			levelsof d_sq_XX, local(levels_d_sq_XX)
+			local i = 1
+		}
 		foreach m of local levels_d_sq_XX {
-			mkmat `2' share_XX if d_sq_XX == "`m'", matrix(dfs`i') rownames(`3')
-			mat colnames dfs`i' = #Groups %Groups
-			sum `2'
-			local tot_s = r(sum)
-			
+			qui {
+				mkmat `2' share_XX if d_sq_XX == "`m'", matrix(dfs`i') rownames(`3')
+				mat colnames dfs`i' = #Groups %Groups
+				sum `2'
+				local tot_s = r(sum)
+			}			
 			// output in console
 			if "`dfs_path'" == "console" {		
-				noi matlist dfs`i', format(%9.4gc) rowtitle("Status quo treat. = `m'") twidth(25) // New
-				di as input "{hline 48}"
-				sum `2' if d_sq_XX == "`m'"
-				local tot_s = r(sum)
-				count if d_sq_XX == "`m'"
-				ereturn scalar switch_dates_Dsq_`l_by' = `r(N)' // New
+				matlist dfs`i', format(%9.4gc) rowtitle("Status quo treat. = `m'") twidth(25) // New
+				di "{hline 48}"
+				qui {
+					sum `2' if d_sq_XX == "`m'"
+					local tot_s = r(sum)
+					count if d_sq_XX == "`m'"
+					ereturn scalar switch_dates_Dsq_`l_by' = `r(N)' // New
+				}
 			}
 			// output as excel
 			else if "`dfs_path'" != "console" & "`dfs_path'" !=  "" {
+				qui {
 				if `i' == 1 {
 					local rep_opt "replace"
 				}
@@ -3227,16 +3284,15 @@ if "`date_first_switch'" != "" {
 					putexcel set "`dfs_path'", modify sheet("Dates Base treat=`m' & `by' = `val_lab_int_XX'", replace) //`by' = `val_lab_int_XX'
 					putexcel A1 = matrix(dfs`i', names)
 					noi di _newline
-				}
-			}	
-			local i = `i' + 1			
+				}	
+			}
 		}
-		
+		local i = `i' + 1			
+		}
 		// consol message if output is written to excel
 		if "`dfs_path'" != "console" & "`dfs_path'" != "" {
-			noi di as input "Switching dates exported to `dfs_path'"
+			di "Switching dates exported to `dfs_path'"
 		}
-	}
 	}
 }
 
