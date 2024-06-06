@@ -39,7 +39,7 @@ As noted above, $DID_2$ is not defined in this dataset, but it is possible to es
 
 The paragraph above explains why `did_multiplegt_dyn` does not allow to request more placebos than effects. However, it could be argued that tests for pre-trends under this rationale do not exploit in full the available data. To this end, it is possible to tweak the data and retrieve the placebos that are, by default, ignored by the program.
 
-Suppose that we want to force `did_multiplegt_dyn` to compute $DID^{pl}_2$ using the treatment rollout in the table above. As remarked above, this boils down to allowing for the estimation of $DID_2$. A way to do that is to create an artificial period $5$ where the treatment (and outcome) of all groups is equal to 0:
+Suppose that we want to force `did_multiplegt_dyn` to compute $DID^{pl}_2$ using the treatment rollout in the table above. As remarked above, this boils down to allowing for the estimation of $DID_2$. A way to do that is to create an artificial period $5$ where the treatment (and outcome) of all groups is equal to 0 (henceforth, we will call them _null periods_):
 
 |T|$D_{1,t}$| $D_{2,t}$ |
 |---:|---:|---:|
@@ -58,3 +58,18 @@ Notice that the dynamic effects estimates from the second run should be disregar
 
 ## Retrieving more placebos - Code Example (Stata)
 
+Let's generate a toy dataset with 25 groups and 4 periods. Groups can either be never-switchers or switch from 0 to 1 at the last period. 
+The setting is equivalent to the example above, even though we allow for more than 2 groups to draw inference on the point estimates.
+As a result, we cannot compute more than 1 dynamic effect nor placebo.
+
+```stata
+clear
+set seed 0
+set obs 100
+gen G = mod(_n-1, 25) + 1
+bys G: gen T = _n
+gen D = uniform() > 0.5 & T == 4
+gen Y = uniform() * (1 + D)
+
+did_multiplegt_dyn Y G T D, effects(1) placebo(1) graph_off
+```
