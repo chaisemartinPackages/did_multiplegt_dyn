@@ -19,7 +19,7 @@ The goal of this vignette is to show how to tweak `did_multiplegt_dyn` to comput
 |4|1|0|
 
 $$
-DID_{1,1} = Y_{1,4}(0,0,0,1) - Y_{1,3}(0,0,0) - (Y_{2,4}(0,0,0,0) -  Y_{2,3}(0,0,0))
+DID_{1,1} = Y_{1,4}(\mathbb{0}_3,1) - Y_{1,3}(\mathbb{0}_3) - (Y_{2,4}(\mathbb{0}_3, 0) -  Y_{2,3}(\mathbb{0}_3))
 $$
 
 ## Retrieving more placebos
