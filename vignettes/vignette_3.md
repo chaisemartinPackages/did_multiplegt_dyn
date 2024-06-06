@@ -11,5 +11,15 @@ A direct consequence of this approach is that users cannot require more placebos
 The goal of this vignette is to show how to tweak `did_multiplegt_dyn` to compute more placebos than effects. This accrues to loosening the link between placebo and dynamic effects as described above. However, it could be useful to retrieve more placebos in application with very few post treatment periods, hence limited room for pre-trend testing.
 
 ## A simple example
+|T|$D_{1,t}$| $D_{2,t}$ |
+|---:|---:|---:|
+|1|0|0|
+|2|0|0|
+|3|0|0|
+|4|1|0|
+
+$$
+DID_{1,1} = Y_{1,4}(0,0,0,1) - Y_{1,3}(0,0,0) - (Y_{2,4}(0,0,0,0) -  Y_{2,3}(0,0,0))
+$$
 
 ## Retrieving more placebos
