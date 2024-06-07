@@ -1124,8 +1124,27 @@ if `placebo'!=0{
 	}
 }
 
-
-
+// Adjustment to add more placebos (mp_did_multiplegt_dyn)
+local max_pl_u_XX = 0
+local max_pl_a_XX = 0
+local max_pl_gap_u_XX = 0
+local max_pl_gap_a_XX = 0
+gen pl_gap_XX = (F_g_XX - 2) - L_g_XX if S_g_XX != .
+if ("`switchers'" == "" | "`switchers'" == "in") {
+	sum F_g_XX if S_g_XX == 1
+	local max_pl_u_XX = r(max) - 2
+	sum pl_gap_XX if S_g_XX == 1
+	local max_pl_gap_u_XX = r(max)
+}
+if ("`switchers'" == "" | "`switchers'" == "out") {
+	sum F_g_XX if S_g_XX == 0
+	local max_pl_a_XX = r(max) - 2
+	sum pl_gap_XX if S_g_XX == 0
+	local max_pl_gap_a_XX = r(max)
+}
+scalar max_pl_XX = max(`max_pl_u_XX', `max_pl_a_XX')
+scalar max_pl_gap_XX = max(`max_pl_gap_u_XX', `max_pl_gap_a_XX')
+drop pl_gap_XX
 
 ///// Start the by_path option here -> after defining l_XX etc. but before calling the core program
 if "`by_path'"!=""{
