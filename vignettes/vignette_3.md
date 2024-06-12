@@ -110,6 +110,7 @@ mp_did_multiplegt_dyn Y G T D, effects(2) placebo(2)
 <tr><td>Av_tot_eff  </td><td>       0.377<sup>*</sup>  </td><td>       0.367              </td><td>       0.486<sup>*</sup>  </td></tr>
 <tr><td>            </td><td>     (0.181)              </td><td>     (0.202)              </td><td>     (0.210)              </td></tr>
 <tr><td><i>N</i>    </td><td>                          </td><td>                          </td><td>                          </td></tr>
+<tr><td colspan=4>
 Standard errors in parentheses
 <br /><sup>*</sup> <i>p</i> < 0.05, <sup>**</sup> <i>p</i> < 0.01, <sup>***</sup> <i>p</i> < 0.001
 </td></tr>
