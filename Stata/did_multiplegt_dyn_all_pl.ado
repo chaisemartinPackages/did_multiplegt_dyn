@@ -1,12 +1,12 @@
-cap program drop mp_did_multiplegt_dyn
-program define mp_did_multiplegt_dyn, eclass
+cap program drop did_multiplegt_dyn_all_pl
+program define did_multiplegt_dyn_all_pl, eclass
 version 12.0
-syntax varlist(min=4 max=4 numeric) [if] [in] [, effects(integer 1) placebo(integer 1) switchers(string) only_never_switchers controls(varlist numeric) trends_nonparam(varlist numeric) weight(varlist numeric max=1) dont_drop_larger_lower NORMALIZED cluster(varlist numeric max=1) same_switchers same_switchers_pl effects_equal drop_if_d_miss_before_first_switch trends_lin CONTinuous(integer 0) less_conservative_se bootstrap(string)]
+syntax varlist(min=4 max=4 numeric) [if] [in] [, effects(integer 1) placebo(integer 1) switchers(string) only_never_switchers]
 
     di ""
     di as text "Step 1: Retrieving dynamic effects"
     qui {
-        qui did_multiplegt_dyn `varlist', effects(`effects') switchers(`switchers') `only_never_switchers' `effects_equal' controls(`controls') trends_nonparam(`trends_nonparam') weight(`weight') `dont_drop_larger_lower' `normalized' cluster(`cluster') `same_switchers' `same_switchers_pl' `drop_if_d_miss_before_first_switch' `trends_lin' continuous(`continuous') `less_conservative_se' bootstrap(`bootstrap') graph_off
+        qui did_multiplegt_dyn `varlist', effects(`effects') switchers(`switchers') `only_never_switchers' graph_off
 
         mat b_dyn = e(b)[1, 1..l_XX]
         mat b_ATE = e(b)[1, l_XX + 1]
@@ -45,7 +45,7 @@ syntax varlist(min=4 max=4 numeric) [if] [in] [, effects(integer 1) placebo(inte
             local effects = `placebo'
         }
 
-        qui did_multiplegt_dyn `varlist', effects(`effects') placebo(`placebo') switchers(`switchers') `only_never_switchers' `effects_equal' controls(`controls') trends_nonparam(`trends_nonparam') weight(`weight') `dont_drop_larger_lower' `normalized' cluster(`cluster') `same_switchers' `same_switchers_pl' `drop_if_d_miss_before_first_switch' `trends_lin' continuous(`continuous') `less_conservative_se' bootstrap(`bootstrap') graph_off
+        qui did_multiplegt_dyn `varlist', effects(`effects') placebo(`placebo') switchers(`switchers') `only_never_switchers' graph_off
         mat b = b_dyn, e(b)[1, l_XX+1..l_XX+l_placebo_XX], b_ATE
         mat V = (V_dyn, J(l_XX_og, l_placebo_XX, 0)) \ (J(l_placebo_XX, l_XX_og, 0), e(V)[l_XX+1..l_XX+l_placebo_XX, l_XX+1..l_XX+l_placebo_XX])
         mat V = (V, J(l_XX_og + l_placebo_XX, 1, 0)) \ (J(1, l_XX_og + l_placebo_XX, 0), V_ATE)

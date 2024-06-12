@@ -58,6 +58,12 @@ Notice that the dynamic effects estimates from the second run should be disregar
 
 ## Retrieving more placebos - Code Example (Stata)
 
+>[!WARNING]
+>
+> The following method can be used if there is <ins>at least one never-switcher group per baseline treatment</ins>.
+> The companion program to run compute the remaining placebos does not support any option from `did_multiplegt_dyn`, except **effects**, **placebo**, **switchers()** and **only_never_switchers**. 
+> Integration with other options will depend on future demand for this feature.
+
 Let's generate a toy dataset with 25 groups and 4 periods. Groups can either be never-switchers or switch from 0 to 1 at the last period. 
 The setting is equivalent to the example above, even though we allow for more than 2 groups to draw inference on the point estimates.
 As a result, we cannot compute more than 1 dynamic effect nor placebo.
@@ -73,3 +79,48 @@ gen Y = uniform() * (1 + D)
 
 did_multiplegt_dyn Y G T D, effects(1) placebo(1) graph_off
 ```
+
+Starting from June 2024, the Stata version of `did_multiplegt_dyn` includes a subcommand called `did_multiplegt_dyn_all_pl` to retrieve all the feasible placebo estimates. The syntax of this subcommand is the same as the main program, with a few exceptions:
+
++ the user can request more placebos than effects;
++ the user can request only **switchers()** and **only_never_switchers** as additional options.
+
+Even though the user can request more placebos than effects, the number of placebo estimates that the program can compute can never exceed 
+$$
+\max_{g:F_g \neq T+1} F_g - 2
+$$
+that is, the maximum, across all switchers, of their pre-first-switch periods. As a result, an error message will be prompted if the limit above is exceeded.
+If we wish to retrieve the last placebo, we can run the following line:
+
+```
+mp_did_multiplegt_dyn Y G T D, effects(2) placebo(2) 
+```
+
+<table border="0" width="*">
+<tr><td colspan=4><hr></td></tr>
+<tr><td>            </td><td>         (1)              </td><td>         (2)              </td><td>         (3)              </td></tr>
+<tr><td>            </td><td>                          </td><td>                          </td><td>                          </td></tr>
+<tr><td colspan=4><hr></td></tr>
+<tr><td>Effect_1    </td><td>       0.377<sup>*</sup>  </td><td>       0.377<sup>*</sup>  </td><td>       0.535<sup>**</sup> </td></tr>
+<tr><td>            </td><td>     (0.181)              </td><td>     (0.181)              </td><td>     (0.177)              </td></tr>
+<tr><td colspan=4>&nbsp;</td></tr>
+<tr><td>Effect_2    </td><td>                          </td><td>       0.169              </td><td>       0.169              </td></tr>
+<tr><td>            </td><td>                          </td><td>     (0.230)              </td><td>     (0.230)              </td></tr>
+<tr><td colspan=4>&nbsp;</td></tr>
+<tr><td>Placebo_1   </td><td>      0.0576              </td><td>      0.0576              </td><td>       0.101              </td></tr>
+<tr><td>            </td><td>     (0.123)              </td><td>     (0.123)              </td><td>     (0.137)              </td></tr>
+<tr><td colspan=4>&nbsp;</td></tr>
+<tr><td>Placebo_2   </td><td>                          </td><td>      -0.269              </td><td>      -0.269              </td></tr>
+<tr><td>            </td><td>                          </td><td>     (0.170)              </td><td>     (0.170)              </td></tr>
+<tr><td colspan=4>&nbsp;</td></tr>
+<tr><td>Av_tot_eff  </td><td>       0.377<sup>*</sup>  </td><td>       0.367              </td><td>       0.486<sup>*</sup>  </td></tr>
+<tr><td>            </td><td>     (0.181)              </td><td>     (0.202)              </td><td>     (0.210)              </td></tr>
+<tr><td colspan=4><hr></td></tr>
+<tr><td><i>N</i>    </td><td>                          </td><td>                          </td><td>                          </td></tr>
+<tr><td colspan=4><hr></td></tr>
+<tr><td colspan=4>
+Standard errors in parentheses
+<br /><sup>*</sup> <i>p</i> < 0.05, <sup>**</sup> <i>p</i> < 0.01, <sup>***</sup> <i>p</i> < 0.001
+</td></tr>
+</table>
+
