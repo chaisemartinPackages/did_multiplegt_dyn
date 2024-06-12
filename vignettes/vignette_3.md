@@ -93,26 +93,30 @@ that is, the maximum, across all switchers, of their pre-first-switch periods. A
 If we wish to retrieve the last placebo, we can run the following line:
 
 ```
-mp_did_multiplegt_dyn Y G T D, effects(2) placebo(2) 
+did_multiplegt_dyn_all_pl Y G T D, effects(1) placebo(2) 
 ```
 
+Notice that the output is divided into two steps
+
+1. First, the program retrieves the effects as in vanilla `did_multiplegt_dyn`;
+2. Then, the dataset is filled with enough null periods to retrieve the requested placebos.
+
+As a result, the new output will include one additional placebo compared with the previous case.
+Notice that we are requesting more placebos than effects, yet, since groups switch only at period 4, the number of placebos requested within the boundaries of the maximum number of placebos we can compute, i.e. 4 - 2 = 2.
+The combined output from `did_multiplegt_dyn` and `did_multiplegt_dyn_all_pl` will look like this:
+
 <table border="0" width="*">
-<tr><td>            </td><td>         (1)              </td><td>         (2)              </td><td>         (3)              </td></tr>
-<tr><td>            </td><td>                          </td><td>                          </td><td>                          </td></tr>
-<tr><td>Effect_1    </td><td>       0.377<sup>*</sup>  </td><td>       0.377<sup>*</sup>  </td><td>       0.535<sup>**</sup> </td></tr>
-<tr><td>            </td><td>     (0.181)              </td><td>     (0.181)              </td><td>     (0.177)              </td></tr>
-<tr><td>Effect_2    </td><td>                          </td><td>       0.169              </td><td>       0.169              </td></tr>
-<tr><td>            </td><td>                          </td><td>     (0.230)              </td><td>     (0.230)              </td></tr>
-<tr><td>Placebo_1   </td><td>      0.0576              </td><td>      0.0576              </td><td>       0.101              </td></tr>
-<tr><td>            </td><td>     (0.123)              </td><td>     (0.123)              </td><td>     (0.137)              </td></tr>
-<tr><td>Placebo_2   </td><td>                          </td><td>      -0.269              </td><td>      -0.269              </td></tr>
-<tr><td>            </td><td>                          </td><td>     (0.170)              </td><td>     (0.170)              </td></tr>
-<tr><td>Av_tot_eff  </td><td>       0.377<sup>*</sup>  </td><td>       0.367              </td><td>       0.486<sup>*</sup>  </td></tr>
-<tr><td>            </td><td>     (0.181)              </td><td>     (0.202)              </td><td>     (0.210)              </td></tr>
-<tr><td><i>N</i>    </td><td>                          </td><td>                          </td><td>                          </td></tr>
-<tr><td colspan=4>
+<tr><td>            </td><td>         (1)              </td><td>         (2)              </td></tr>
+<tr><td>Effect_1    </td><td>       0.343              </td><td>       0.343              </td></tr>
+<tr><td>            </td><td>     (0.219)              </td><td>     (0.219)              </td></tr>
+<tr><td>Placebo_1   </td><td>     -0.0587              </td><td>     -0.0587              </td></tr>
+<tr><td>            </td><td>     (0.158)              </td><td>     (0.158)              </td></tr>
+<tr><td>Placebo_2   </td><td>                          </td><td>     -0.0799              </td></tr>
+<tr><td>            </td><td>                          </td><td>     (0.136)              </td></tr>
+<tr><td>Av_tot_eff  </td><td>       0.343              </td><td>       0.343              </td></tr>
+<tr><td>            </td><td>     (0.219)              </td><td>     (0.219)              </td></tr>
+<tr><td colspan=3><hr></td></tr>
 Standard errors in parentheses
 <br /><sup>*</sup> <i>p</i> < 0.05, <sup>**</sup> <i>p</i> < 0.01, <sup>***</sup> <i>p</i> < 0.001
 </td></tr>
 </table>
-
