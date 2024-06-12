@@ -103,7 +103,7 @@ Notice that the output is divided into two steps
 
 As a result, the new output will include one additional placebo compared with the previous case.
 Notice that we are requesting more placebos than effects, yet, since groups switch only at period 4, the number of placebos requested within the boundaries of the maximum number of placebos we can compute, i.e. 4 - 2 = 2.
-The combined output from `did_multiplegt_dyn` and `did_multiplegt_dyn_all_pl`
+The combined output from `did_multiplegt_dyn` and `did_multiplegt_dyn_all_pl` will look like this:
 
 <table border="0" width="*">
 <tr><td>            </td><td>         (1)              </td><td>         (2)              </td></tr>
