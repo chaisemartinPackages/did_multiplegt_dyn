@@ -8,6 +8,11 @@ The reason for this constraint is that placebos should be informative of the cor
 A direct consequence of this approach is that users cannot require more placebos than effects, since, by definition, placebos and dynamic effects are built symmetrically.
 The goal of this vignette is to show how to tweak `did_multiplegt_dyn` to compute more placebos than effects. This accrues to loosening the link between placebo and dynamic effects as described above. However, it could be useful to retrieve more placebos in application with very few post treatment periods, hence limited room for pre-trend testing.
 
++ [A simple example](#a-simple-example)
+    - [The link between placebos and dynamic effects](#the-link-between-placebos-and-dynamic-effects)
+    - [A simple tweak to recover more placebos](#a-simple-tweak-to-retrieve-more-placebos)
++ [Retrieving more placebos - Code example (Stata)](#retrieving-more-placebos---code-example-stata)
+
 ## A simple example
 
 Let's take the case described in the table below. There are two groups and four periods, with treatment $D_{g,t}$ reported in column. Group $1$ switches at the last period, while group $2$ never switches. 
