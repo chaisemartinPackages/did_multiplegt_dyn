@@ -97,28 +97,19 @@ mp_did_multiplegt_dyn Y G T D, effects(2) placebo(2)
 ```
 
 <table border="0" width="*">
-<tr><td colspan=4><hr></td></tr>
 <tr><td>            </td><td>         (1)              </td><td>         (2)              </td><td>         (3)              </td></tr>
 <tr><td>            </td><td>                          </td><td>                          </td><td>                          </td></tr>
-<tr><td colspan=4><hr></td></tr>
 <tr><td>Effect_1    </td><td>       0.377<sup>*</sup>  </td><td>       0.377<sup>*</sup>  </td><td>       0.535<sup>**</sup> </td></tr>
 <tr><td>            </td><td>     (0.181)              </td><td>     (0.181)              </td><td>     (0.177)              </td></tr>
-<tr><td colspan=4>&nbsp;</td></tr>
 <tr><td>Effect_2    </td><td>                          </td><td>       0.169              </td><td>       0.169              </td></tr>
 <tr><td>            </td><td>                          </td><td>     (0.230)              </td><td>     (0.230)              </td></tr>
-<tr><td colspan=4>&nbsp;</td></tr>
 <tr><td>Placebo_1   </td><td>      0.0576              </td><td>      0.0576              </td><td>       0.101              </td></tr>
 <tr><td>            </td><td>     (0.123)              </td><td>     (0.123)              </td><td>     (0.137)              </td></tr>
-<tr><td colspan=4>&nbsp;</td></tr>
 <tr><td>Placebo_2   </td><td>                          </td><td>      -0.269              </td><td>      -0.269              </td></tr>
 <tr><td>            </td><td>                          </td><td>     (0.170)              </td><td>     (0.170)              </td></tr>
-<tr><td colspan=4>&nbsp;</td></tr>
 <tr><td>Av_tot_eff  </td><td>       0.377<sup>*</sup>  </td><td>       0.367              </td><td>       0.486<sup>*</sup>  </td></tr>
 <tr><td>            </td><td>     (0.181)              </td><td>     (0.202)              </td><td>     (0.210)              </td></tr>
-<tr><td colspan=4><hr></td></tr>
 <tr><td><i>N</i>    </td><td>                          </td><td>                          </td><td>                          </td></tr>
-<tr><td colspan=4><hr></td></tr>
-<tr><td colspan=4>
 Standard errors in parentheses
 <br /><sup>*</sup> <i>p</i> < 0.05, <sup>**</sup> <i>p</i> < 0.01, <sup>***</sup> <i>p</i> < 0.001
 </td></tr>
