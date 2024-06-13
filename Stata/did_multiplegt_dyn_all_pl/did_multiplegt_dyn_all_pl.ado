@@ -13,6 +13,15 @@ syntax varlist(min=4 max=4 numeric) [if] [in] [, effects(integer 1) placebo(inte
         mat V_dyn = e(V)[1..l_XX, 1..l_XX]
         mat V_ATE = e(V)[1+l_XX, 1+l_XX]
         scalar l_XX_og = l_XX
+
+        cap di max_pl_XX
+        if _rc != 0 {
+            noi di as err "did_multiplegt_dyn_all_pl requires a more recent version of did_multiplegt_dyn."
+            noi di as err "Please update your distribution of did_multiplegt_dyn by running:"
+            noi di as err "{stata ssc install did_multiplegt_dyn, replace}"
+
+            exit
+        }
     }
 
     di "{hline 80}"
