@@ -85,7 +85,14 @@ gen Y = uniform() * (1 + D)
 did_multiplegt_dyn Y G T D, effects(1) placebo(1) graph_off
 ```
 
-Starting from June 2024, the Stata version of `did_multiplegt_dyn` includes a subcommand called `did_multiplegt_dyn_all_pl` to retrieve all the feasible placebo estimates. The syntax of this subcommand is the same as the main program, with a few exceptions:
+In what follows, we will use a subcommand called `did_multiplegt_dyn_all_pl` to retrieve all the feasible placebo estimates. 
+The subcommand can be installed by running:
+
+```
+net install did_multiplegt_dyn_all_pl, from("https://raw.githubusercontent.com/chaisemartinPackages/did_multiplegt_dyn/main/Stata/did_multiplegt_dyn_all_pl") replace
+```
+
+The syntax of this subcommand is the same as the main program, with a few exceptions:
 
 + the user can request more placebos than effects;
 + the user can request only **switchers()** and **only_never_switchers** as additional options.
