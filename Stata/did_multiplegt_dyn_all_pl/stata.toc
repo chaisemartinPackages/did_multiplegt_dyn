@@ -1,0 +1,7 @@
+v 1.0.0
+d ChaisemartinPackages
+d https://github.com/chaisemartinPackages/did_multiplegt_dyn/Stata
+
+d 'did_multiplegt_dyn_all_pl': did_multiplegt_dyn extension to retrieve all feasible placebos.
+
+p did_multiplegt_dyn_all_pl
