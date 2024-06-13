@@ -62,7 +62,9 @@ The resulting table should look like this:
   <image src="https://github.com/chaisemartinPackages/did_multiplegt_dyn/blob/main/vignettes/assets/reg1.png" alt>
 </p>
 
-The code above is sufficient to save **did_multiplegt_dyn** output virtually with any option set, except with the **by()** or **by_path()** options, since, by design, the program will return an e(V) and e(b) only for the last level of the *by* variable. A special case occurs with the **predict_het()** option, since the program outputs also the results from regressing the group-level estimates of the event study effects on the variables specified as the option argument. For instance, we can run the following model specification and save the results with **esttab**:
+The code above is sufficient to save **did_multiplegt_dyn** output virtually with any option set, except with the **by()** or **by_path()** options, since, by design, the program will return an e(V) and e(b) only for the last level of the *by* variable. 
+
+A special case occurs with the **predict_het()** option, since the program outputs also the results from regressing the group-level estimates of the event study effects on the variables specified as the option argument. For instance, we can run the following model specification and save the results with **esttab**:
 
 ```applescript
 est clear
