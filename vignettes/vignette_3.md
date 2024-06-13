@@ -104,9 +104,11 @@ The syntax of this subcommand is the same as the main program, with a few except
 + the user can request only **switchers()** and **only_never_switchers** as additional options.
 
 Even though the user can request more placebos than effects, the number of placebo estimates that the program can compute can never exceed 
+
 $$
 \max_{g:F_g \neq T+1} F_g - 2
 $$
+
 that is, the maximum, across all switchers, of their pre-first-switch periods. As a result, an error message will be prompted if the limit above is exceeded.
 If we wish to retrieve the last placebo, we can run the following line:
 
