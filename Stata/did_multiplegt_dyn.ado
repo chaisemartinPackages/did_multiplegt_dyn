@@ -1124,7 +1124,7 @@ if `placebo'!=0{
 	}
 }
 
-// Adjustment to add more placebos (mp_did_multiplegt_dyn)
+// Adjustment to add more placebos (did_multiplegt_dyn_all_pl)
 local max_pl_u_XX = 0
 local max_pl_a_XX = 0
 local max_pl_gap_u_XX = 0

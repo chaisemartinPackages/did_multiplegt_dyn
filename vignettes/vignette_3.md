@@ -92,6 +92,12 @@ The subcommand can be installed by running:
 net install did_multiplegt_dyn_all_pl, from("https://raw.githubusercontent.com/chaisemartinPackages/did_multiplegt_dyn/main/Stata/did_multiplegt_dyn_all_pl") replace
 ```
 
+It is also recommended to update `did_multiplegt_dyn` to the latest distribution:
+
+```
+ssc install did_multiplegt_dyn, replace
+```
+
 The syntax of this subcommand is the same as the main program, with a few exceptions:
 
 + the user can request more placebos than effects;
