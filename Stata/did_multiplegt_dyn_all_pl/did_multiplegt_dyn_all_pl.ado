@@ -94,13 +94,14 @@ qui {
         tokenize `varlist'
         sum `3'
         local top = r(max)
+        sort `3' `2'
         unique `2'
         forv j = 1/`=r(unique)' {
             local N = _N
             insobs `add'    
             replace `1' = 0 if missing(`2')
-            replace `4' = 0 if missing(`2')
-            replace `2' = `j' if missing(`2')
+            replace `4' = `4'[`j'] if missing(`2')
+            replace `2' = `2'[`j'] if missing(`2')
             forv i = 1/`add' {
                 replace `3' = `top' + `i' in `=`N' + `i''
             }

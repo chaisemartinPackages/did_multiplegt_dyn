@@ -66,6 +66,7 @@ Notice that the dynamic effects estimates from the second run should be disregar
 >[!WARNING]
 >
 > The following method can be used if there is <ins>at least one never-switcher group per baseline treatment</ins>.
+> Differently from `did_multiplegt_dyn`, a <ins>balanced panel</ins> is also required.
 > The companion program to run compute the remaining placebos does not support any option from `did_multiplegt_dyn`, except **effects**, **placebo**, **switchers()** and **only_never_switchers**. 
 > Integration with other options will depend on future demand for this feature.
 
@@ -104,9 +105,11 @@ The syntax of this subcommand is the same as the main program, with a few except
 + the user can request only **switchers()** and **only_never_switchers** as additional options.
 
 Even though the user can request more placebos than effects, the number of placebo estimates that the program can compute can never exceed 
+
 $$
 \max_{g:F_g \neq T+1} F_g - 2
 $$
+
 that is, the maximum, across all switchers, of their pre-first-switch periods. As a result, an error message will be prompted if the limit above is exceeded.
 If we wish to retrieve the last placebo, we can run the following line:
 
