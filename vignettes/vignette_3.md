@@ -66,7 +66,7 @@ Notice that the dynamic effects estimates from the second run should be disregar
 >[!WARNING]
 >
 > The following method can be used if there is <ins>at least one never-switcher group per baseline treatment</ins>.
-> Differently from `did_multiplegt_dyn`, a <ins>balanced panel</ins> is also required.
+> A <ins>balanced panel</ins> is also required.
 > The companion program to run compute the remaining placebos does not support any option from `did_multiplegt_dyn`, except **effects**, **placebo**, **switchers()** and **only_never_switchers**. 
 > Integration with other options will depend on future demand for this feature.
 
