@@ -8,9 +8,11 @@
 
 {title:Title}
 
-{p 4 8}
-{cmd:did_multiplegt_dyn} {hline 2} Estimates the effect of a treatment on an outcome,
-using panel data with multiple groups and periods.
+{p 4 4}
+{cmd:did_multiplegt_dyn} {hline 2} Estimation of heterogeneity-robust 
+difference-in-differences (DID) estimators, with a binary, discrete, or 
+continuous treatment, in designs where past treatments may 
+affect the current outcome.
 {p_end}
 
 {marker syntax}{...}
