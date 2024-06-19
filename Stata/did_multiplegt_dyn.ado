@@ -4229,7 +4229,7 @@ scalar N`=increase_XX'_placebo_`i'_XX=0
 // Loop over t incrementing the scalar
 forvalue t=`=t_min_XX'/`=T_max_XX'{
 	sum N`=increase_XX'_t_placebo_`i'_XX if time_XX==`t'
-	scalar N`=increase_XX'_placebo_`i'_XX = N`=increase_XX'_placebo_`i'_XX + r(mean)
+	if !missing(r(mean)) scalar N`=increase_XX'_placebo_`i'_XX = N`=increase_XX'_placebo_`i'_XX + r(mean)
 }
 
 // Modif Felix weight
@@ -4242,7 +4242,7 @@ if "`weight'"!=""{
 // Loop over t incrementing the scalar
 forvalue t=`=t_min_XX'/`=T_max_XX'{
 	sum N`=increase_XX'_t_pl_`i'_XX_w if time_XX==`t'
-	scalar N`=increase_XX'_`i'_pl_XX_weight = N`=increase_XX'_`i'_pl_XX_weight + r(mean)
+	if !missing(r(mean)) scalar N`=increase_XX'_`i'_pl_XX_weight = N`=increase_XX'_`i'_pl_XX_weight + r(mean)
 }
 }
 
