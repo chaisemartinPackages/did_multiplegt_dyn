@@ -90,7 +90,7 @@ In what follows, we will use a subcommand called `did_multiplegt_dyn_all_pl` to 
 The subcommand can be installed by running:
 
 ```
-net install did_multiplegt_dyn_all_pl, from("https://raw.githubusercontent.com/chaisemartinPackages/did_multiplegt_dyn/main/Stata/did_multiplegt_dyn_all_pl") replace
+net install did_multiplegt_dyn_all_pl, from("https://raw.githubusercontent.com/chaisemartinPackages/did_multiplegt_dyn/main/did_multiplegt_dyn_all_pl/Stata") replace
 ```
 
 It is also recommended to update `did_multiplegt_dyn` to the latest distribution:
