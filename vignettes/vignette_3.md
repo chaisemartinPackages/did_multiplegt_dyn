@@ -11,7 +11,7 @@ The goal of this vignette is to show how to tweak `did_multiplegt_dyn` to comput
 + [A simple example](#a-simple-example)
     - [The link between placebos and dynamic effects](#the-link-between-placebos-and-dynamic-effects)
     - [A simple tweak to recover more placebos](#a-simple-tweak-to-retrieve-more-placebos)
-+ [Retrieving more placebos - Code example (Stata)](#retrieving-more-placebos---code-example-stata)
++ [Retrieving more placebos - Code example (Stata, R)](#retrieving-more-placebos---code-example-stata)
 
 ## A simple example
 
@@ -61,7 +61,7 @@ In general, users should:
 
 Notice that the dynamic effects estimates from the second run should be disregarded, since the outcome of all groups that do not have a second period after their first switch is set to zero. 
 
-## Retrieving more placebos - Code Example (Stata)
+## Retrieving more placebos - Code Example (Stata, R)
 
 >[!WARNING]
 >
@@ -69,6 +69,8 @@ Notice that the dynamic effects estimates from the second run should be disregar
 > A <ins>balanced panel</ins> is also required.
 > The companion program to run compute the remaining placebos does not support any option from `did_multiplegt_dyn`, except **effects**, **placebo**, **switchers()** and **only_never_switchers**. 
 > Integration with other options will depend on future demand for this feature.
+
+### Stata
 
 Let's generate a toy dataset with 25 groups and 4 periods. Groups can either be never-switchers or switch from 0 to 1 at the last period. 
 The setting is equivalent to the example above, even though we allow for more than 2 groups to draw inference on the point estimates.
@@ -141,5 +143,51 @@ Standard errors in parentheses
 <br /><sup>*</sup> <i>p</i> < 0.05, <sup>**</sup> <i>p</i> < 0.01, <sup>***</sup> <i>p</i> < 0.001
 </td></tr>
 </table>
+
+### R
+
+The same steps can be also performed in R. First, make sure to update your distribution of DIDmultiplegtDYN to v.1.0.12 either from CRAN
+```r
+install.packages("DIDmultiplegtDYN", force = TRUE)
+```
+
+or from Github
+```r
+library(devtools)
+install_github("chaisemartinPackages/did_multiplegt_dyn/R", force = TRUE) 
+```
+
+Download the DIDmultiplegtDYNallPL package from Github (remove `library(devtools)` if it was already loaded at the step before):
+```r
+library(devtools)
+install_github("chaisemartinPackages/did_multiplegt_dyn/did_multiplegt_dyn_all_pl/R", force = TRUE) 
+```
+
+In this example, we load the same data we used in the Stata demo (we use the `haven` package to load the dta file from this vignette's assets):
+```r
+library(haven)
+data <- read_dta("https://raw.githubusercontent.com/chaisemartinPackages/did_multiplegt_dyn/main/vignettes/assets/vignette_3_data.dta")
+```
+
+Load both libraries:
+```r
+library(DIDmultiplegtDYN)
+library(DIDmultiplegtDYNallPL)
+```
+
+Now, we are all set to compute the same "extra" placebo as before:
+```r
+did <- did_multiplegt_dyn_all_pl(
+    df = data,
+    outcome = "Y",
+    group = "G",
+    time = "T",
+    treatment = "D",
+    effects = 1,
+    placebo = 2
+)
+print(did)
+```
+
 
 
