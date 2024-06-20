@@ -801,6 +801,21 @@ suppressWarnings({
     }
   }
 
+  ## Adjustment to add more placebos (did_multiplegt_dyn_all_pl)
+  max_pl_u_XX <- max_pl_a_XX <- max_pl_gap_u_XX <- max_pl_gap_a_XX <- 0
+  df$pl_gap_XX <- ifelse(!is.na(df$S_g_XX), df$F_g_XX - 2 - df$L_g_XX, NA)
+  if (switchers == "" | switchers == "in") {
+    max_pl_u_XX <- max(df$F_g_XX[df$S_g_XX == 1], na.rm = TRUE) - 2
+    max_pl_gap_u_XX <- max(df$pl_gap_XX[df$S_g_XX == 1], na.rm = TRUE)
+  }
+  if (switchers == "" | switchers == "out") {
+    max_pl_a_XX <- max(df$F_g_XX[df$S_g_XX == 0], na.rm = TRUE) - 2
+    max_pl_gap_a_XX <- max(df$pl_gap_XX[df$S_g_XX == 0], na.rm = TRUE)    
+  }
+  max_pl_XX <- max(max_pl_u_XX, max_pl_a_XX)
+  max_pl_gap_XX <- max(max_pl_gap_u_XX, max_pl_gap_a_XX)
+  max_pl_u_XX <- max_pl_a_XX <- max_pl_gap_u_XX <- max_pl_gap_a_XX <- df$pl_gap_XX <- NULL
+
   ## Generating default values for the variables which will be aggregated 
   ## after Program 2 below has been run for switchers in and for switchers out.
 
@@ -1745,13 +1760,15 @@ ATE_mat <- matrix(mat_res_XX[l_XX + 1, 1:(ncol(mat_res_XX) -1)], ncol = ncol(mat
 rownames(ATE_mat) <- rownames[l_XX+1]
 colnames(ATE_mat) <- c("Estimate", "SE", "LB CI", "UB CI", "N", "Switchers", "N.w", "Switchers.w")
 
-out_names <- c("N_Effects", "N_Placebos", "Effects", "ATE", "delta_D_avg_total")
+out_names <- c("N_Effects", "N_Placebos", "Effects", "ATE", "delta_D_avg_total", "max_pl", "max_pl_gap")
 did_multiplegt_dyn <- list(
   l_XX,
   l_placebo_XX,
   Effect_mat,
   ATE_mat,
-  delta_D_avg_total
+  delta_D_avg_total,
+  max_pl_XX,
+  max_pl_gap_XX
 )
 if (isTRUE(effects_equal)) {
   did_multiplegt_dyn <- append(did_multiplegt_dyn, p_equality_effects)
@@ -1766,8 +1783,10 @@ if (placebo != 0) {
   did_multiplegt_dyn <- append(did_multiplegt_dyn, list(Placebo_mat))
   out_names <- c(out_names, "Placebos")
   if (placebo > 1) {
-    did_multiplegt_dyn <- append(did_multiplegt_dyn, p_jointplacebo)
-    out_names <- c(out_names, "p_jointplacebo")
+    if (l_placebo_XX > 1) {
+      did_multiplegt_dyn <- append(did_multiplegt_dyn, p_jointplacebo)
+      out_names <- c(out_names, "p_jointplacebo")
+    }
   }
 }
 if (!is.null(predict_het)) {
