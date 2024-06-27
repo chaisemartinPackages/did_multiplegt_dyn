@@ -222,7 +222,7 @@ capture drop U_Gg_var_global_2_XX
 capture drop weight_XX
 capture drop delta_XX
 
-ereturn clear
+// ereturn clear //Modif Felix
 
 tokenize `varlist'
 
@@ -359,7 +359,7 @@ if `bootstrap_XX'!=0{
 	
 	qui tempfile data_bootstrap_XX
 	qui save "`data_bootstrap_XX'.dta", replace
-	
+
 	if "`less_conservative_se'"!=""{
 		di as error ""
 		di as error "The less_conservative_se option has no effect when bootstrap is specified, therefore it is ignored in this case to save computation time."
@@ -535,6 +535,7 @@ replace d_sq_XX=0
 
 // Create a new variable = to d_sq_XX expressed in integers
 capture drop d_sq_int_XX
+
 gegen d_sq_int_XX = group(d_sq_XX)
 
 ///// Dropping the values of the baseline treatment such that no variance in F_g within those values.
@@ -544,7 +545,6 @@ drop if var_F_g_XX==0
 drop var_F_g_XX
 
 ///// Error message if Design Restriction 1 is not met.
-
 count
 if r(N)==0{
 	di as error ""
@@ -958,14 +958,17 @@ use "`data_XX'.dta", clear
 
 }
 
-//Fill up store_singular_XX, with correct values of statu quo and not the levels
+//Fill up store_singular_XX, with correct values of statu quo and not the levels -> Modif Felix
 levelsof d_sq_XX, local(levels_d_sq_bis_XX)
 scalar index_sing_XX = 0
 foreach l of local levels_d_sq_bis_XX {
-scalar index_sing_XX = scalar(index_sing_XX)+1
-if(scalar(store_singular_`=index_sing_XX'_XX) == 1){
-local store_singular_XX = "`store_singular_XX' `l'"
-}
+	scalar index_sing_XX = scalar(index_sing_XX)+1
+	capture confirm scalar store_singular_`=index_sing_XX'_XX
+	if _rc==0{
+		if(scalar(store_singular_`=index_sing_XX'_XX) == 1){
+		local store_singular_XX = "`store_singular_XX' `l'"
+		}
+	}
 }
 
 ///// Display errors if one of the Den_d^{-1} is not defined
@@ -1052,6 +1055,8 @@ if ("`switchers'"=="in"&(L_u_XX==.|L_u_XX==0))|("`switchers'"=="out"&(L_a_XX==.|
 	di as error "where the estimators of de Chaisemartin & D'Haultfoeuille (2024)"
 	di as error "cannot be used."
 	di as input _continue ""
+		
+	noi di as error "We exit" // Felix		
 		
 	exit
 }
@@ -1391,10 +1396,12 @@ gen switcher_tag_XX = .
 if ("`switchers'"==""|"`switchers'"=="in"){
 if L_u_XX!=.&L_u_XX!=0{
 
+***** MODIF FELIX: Replaced all the weights by weight(weight_XX) instead of weight(`weight') due to the fact that `weights' does not exist anymore after collapsing
+
 * Perform the estimation of effects and placebos outside of the loop on 
 * number of effects if trends_lin not specified
 if "`trends_lin'"==""{
-	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`=l_XX') placebo(`=l_placebo_XX') switchers_core(in) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' `same_switchers' `same_switchers_pl' `effects_equal' continuous(`continuous') `less_conservative_se' weight(`weight')
+	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`=l_XX') placebo(`=l_placebo_XX') switchers_core(in) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' `same_switchers' `same_switchers_pl' `effects_equal' continuous(`continuous') `less_conservative_se' weight(weight_XX)
 
 	// Store the number of the event-study effect for switchers-in
 		forv k = 1/`=l_XX' {
@@ -1408,7 +1415,7 @@ forvalue i=1/`=l_XX'{
 * if trends_lin is specified
 * Note that if the option trends_lin was specified, same_switchers must also be specified.
 if "`trends_lin'"!=""{
-	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`i') switchers_core(in) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' same_switchers `effects_equal' trends_lin continuous(`continuous') `less_conservative_se' weight(`weight')
+	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`i') switchers_core(in) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' same_switchers `effects_equal' trends_lin continuous(`continuous') `less_conservative_se' weight(weight_XX)
 
 	// Store the number of the event-study effect for switchers-in
 	replace switcher_tag_XX = `i' if distance_to_switch_`i'_XX == 1
@@ -1437,7 +1444,7 @@ if l_placebo_XX!=0{
 	forvalue i=1/`=l_placebo_XX'{
 		
 		if "`trends_lin'"!=""{
-	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`i') placebo(`i') switchers_core(in) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' same_switchers same_switchers_pl `effects_equal' trends_lin continuous(`continuous') `less_conservative_se' weight(`weight')
+	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`i') placebo(`i') switchers_core(in) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' same_switchers same_switchers_pl `effects_equal' trends_lin continuous(`continuous') `less_conservative_se' weight(weight_XX)
 }
 				
 		if N1_placebo_`i'_XX!=0{
@@ -1474,7 +1481,7 @@ if ("`switchers'"==""|"`switchers'"=="out"){
 if L_a_XX!=.&L_a_XX!=0{
 	
 if "`trends_lin'"==""{	
-did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`=l_XX') placebo(`=l_placebo_XX') switchers_core(out) `only_never_switchers' controls(`controls')  trends_nonparam(`trends_nonparam') `normalized' `same_switchers' `same_switchers_pl' `effects_equal' continuous(`continuous') `less_conservative_se' weight(`weight')
+did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`=l_XX') placebo(`=l_placebo_XX') switchers_core(out) `only_never_switchers' controls(`controls')  trends_nonparam(`trends_nonparam') `normalized' `same_switchers' `same_switchers_pl' `effects_equal' continuous(`continuous') `less_conservative_se' weight(weight_XX)
 
 	// Store the number of the event-study effect for switchers-out
 		forv k = 1/`=l_XX' {
@@ -1486,7 +1493,7 @@ did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`=
 forvalue i=1/`=l_XX'{
 	
 if "`trends_lin'"!=""{	
-	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`i') switchers_core(out) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' same_switchers `effects_equal' trends_lin continuous(`continuous') `less_conservative_se' weight(`weight')
+	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`i') switchers_core(out) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' same_switchers `effects_equal' trends_lin continuous(`continuous') `less_conservative_se' weight(weight_XX)
 
 	// Store the number of the event-study effect for switchers-out
 	replace switcher_tag_XX = `i' if distance_to_switch_`i'_XX == 1
@@ -1515,7 +1522,7 @@ if l_placebo_XX!=0{
 	forvalue i=1/`=l_placebo_XX'{
 		
 if "`trends_lin'"!=""{	
-	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`i') placebo(`i') switchers_core(out) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' same_switchers same_switchers_pl `effects_equal' trends_lin continuous(`continuous') `less_conservative_se' weight(`weight')
+	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`i') placebo(`i') switchers_core(out) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' same_switchers same_switchers_pl `effects_equal' trends_lin continuous(`continuous') `less_conservative_se' weight(weight_XX)
 }
 		
 	if N0_placebo_`i'_XX!=0{
@@ -1833,7 +1840,6 @@ matrix didmgt_results_no_avg_XX=didmgt_results_no_avg_XX'
 
 capture matrix drop didmgt_results_no_avg1_XX didmgt_results_no_avg2_XX
 
-
 //// Add bootstrap 
 if `bootstrap_XX'!=0{
 	
@@ -1855,7 +1861,8 @@ if `bootstrap_XX'!=0{
 	local num_pl_XX "`r(numlist)'"
 	
 	
-	// Adjust for missings 
+	// Adjust for missings
+	
 	local num_eff_XX: list num_eff_XX- missing_eff_XX
 	local num_pl_XX: list num_pl_XX- missing_pl_XX
 	
@@ -1873,20 +1880,31 @@ if `bootstrap_XX'!=0{
 	
 	xtset, clear // need this to ensure bootstrap is running correctly
 	
-	// Save pre-bootstraped coefficients matrix for residualization (controls)
+	// Save pre-bootstraped coefficients matrix for residualization (controls) and matrix for the actual coefficient matrix to be used in the ereturn post 
 	foreach u of local levels_d_sq_XX {
 		matrix coefs_sq_bs_`u'_XX = coefs_sq_`u'_XX
 	}
+	matrix didmgt_bs_results_no_avg_XX=didmgt_results_no_avg_XX // Modif Felix
+	
+	// Modif Felix: Ensure that we do not add missings in this process
+	gen existing_pre_XX=1
 	
 	// Save pre-bootstraped scalars 
-	mata: scalars_XX = st_dir("global", "numscalar", "*_XX")
-	getmata (scalars_XX*) = scalars_XX, force
+	mata: scalars_XX = st_dir("global", "numscalar", "*_XX")	
+	getmata (scalars_XX*) = scalars_XX, force					
+	// Fix this by counting the number of observations before and after we add all the scalars in and then delete the additional cells we might add!!!				
+	
 	levelsof(scalars_XX), local(scalars_save)
 	foreach w of local scalars_save {
 		local k = subinstr("`w'","_XX","_XY",.)
 		scalar `k' = `w'
 	}
 	capture drop scalars_XX* 
+	
+		
+	// Modif Felix: Ensure that we do not add missings in this process
+	drop if existing_pre_XX==.
+	drop existing_pre_XX
 	
 	global bootstrap_on_XX "yes"
 	
@@ -1898,15 +1916,18 @@ if `bootstrap_XX'!=0{
 		bootstrap "`coefs'", reps(`bootstrap_XX') cluster(`cluster') `seed_XX': did_multiplegt_dyn `1' `2' `3' `4', effects(`=l_XY') placebo(`=l_placebo_XY') `same_switchers' switchers(`switchers') `only_never_switchers' controls(`controls_bs_orig_XX') trends_nonparam(`trends_nonparam') weight(`weight') `dont_drop_larger_lower' `normalized' `same_switchers_pl' `drop_if_d_miss_before_first_switch' `trends_lin' continuous(`continuous') graph_off
 	}
 	
-	global bootstrap_on_XX ""
+	//global bootstrap_on_XX ""
 	
 	// store bootstrap results matrix
 	matrix bs_out_XX=r(table)
+	matrix bs_var_cov_XX=e(V) // Modif Felix: also fetch var/cov Matrix
+	
 	
 	// Restore residualization matrix 
 	foreach u of local levels_d_sq_XX {
 		matrix coefs_sq_`u'_XX = coefs_sq_bs_`u'_XX
 	}
+	matrix didmgt_results_no_avg_XX=didmgt_bs_results_no_avg_XX // Modif Felix
 	
 	// Restore scalars
 	mata: scalars_XY = st_dir("global", "numscalar", "*_XY")
@@ -1929,8 +1950,8 @@ if `bootstrap_XX'!=0{
 	// row l_XX+1 to l_XX+l_placebo_XX are the placebos
 	if l_placebo_XX!=0{
 		mat se_pl_bs_XX=J(`=l_placebo_XX',1,.)
-		local for_count_2_XX=`=l_XX'+`=l_placebo_XX'
-		local for_count_3_XX=`=l_XX'+1
+		local for_count_2_XX=`=l_XX'+`=l_placebo_XX' // Felix: obsolete
+		local for_count_3_XX=`=l_XX'+1 // Felix: obsolete
 		foreach k of numlist `num_pl_XX'{
 			mat se_pl_bs_XX[`k',1]=bs_out_XX[2,`j']
 			local j=`j'+1
@@ -1948,7 +1969,7 @@ if `bootstrap_XX'!=0{
 	// Reload the "pre-bootstrap" data 
 	use "`data_pre_bootstrap_XX'.dta", clear
 }
-
+global bootstrap_on_XX "" // Modif Felix
 
 /////  Computing the variance of DID_\ell
 
@@ -2274,6 +2295,12 @@ forvalue i=1/`total_num_estimates_XX'{
 	}
 	
 }
+
+*** Modif Felix: replace by bootstrap var/cov matrix
+if `bootstrap_XX'!=0{
+	matrix didmgt_Var_all_XX=bs_var_cov_XX
+}
+
 }
 	// Error message if not all of the specified effects/placebos could be estimated 
 	else{
@@ -2359,6 +2386,11 @@ if (l_placebo_XX!=0)&l_placebo_XX>1{
 	
 	}
 	
+	*** Modif Felix: replace matrix with bootstrap
+	if `bootstrap_XX'!=0{
+		matrix didmgt_Var_Placebo=bs_var_cov_XX["_bs_`=l_XX+1'".."_bs_`=l_XX+l_placebo_XX'","_bs_`=l_XX+1'".."_bs_`=l_XX+l_placebo_XX'"]
+	}	
+	
 	// Compute P-value for the F-test on joint nullity of all placebos
 	matrix didmgt_Var_Placebo_inv=invsym(didmgt_Var_Placebo)
 	matrix didmgt_Placebo_t=didmgt_Placebo'
@@ -2436,6 +2468,11 @@ if ("`effects_equal'")!=""&l_XX>1{
 		}
 	}
 	}
+	
+*** Modif Felix: replace by bootstrap var/cov matrix
+if `bootstrap_XX'!=0{
+	matrix didmgt_Var_Effects=bs_var_cov_XX["_bs_1".."_bs_`=l_XX'","_bs_1".."_bs_`=l_XX'"]
+}
 	
 	*Creating a matrix of demeaned effects: null being tested = joint equality, not jointly 0
 	matrix didmgt_D =didmgt_identity -J(`=l_XX-1',l_XX,(1/l_XX))
@@ -2756,26 +2793,57 @@ di as text "{it:Test of joint nullity of the estimates : p-value =} " p_het_`i'_
 ///// Store all the ereturns after the last reg was called 
 ereturn clear 
 
-// Modif Felix: Put ereturn post before all the other ereturns
-local minus Av_tot_eff
+// Modif Felix: Put ereturn post before all the other ereturns and adjust row/col names
+
+/* -> Problems with format -> didmgt_results_no_avg_XX does not take out missings, didmgt_Var_all_XX does, so we would need to change one of them to make it work (plus we create b V with all those missings, would need to change it too)
+	// Adjust for missings
+	local minus ""
+	
+	if "`missing_eff_XX'" != ""{
+		foreach i of numlist `missing_eff_XX'{
+			local minus = "`minus' Effect_`i'"
+		}
+	}
+	
+	if "`missing_pl_XX'" != ""{
+		foreach i of numlist `missing_pl_XX'{
+			local minus = "`minus' Placebo_`i'"
+		}
+	}
+	
+local minus " `minus' Av_tot_eff"
 local rownames_alt : list rownames-minus
-
-
-matrix colnames didmgt_results_no_avg_XX= `rownames_alt'
-matrix rownames didmgt_Var_all_XX= `rownames_alt'
-matrix colnames didmgt_Var_all_XX= `rownames_alt'
+*/
 
 ////// Integration with esttab
 matrix b=(didmgt_results_no_avg_XX, scalar(delta_XX))
 mat coln b = `rownames_alt' Av_tot_eff
 local nc = colsof(b)
 matrix V = J(`nc', `nc', 0)
+if "`bootstrap'"==""{ // Modif Felix: Adapt Matrix for bootstrap
 forv i=1/`=`nc'-1' {
 	forv j =1/`=`nc'-1' {
 		mat V[`i', `j'] = didmgt_Var_all_XX[`i', `j']
 	}
 }
-mat V[`nc', `nc'] = scalar(se_XX)^2
+}
+if "`bootstrap'"!=""{ // Modif Felix: Adapt Matrix for bootstrap
+	mat V=didmgt_Var_all_XX
+}
+
+// Note Felix: Drop this bootstrap distiction after we reeplaced  didmgt_Var_all_XX by bs_var_cov_XX above so we get the "correct" variance covariance matrix with and without bootstrap.
+
+// Modif Felix: Adjust for cases where SE cant be computed -> with bootstrap we already have the Avg_tot_eff in there
+if "`bootstrap'"==""{
+	if scalar(se_XX)!=. {
+		mat V[`nc', `nc'] = scalar(se_XX)^2
+	}
+	if scalar(se_XX)==. {
+		mat V[`nc', `nc'] = 0
+	}
+}
+
+matrix colnames b= `rownames_alt'
 matrix rownames V = `rownames_alt' Av_tot_eff
 matrix colnames V = `rownames_alt' Av_tot_eff
 
@@ -2804,7 +2872,12 @@ if "`predict_het'" != "" {
 	mat coln V = `het_rown'
 }
 
-ereturn post b V
+// Felix -> Lets add cap and print error message when we are in the case with some missings in the matrices (cases where we have missings in the output table)
+cap ereturn post b V 
+if _rc!=0{
+	di ""
+	di as error "Warning: some of the effects/placebos could not be computed so e(b)/e(V) will not be defined!"
+}
 
 // Felix: Continue by adding Av_tot_eff to the Var/Cov matrix
 
@@ -3316,7 +3389,7 @@ if "`date_first_switch'" != "" {
 }
 
 // Reload the data before it was changed in save_sample
-use `data_predesign', clear
+qui use `data_predesign', clear // Modif Felix: Add qui
 
 // If by specified, reload the original data before restricting the sample with by
 if "`by'" !=""{	
@@ -4229,7 +4302,7 @@ scalar N`=increase_XX'_placebo_`i'_XX=0
 // Loop over t incrementing the scalar
 forvalue t=`=t_min_XX'/`=T_max_XX'{
 	sum N`=increase_XX'_t_placebo_`i'_XX if time_XX==`t'
-	if !missing(r(mean)) scalar N`=increase_XX'_placebo_`i'_XX = N`=increase_XX'_placebo_`i'_XX + r(mean)
+	if !missing(r(mean)) scalar N`=increase_XX'_placebo_`i'_XX = N`=increase_XX'_placebo_`i'_XX + r(mean) // Modif Diego
 }
 
 // Modif Felix weight
@@ -4242,7 +4315,7 @@ if "`weight'"!=""{
 // Loop over t incrementing the scalar
 forvalue t=`=t_min_XX'/`=T_max_XX'{
 	sum N`=increase_XX'_t_pl_`i'_XX_w if time_XX==`t'
-	if !missing(r(mean)) scalar N`=increase_XX'_`i'_pl_XX_weight = N`=increase_XX'_`i'_pl_XX_weight + r(mean)
+	if !missing(r(mean)) scalar N`=increase_XX'_`i'_pl_XX_weight = N`=increase_XX'_`i'_pl_XX_weight + r(mean) // Modif Diego
 }
 }
 
