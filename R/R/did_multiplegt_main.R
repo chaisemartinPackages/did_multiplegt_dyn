@@ -427,11 +427,11 @@ suppressWarnings({
   #### track if a group is switcher in or switcher out.
 
   if (is.null(continuous)) {
-    df <- subset(df, !(df$avg_post_switch_treat_XX == df$d_sq_XX & df$F_g_XX != df$T_g_XX + 1))
+    df <- subset(df, !(df$avg_post_switch_treat_XX == df$d_sq_XX & !is.na(df$avg_post_switch_treat_XX) & df$F_g_XX != df$T_g_XX + 1 & !is.na(df$F_g_XX) & !is.na(df$T_g_XX)))
     df$S_g_XX <- as.numeric(df$avg_post_switch_treat_XX > df$d_sq_XX)
     df$S_g_XX <- ifelse(df$F_g_XX != T_max_XX + 1, df$S_g_XX, NA)
   } else {
-    df <- subset(df, !(df$avg_post_switch_treat_XX == df$d_sq_XX_orig & df$F_g_XX != df$T_g_XX + 1))
+    df <- subset(df, !(df$avg_post_switch_treat_XX == df$d_sq_XX_orig  & !is.na(df$avg_post_switch_treat_XX) & df$F_g_XX != df$T_g_XX + 1 & !is.na(df$F_g_XX) & !is.na(df$T_g_XX)))
     df$S_g_XX <- as.numeric(df$avg_post_switch_treat_XX > df$d_sq_XX_orig)
     df$S_g_XX <- ifelse(df$F_g_XX != T_max_XX + 1, df$S_g_XX, NA)
   }
