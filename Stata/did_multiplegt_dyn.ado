@@ -2815,9 +2815,11 @@ local minus " `minus' Av_tot_eff"
 local rownames_alt : list rownames-minus
 */
 
+local minus Av_tot_eff
+local rownames_alt : list rownames-minus
+
 ////// Integration with esttab
 matrix b=(didmgt_results_no_avg_XX, scalar(delta_XX))
-mat coln b = `rownames_alt' Av_tot_eff
 local nc = colsof(b)
 matrix V = J(`nc', `nc', 0)
 if "`bootstrap'"==""{ // Modif Felix: Adapt Matrix for bootstrap
@@ -2843,7 +2845,7 @@ if "`bootstrap'"==""{
 	}
 }
 
-matrix colnames b= `rownames_alt'
+matrix colnames b= `rownames_alt' Av_tot_eff
 matrix rownames V = `rownames_alt' Av_tot_eff
 matrix colnames V = `rownames_alt' Av_tot_eff
 
