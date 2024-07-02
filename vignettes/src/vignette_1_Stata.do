@@ -151,3 +151,77 @@ connected res1 rel_time, mc(blue) lc(blue) || ///
 title("DID, from last period before treatment changes (t=0) to t") ///
 ytitle(" ") leg(off) 
 gr export "assets/vignette_1_Stata_fig2.jpg", replace
+
+// Bigger case for graph - PLACEBO //
+// Changes to the DGP to have at least 1 pre-period
+
+clear
+set seed 123
+scalar TT = 20
+scalar GG = 1000
+set obs `= TT * GG'
+gen G = mod(_n-1,GG) + 1
+gen T = floor((_n-1)/GG)
+sort G T
+
+gen D = 0
+replace D = 1 if T == mod(G - 1, 5) + 7 & mod(G-1, 5) != 0
+bys G: gen D_stag_temp = sum(D)
+bys G: gen D_stag = sum(D_stag_temp)
+gen Y = uniform() * (1 + D_stag)
+replace Y = . if mod(T, 4) != 0
+drop D_stag*
+
+bys G: gen D0 = D[1]
+gen D_change = abs(D - D0) != 0
+bys G: gen at_least_one_D_change = sum(D_change)
+
+bys G: egen never_treated = max(at_least_one_D_change)
+replace never_treated = 1 - never_treated
+bys G: egen F_g_temp = min(T * D_change) if D_change != 0
+bys G: egen F_g = mean(F_g_temp)
+sum T
+replace F_g = r(max) + 1 if missing(F_g)
+
+gen subsample = (4 - mod(F_g, 4)) * (mod(F_g, 4) != 0) + 1
+replace subsample = 0 if at_least_one_D_change == 0
+
+sort G T
+
+keep if !missing(Y)
+
+scalar effects = 2
+scalar placebo = 1
+mat define res = J(4*placebo + 4 * effects, 7, .)
+forv j=1/4 {
+    did_multiplegt_dyn Y G T at_least_one_D_change ///
+     if inlist(subsample, 0, `j'), effects(`=effects') placebo(`=placebo') graph_off
+    forv i = 1/`=effects' {
+        mat adj = mat_res_XX[`i',1..6]
+        forv c =1/6 {
+            mat res[`j'+(`i'-1)*4,`c'] = adj[1, `c']
+        }
+        mat res[`j'+(`i'-1)*4,7] =`j'+(`i'-1)*4
+    }
+    forv i = 1/`=placebo' {
+        mat adj = mat_res_XX[effects + 1 + `i',1..6]
+        forv c =1/6 {
+            mat res[(`i'+1)*4 - `j' + (4*(effects - 1) +1),`c'] = adj[1, `c']
+        }
+        mat res[(`i'+1)*4 - `j' + (4*(effects - 1) +1),7] = - ((`i'+1)*4 - `j')
+    }
+}
+mat li res
+
+did_multiplegt_dyn Y G T at_least_one_D_change, graph_off
+
+// Add the 0-period to the saved matrix
+mat res = (0,0,0,0,0,0,0) \ res
+svmat res
+sort res7
+tw rcap res3 res4 res7, lc(blue) || ///
+connected res1 res7, mc(blue) lc(blue) || ///
+, xtitle("Relative time to last period before treatment changes (t=0)") ///
+title("DID, from last period before treatment changes (t=0) to t") ///
+ytitle(" ") leg(off) xlabel(-7(1)8)
+gr export "assets/vignette_1_Stata_fig3.jpg", replace
