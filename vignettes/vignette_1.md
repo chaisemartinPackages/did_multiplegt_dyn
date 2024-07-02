@@ -10,6 +10,7 @@ In many circumstances, the outcome is observed less frequently than the treatmen
   - [Part III: Estimation](#part-iii-estimation)
   - [Part IV: Comparison with naive did_multiplegt_dyn](#part-iv-comparison-with-naive-did_multiplegt_dyn)
   - [Part V: Graph output](#part-v-graph-output)
++ [Requesting placebos](#requesting-placebos)
 
 
 ## A toy example
@@ -446,3 +447,76 @@ The resulting graph should look like this:
 </p>
 
 ---
+
+## Requesting Placebos
+
+Testing for no anticipation and parallel trends assumptions becomes trickier when the outcome variable is missing at regular intervals.
+The econometrics behind this case is explained in the [companion paper](https://github.com/chaisemartinPackages/did_multiplegt_dyn/blob/main/vignettes/assets/main.pdf) of this vignette.
+In general, we show that in a dataset with an outcome variable missing every $k$ periods
++ the mapping of the placebos from collapsed data differs from the mapping that we used to retrieve the dynamic effects estimators:
++ the earliest placebo estimator retrievable from the current data is the $k$-th one;
++ (almost) all placebo estimators retrieved in this way can be disaggregated into the _difference_ of two normal placebo estimators.
+
+As a result, the interpretation of the estimates changes, in that finding that the difference of two placebos is not statistically different from 0 is for sure a weaker test of the parallel trends assumption.
+
+In any case, it is possible to tweak `did_multiplegt_dyn` to retrieve placebo estimators under the caveats discussed above. Let's change the DGP of the example to allow the computation. Run the DGP generation of the last subsection replacing
+
+```stata
+replace D = 1 if T == mod(G - 1, 5) + 3 & mod(G-1, 5) != 0
+```
+
+with 
+
+
+```stata
+replace D = 1 if T == mod(G - 1, 5) + 7 & mod(G-1, 5) != 0
+```
+
+Now, all the treated groups will have at least two periods before their first switch in the collapsed data, meaning that we can compute at least one placebo in all the subsamples.
+
+Using the index adjustments that are described in detail in the [companion paper](https://github.com/chaisemartinPackages/did_multiplegt_dyn/blob/main/vignettes/assets/main.pdf), we can retrieve placebo estimators comparing the outcome evolution of switchers and not-yet-switchers from the period before the first treatment switch to 4, 5, 6 and 7 periods prior as follows:
+
+```stata
+scalar effects = 2
+scalar placebo = 1
+mat define res = J(4*placebo + 4 * effects, 7, .)
+forv j=1/4 {
+    did_multiplegt_dyn Y G T at_least_one_D_change ///
+     if inlist(subsample, 0, `j'), effects(`=effects') placebo(`=placebo') graph_off
+    forv i = 1/`=effects' {
+        mat adj = mat_res_XX[`i',1..6]
+        forv c =1/6 {
+            mat res[`j'+(`i'-1)*4,`c'] = adj[1, `c']
+        }
+        mat res[`j'+(`i'-1)*4,7] =`j'+(`i'-1)*4
+    }
+    forv i = 1/`=placebo' {
+        mat adj = mat_res_XX[effects + 1 + `i',1..6]
+        forv c =1/6 {
+            mat res[(`i'+1)*4 - `j' + (4*(effects - 1) +1),`c'] = adj[1, `c']
+        }
+        mat res[(`i'+1)*4 - `j' + (4*(effects - 1) +1),7] = - ((`i'+1)*4 - `j')
+    }
+}
+mat li res
+```
+
+Notice that time stamps are now stored inside the **res** matrix since the relative time indexes are not consecutive anymore.
+The graph can be produced with a similar procedure as the one described in previous section:
+
+```stata
+mat res = (0,0,0,0,0,0,0) \ res
+svmat res
+sort res7
+tw rcap res3 res4 res7, lc(blue) || ///
+connected res1 res7, mc(blue) lc(blue) || ///
+, xtitle("Relative time to last period before treatment changes (t=0)") ///
+title("DID, from last period before treatment changes (t=0) to t") ///
+ytitle(" ") leg(off) xlabel(-7(1)8)
+```
+
+The output should look like this:
+
+---
+
+
