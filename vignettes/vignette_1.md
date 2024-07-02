@@ -516,7 +516,9 @@ ytitle(" ") leg(off) xlabel(-7(1)8)
 ```
 
 The output should look like this:
-
+<p>
+  <img src="https://github.com/chaisemartinPackages/did_multiplegt_dyn/blob/main/vignettes/assets/vignette_1_Stata_fig3.jpg" alt>
+</p>
 ---
 
 
