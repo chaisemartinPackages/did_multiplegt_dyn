@@ -47,3 +47,7 @@ First official R release.
 ## Changes in version 1.0.9
 
 + Added only_never_switchers option
+
+## Changes in version 1.0.14
+
++ Added joint test on dynamic effects
