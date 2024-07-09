@@ -33,6 +33,8 @@ print.did_multiplegt_dyn <- function(x, ...) {
         cat(noquote(strrep("-", 70)));cat("\n");
         mat_print(ref$results$Effects[, 1:(6 + ((!is.null(x$args$weight))*2))])
         cat("\n")
+        cat(sprintf("Test of joint nullity of the effects : p-value = %.4f", ref$results$p_jointeffects))
+        cat("\n")
 
         if (!is.null(ref$results$p_equality_effects)) {
             cat(sprintf("Test of equality of the effects : p-value = %.4f", ref$results$p_equality_effects))
