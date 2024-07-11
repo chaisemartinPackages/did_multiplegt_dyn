@@ -15,5 +15,5 @@ did_multiplegt_dyn_by_check <- function(
 ) {
     df <- df %>% group_by(.data[[group]]) %>%
             mutate(sd_by = sd(.data[[by]], na.rm = TRUE))
-    return(mean(df$sd_by) == 0)
+    return(mean(df$sd_by, na.rm = TRUE) == 0)
 }
