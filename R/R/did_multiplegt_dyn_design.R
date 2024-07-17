@@ -47,7 +47,7 @@ did_multiplegt_dyn_design <- function(
 	## Aggregate weights by group 
   if (!is.null(weight)) {
     df <- df %>% group_by(.data$group_XX) %>%
-        mutate(g_weight = sum(.data$weight_XX), na.rm = TRUE) 
+        mutate(g_weight_XX = sum(.data$weight_XX), na.rm = TRUE) 
   } else {
     df$g_weight_XX <- 1
   }
