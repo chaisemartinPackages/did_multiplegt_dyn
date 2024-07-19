@@ -1364,7 +1364,7 @@ suppressWarnings({
   if (l_placebo_XX != 0) {
     for (i in 1:l_placebo_XX) {
       if ((switchers == "" & (get(paste0("N1_placebo_",i,"_XX_new")) != 0 | get(paste0("N0_placebo_",i,"_XX_new")) != 0)) | (switchers == "out" & get(paste0("N0_placebo_",i,"_XX_new")) != 0 ) | (switchers == "in" & get(paste0("N1_placebo_",i,"_XX_new")) != 0 )) {
-          
+
           df[paste0("U_Gg_var_glob_pl_",i,"_XX")] <- df[[paste0("U_Gg_var_pl_",i,"_in_XX")]] * (get(paste0("N1_placebo_",i,"_XX_new")) / (get(paste0("N1_placebo_",i,"_XX_new")) + get(paste0("N0_placebo_",i,"_XX_new")))) + df[[paste0("U_Gg_var_pl_",i,"_out_XX")]] * (get(paste0("N0_placebo_",i,"_XX_new")) / (get(paste0("N1_placebo_",i,"_XX_new")) + get(paste0("N0_placebo_",i,"_XX_new"))))
 
           if (is.null(cluster)) {
@@ -1779,17 +1779,17 @@ mat_names <-
 colnames(didmgt_vcov) <- rownames(didmgt_vcov) <- sapply(1:l_tot_XX, function(x) ifelse(x <= l_XX, paste0("Effect_",x), paste0("Placebo_",x-l_XX))) 
 for (i in 1:l_XX) {
   if (isFALSE(normalized)) {
-    df[[paste0("U_Gg_var_comb_",i,"_XX")]] <- df[[paste0("U_Gg_var_glob_",i,"_XX")]]
+    df[[paste0("U_Gg_var_comb_",i,"_XX")]] <- ifelse(is.null(df[[paste0("U_Gg_var_glob_",i,"_XX")]]), NA, df[[paste0("U_Gg_var_glob_",i,"_XX")]])
   } else {
-    df[[paste0("U_Gg_var_comb_",i,"_XX")]] <- df[[paste0("U_Gg_var_glob_",i,"_XX")]]/ get(paste0("delta_D_",i,"_global_XX"))
+    df[[paste0("U_Gg_var_comb_",i,"_XX")]] <-  ifelse(is.null(df[[paste0("U_Gg_var_glob_",i,"_XX")]]), NA, df[[paste0("U_Gg_var_glob_",i,"_XX")]]/ get(paste0("delta_D_",i,"_global_XX")))
   }
 }
 if (l_placebo_XX != 0) {
   for (i in 1:l_placebo_XX) {
     if (isFALSE(normalized)) {
-      df[[paste0("U_Gg_var_comb_",l_XX + i,"_XX")]] <- df[[paste0("U_Gg_var_glob_pl_",i,"_XX")]]
+      df[[paste0("U_Gg_var_comb_",l_XX + i,"_XX")]] <- ifelse(is.null(df[[paste0("U_Gg_var_glob_pl_",i,"_XX")]]), NA, df[[paste0("U_Gg_var_glob_pl_",i,"_XX")]])
     } else {
-      df[[paste0("U_Gg_var_comb_",l_XX + i,"_XX")]] <- df[[paste0("U_Gg_var_glob_pl_",i,"_XX")]]/get(paste0("delta_D_pl_",i,"_global_XX"))
+      df[[paste0("U_Gg_var_comb_",l_XX + i,"_XX")]] <- ifelse(is.null(df[[paste0("U_Gg_var_glob_pl_",i,"_XX")]]), NA, df[[paste0("U_Gg_var_glob_pl_",i,"_XX")]]/get(paste0("delta_D_pl_",i,"_global_XX")))
     }
   }
 }
