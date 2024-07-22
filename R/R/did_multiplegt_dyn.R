@@ -267,7 +267,7 @@ did_multiplegt_dyn <- function(
     message("did_multiplegt_dyn computes by default analytical standard errors - in most cases, there is no need to use the bootstrap option.\nBootstrapping is a much slower alternative and we recommend it only in combination with the continuous option.")
   }
   if (is.null(bootstrap) & !is.null(continuous)) {
-    message("You specified the continuous option without the bootstrap option.\nPlease be aware that we strongly recommend to compute bootstraped standard errors when you are using the continuous option as the analytical standard errors tend to be very liberal in that case.")
+    message("You specified the continuous option without the bootstrap option. \nPlease be aware that we recommend to compute bootstraped standard errors when you are using the continuous option as the analytical standard errors can be liberal in that case.")
   }
 
   #### By option block: checks on the variable specified and initializes the did_multiplegt_dyn object accounting for the by option
