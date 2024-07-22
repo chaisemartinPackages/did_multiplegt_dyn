@@ -24,7 +24,7 @@ program did_multiplegt_dyn, eclass
 ////////// 0. Auto-updates
 if "`no_updates'" == "" {
 	if uniform() < 0.01 {
-		ssc install did_multiplegt_dyn, replace
+		noi ssc install did_multiplegt_dyn, replace
 	}
 }
 
