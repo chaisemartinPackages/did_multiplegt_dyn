@@ -1,13 +1,13 @@
 Package: DIDmultiplegtDYN
 Title: Estimation in Difference-in-Difference Designs with Multiple Groups and Periods
-Version: 1.0.14
-Authors@R:     
-    c(person("Diego", "Ciccia", role = c("aut", "cre"), email = "diego.ciccia@sciencespo.fr"),
+Version: 1.0.15
+Authors@R: 
+    c(person("Diego", "Ciccia", role = c("aut", "cre"), email = "diego.ciccia@kellogg.northwestern.edu"),
 	person("Felix", "Knau", role = "aut", email = "felix.knau@sciencespo.fr"),
 	person("Mélitine", "Malezieux", role = "aut", email = "melitine.malezieux@sciencespo.fr"),	
 	person("Doulo", "Sow", role = "aut", email = "doulo.sow@ensae.fr"),
     person("Clément", "de Chaisemartin", role = "aut", email = "clement.dechaisemartin@sciencespo.fr"))
-Maintainer: Diego Ciccia <diego.ciccia@sciencespo.fr>
+Maintainer: Diego Ciccia <diego.ciccia@kellogg.northwestern.edu>
 Description: Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, and with a potentially non-binary treatment that may increase or decrease multiple times. 
 License: MIT + file LICENSE
 Author: Diego Ciccia [aut, cre],
@@ -18,4 +18,4 @@ Author: Diego Ciccia [aut, cre],
 Encoding: UTF-8
 Imports: data.table, dplyr, ggplot2, magrittr, matlib, plm, rlang, xlsx, stats, car, lmtest, sandwich, haven, cowplot, rnames
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.2.3
+RoxygenNote: 7.3.2
