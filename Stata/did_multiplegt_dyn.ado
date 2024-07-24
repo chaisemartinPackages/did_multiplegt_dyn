@@ -20,14 +20,14 @@ capture program drop did_multiplegt_dyn
 program did_multiplegt_dyn, eclass
 	version 12.0
 	syntax varlist(min=4 max=4 numeric) [if] [in] [, effects(integer 1) placebo(integer 0) switchers(string) only_never_switchers controls(varlist numeric) trends_nonparam(varlist numeric) weight(varlist numeric max=1) dont_drop_larger_lower NORMALIZED cluster(varlist numeric max=1) graphoptions(string) save_results(string) graph_off same_switchers same_switchers_pl effects_equal  drop_if_d_miss_before_first_switch trends_lin ci_level(integer 95) by(varlist numeric max=1) predict_het(string) design(string) date_first_switch(string)  NORMALIZED_weights CONTinuous(integer 0) save_sample less_conservative_se by_path(string) bootstrap(string) no_updates]
-
+	
 ////////// 0. Auto-updates
 if "`no_updates'" == "" {
 	if uniform() < 0.01 {
 		noi ssc install did_multiplegt_dyn, replace
 	}
-}
-
+}	
+	
 ////////// 1. Checking that necessary tools to run command installed, and that syntax correctly specified.	
 		
 ///// Check if gtools is installed, if not present link to install
@@ -92,12 +92,14 @@ if `by_path'<=0{
 }
 
 if "`bootstrap'"!=""&`continuous'==0{
-	di as error "You specified the bootstrap option without the continuous option. Please be aware that we strongly recommend to only compute bootstraped standard errors when you want to use the continuous option. Otherwise you can rely on the (much faster) computation of analytical standard errors."	
+	di as error "You specified the bootstrap option without the continuous option. Please be aware that we strongly recommend to only compute bootstraped standard errors" 
+	di as error "when you want to use the continuous option. Otherwise you can rely on the (much faster) computation of analytical standard errors."	
 	di as input _continue ""
 }
 
 if "`bootstrap'"==""&`continuous'>0{
-	di as error "You specified the continuous option without the bootstrap option. Please be aware that we strongly recommend to compute bootstraped standard errors when you are using the continuous option as the analytical standard errors tend to be very liberal in that case."	
+	di as error "You specified the continuous option without the bootstrap option. Please be aware that we recommend to compute bootstraped standard errors"
+	di as error "when you are using the continuous option as the analytical standard errors can be liberal in that case."	
 	di as input _continue ""
 }
 
@@ -139,14 +141,14 @@ if `bootstrap_XX'!=0{
 	capture confirm integer number `bootstrap_XX'
 	if _rc{
 	di ""	
-	di as error "The input of the bootstrap() option has to be a positive integer!"
+	di as error "The input of the bootstrap() option has to be a positive integer greater than 1"
 	di as input _continue ""
 	exit
 	}
 	
-if `bootstrap_XX'<0{
+if `bootstrap_XX'<2{
 	di ""
-	di as error "The input of the bootstrap() option has to be a positive integer!"
+	di as error "The input of the bootstrap() option has to be a positive integer greater than 1"
 	di as input _continue ""
 	exit
 }
@@ -390,6 +392,17 @@ if strpos("`predict_het'", ",") == 0 {
 
 local het_vars_XX = strtrim(substr("`predict_het'", 1, strpos("`predict_het'", ",") - 1))
 local het_nums_XX = strtrim(substr("`predict_het'", strpos("`predict_het'", ",") + 1, .))
+
+	// Modif Felix: Add checks for correct inputs in predict_het
+	if "`het_vars_XX'"==""{
+		di as error "You did not specify any variables to be used in the predict_het option,"
+		di as error "therefore this option will be ignored"
+		di as input _continue ""
+	}
+	
+	if "`het_nums_XX'"==""{
+		local het_nums_XX
+	}
 	
 	local pred_het `het_vars_XX'
 	local het_effects `het_nums_XX'	
@@ -1063,8 +1076,6 @@ if ("`switchers'"=="in"&(L_u_XX==.|L_u_XX==0))|("`switchers'"=="out"&(L_a_XX==.|
 	di as error "where the estimators of de Chaisemartin & D'Haultfoeuille (2024)"
 	di as error "cannot be used."
 	di as input _continue ""
-		
-	noi di as error "We exit" // Felix		
 		
 	exit
 }
@@ -1864,24 +1875,28 @@ if `bootstrap_XX'!=0{
 	// gen numlists
 	numlist "1/`=l_XX'"
 	local num_eff_XX "`r(numlist)'"
+	// Adjust for missings
+	local num_eff_XX: list num_eff_XX- missing_eff_XX
 	
+	if `=l_placebo_XX'>0{
 	numlist "1/`=l_placebo_XX'"
 	local num_pl_XX "`r(numlist)'"
-	
-	
 	// Adjust for missings
-	
-	local num_eff_XX: list num_eff_XX- missing_eff_XX
 	local num_pl_XX: list num_pl_XX- missing_pl_XX
+	}
 	
 	//Store the coefficients to bootstrap
 	local coefs ""
 	foreach i of numlist `num_eff_XX'{
 		local coefs = "`coefs' e(Effect_`i')"
 	}
+	
+	if `=l_placebo_XX'>0{
 	foreach i of numlist `num_pl_XX'{
 		local coefs = "`coefs' e(Placebo_`i')"
 	}
+	}
+	
 	if "`trends_lin'"==""{
 	local coefs "`coefs' e(Av_tot_effect)"
 	}
@@ -2419,9 +2434,111 @@ if (l_placebo_XX!=0)&l_placebo_XX>1{
 	
 }
 
+
+///// Performing a test that all DID_\ell effects are equal to 0 
+// Felix: This will be automatically reported in case there are at least two effects requested and none are missign
+
+// initalize scalar
+scalar all_Ns_not_zero=.
+scalar all_delta_not_zero=.
+
+// Test can only be run when at least two placebos requested:
+if l_XX>1{
+
+		// If test is feasible, initalize scalar at 0
+		scalar all_Ns_not_zero=0
+		scalar all_delta_not_zero=0
+		
+		// Count the number of effects that can be estimated
+		forvalue i=1/`=l_XX'{
+		if ("`switchers'"==""&(N1_`i'_XX_new!=0|N0_`i'_XX_new!=0))|("`switchers'"=="out"&N0_`i'_XX_new!=0)|("`switchers'"=="in"&N1_`i'_XX_new!=0){
+			scalar all_Ns_not_zero=all_Ns_not_zero+1
+			
+		}
+		// Count the number of normalized effects that can be estimated
+		if "`normalized'"!=""{
+		if (delta_D_`i'_global_XX!=0 & delta_D_`i'_global_XX!=.){
+			scalar all_delta_not_zero=all_delta_not_zero+1
+		}
+		}
+		}
+
+	// Test can only be run when all requested effects could be computed:
+	// Add condition with normalized
+	if (all_Ns_not_zero==l_XX & "`normalized'"=="")|(all_Ns_not_zero==l_XX & "`normalized'"!="" & all_delta_not_zero==l_XX){
+
+	// Creating a vector with all placebo estimates
+	matrix didmgt_effects=J(l_XX,1,0)
+	
+	// Creating a matrix where the variances and the covariances of the placebos will be stored.
+	matrix didmgt_Var_effects=J(l_XX,l_XX,0)
+	
+	// Fill those matrices
+	forvalue i=1/`=l_XX'{
+		
+		matrix didmgt_effects[`i',1]=scalar(DID_`i'_XX)
+		matrix didmgt_Var_effects[`i',`i']= scalar(se_`i'_XX)^2
+	
+		if `i'<`=l_XX'{
+		forvalue j=`=`i'+1'/`=l_XX'{
+			
+			* Create variables necessary to compute the covariances
+			capture drop U_Gg_var_`i'_`j'_XX
+			capture drop U_Gg_var_`i'_`j'_2_XX
+					
+			if ("`normalized'"==""){
+			gen U_Gg_var_`i'_`j'_XX = U_Gg_var_glob_`i'_XX + U_Gg_var_glob_`j'_XX
+		}
+			
+			if "`normalized'"!=""{
+			gen U_Gg_var_`i'_`j'_XX = U_Gg_var_glob_`i'_XX/scalar(delta_D_`i'_global_XX) + U_Gg_var_glob_`j'_XX/scalar(delta_D_`j'_global_XX)
+		}
+
+			* Estimate the covariances
+			gen U_Gg_var_`i'_`j'_2_XX = U_Gg_var_`i'_`j'_XX^2*first_obs_by_gp_XX
+			
+			sum U_Gg_var_`i'_`j'_2_XX
+			scalar var_sum_`i'_`j'_XX=r(sum)/G_XX^2
+			
+			scalar cov_`i'_`j'_XX = (scalar(var_sum_`i'_`j'_XX) - scalar(se_`i'_XX)^2 - scalar(se_`j'_XX)^2)/2
+	
+			* Store the results
+			matrix didmgt_Var_effects[`i',`j']= scalar(cov_`i'_`j'_XX)
+			matrix didmgt_Var_effects[`j',`i']= scalar(cov_`i'_`j'_XX)
+
+		}
+	}
+	
+	}
+	
+	*** Modif Felix: replace matrix with bootstrap
+	if `bootstrap_XX'!=0{
+		matrix didmgt_Var_eff=bs_var_cov_XX["_bs_`=1'".."_bs_`=l_XX'","_bs_`=1'".."_bs_`=l_XX'"]
+	}	
+	
+	// Compute P-value for the F-test on joint nullity of all effects
+	matrix didmgt_Var_effects_inv=invsym(didmgt_Var_effects)
+	matrix didmgt_effects_t=didmgt_effects'
+	matrix didmgt_chi2effects=didmgt_effects_t*didmgt_Var_effects_inv*didmgt_effects
+	scalar p_jointeffects=1-chi2(l_XX,didmgt_chi2effects[1,1])
+	ereturn scalar p_jointeffects=1-chi2(l_XX,didmgt_chi2effects[1,1])
+
+	}
+	
+	// Error message if not all of the specified placebos could be estimated 
+	else{
+		di as error ""
+		di as error "Some effects could not be estimated."
+		di as error "Therefore, the test of joint nullity of the effects "
+		di as error "could not be computed."
+		di as input _continue ""
+	}
+	
+}
+
 ///// Performing a test that all DID_\ell effects are equal (similar structure as test on placebos, not commented, except for the small differences with placebos)
 
-scalar all_Ns_not_zero=.
+// scalar all_Ns_not_zero=. // Modif Felix: this scalar is already initalized above and would now be overwritten when it should not be
 
 if ("`effects_equal'")!=""&l_XX>1{
 	
@@ -2536,6 +2653,11 @@ if "$k"!=""{
 di "{hline 80}"
 noisily matlist mat_res_XX[1..l_XX, 1..6]
 di "{hline 80}"
+// Felix: Add test on effects jointly = 0
+if (l_XX>1&all_Ns_not_zero==l_XX&all_delta_not_zero==l_XX&"`normalized'"!="")|(l_XX>1&all_Ns_not_zero==l_XX&"`normalized'"==""){
+di as text "{it:Test of joint nullity of the effects : p-value =} " scalar(p_jointeffects)
+}
+
 if l_XX>1&"`effects_equal'"!=""&all_Ns_not_zero==l_XX{
 * When effects_equal is specified show P-value here	
 di as text "{it:Test of equality of the effects : p-value =} " scalar(p_equality_effects)
@@ -3570,7 +3692,7 @@ else{
 global options="`graphoptions'"
 twoway `graph_input', $options
 }
-}
+} // end graph_off
 
 
 ///// Saving the results if requested
@@ -3966,7 +4088,7 @@ bys group_XX: gegen in_sum_`count_controls'_`l'_XX = total(in_sum_temp_`count_co
 // Yg,t − Yg,t−ℓ − (Xg,t − Xg,t−ℓ)*θ_{Dg,1}
 
 foreach l of local levels_d_sq_XX { 
-	if (scalar(useful_res_`l'_XX)>1){ 
+	if (scalar(useful_res_`l'_XX)>1){
 replace diff_y_`i'_XX = diff_y_`i'_XX - coefs_sq_`l'_XX[`=`count_controls'',1]*diff_X`count_controls'_`i'_XX if d_sq_int_XX==`l' 
 * N.B. : in the above line, we do not add "&diff_X`count_controls'_`i'_XX!=." because we want to exclude from the estimation any first/long-difference for which the covariates are missing.
 
@@ -4125,6 +4247,8 @@ if "`controls'"!=""{
 levelsof d_sq_int_XX, local(levels_d_sq_XX)
 
 foreach l of local levels_d_sq_XX {	
+	// FELIX: Add this condition here, same for the placebo case!	
+	if (scalar(useful_res_`l'_XX)>1){
 	
 capture drop combined`=increase_XX'_temp_`l'_`i'_XX	
 gen combined`=increase_XX'_temp_`l'_`i'_XX=0
@@ -4140,6 +4264,7 @@ capture drop in_brackets_`l'_`j'_`k'_temp_XX
 gen in_brackets_`l'_`j'_`k'_temp_XX = inv_Denom_`l'_XX[`j',`k'] * in_sum_`k'_`l'_XX * (d_sq_int_XX == `l' & F_g_XX>=3) 
 
 // Summing over k, to have jth coordinate of vector Den^{-1}_d*...
+
 replace in_brackets_`l'_`j'_XX=in_brackets_`l'_`j'_XX+in_brackets_`l'_`j'_`k'_temp_XX
 } // end loop over k
 
@@ -4155,7 +4280,8 @@ replace combined`=increase_XX'_temp_`l'_`i'_XX=combined`=increase_XX'_temp_`l'_`
 } // end loop over j
 
 // Final sum over the status quo treatment (outer sum over d in the formula)
-replace part2_switch`=increase_XX'_`i'_XX=part2_switch`=increase_XX'_`i'_XX+combined`=increase_XX'_temp_`l'_`i'_XX if d_sq_int_XX==`l' 
+replace part2_switch`=increase_XX'_`i'_XX=part2_switch`=increase_XX'_`i'_XX+combined`=increase_XX'_temp_`l'_`i'_XX if d_sq_int_XX==`l'
+} // Modif FELIX: condition "useful residual" 
 } // end loop over l
 
 // Making the adjustement to U^(+,var)_{G,g,l} when controls are included
@@ -4464,6 +4590,7 @@ if "`controls'"!=""{
 
 levelsof d_sq_int_XX, local(levels_d_sq_XX)
 foreach l of local levels_d_sq_XX {	
+if (scalar(useful_res_`l'_XX)>1){ // MODIF FELIX
 	
 capture drop combined_pl`=increase_XX'_temp_`l'_`i'_XX	
 gen combined_pl`=increase_XX'_temp_`l'_`i'_XX=0
@@ -4485,7 +4612,8 @@ replace combined_pl`=increase_XX'_temp_`l'_`i'_XX=combined_pl`=increase_XX'_temp
 } 
 
 replace part2_pl_switch`=increase_XX'_`i'_XX=part2_pl_switch`=increase_XX'_`i'_XX+combined_pl`=increase_XX'_temp_`l'_`i'_XX if d_sq_int_XX==`l' 
-}
+} // MODIF FELIX
+} // end loop oveer l
 
 if `=increase_XX'==1{
 replace U_Gg_pl_`i'_temp_var_XX=U_Gg_pl_`i'_temp_var_XX - part2_pl_switch1_`i'_XX 
