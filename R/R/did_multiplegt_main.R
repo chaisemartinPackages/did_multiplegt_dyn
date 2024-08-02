@@ -1461,6 +1461,7 @@ if (!is.null(cluster)) {
 ###### Performing a test to see whether all effects are jointly equal to 0
 all_Ns_not_zero <- NA
 all_delta_not_zero <- NA
+p_jointeffects <- NULL
 ## Test can only be run when at least two effects requested:
 if (l_XX != 0 & l_XX > 1) {
 	## If test is feasible, initalize scalar at 0
@@ -1829,7 +1830,7 @@ ATE_mat <- matrix(mat_res_XX[l_XX + 1, 1:(ncol(mat_res_XX) -1)], ncol = ncol(mat
 rownames(ATE_mat) <- rownames[l_XX+1]
 colnames(ATE_mat) <- c("Estimate", "SE", "LB CI", "UB CI", "N", "Switchers", "N.w", "Switchers.w")
 
-out_names <- c("N_Effects", "N_Placebos", "Effects", "ATE", "delta_D_avg_total", "max_pl", "max_pl_gap", "p_jointeffects")
+out_names <- c("N_Effects", "N_Placebos", "Effects", "ATE", "delta_D_avg_total", "max_pl", "max_pl_gap")
 did_multiplegt_dyn <- list(
   l_XX,
   l_placebo_XX,
@@ -1837,9 +1838,12 @@ did_multiplegt_dyn <- list(
   ATE_mat,
   delta_D_avg_total,
   max_pl_XX,
-  max_pl_gap_XX,
-  p_jointeffects
+  max_pl_gap_XX
 )
+if (!is.null(p_jointeffects)) {
+  did_multiplegt_dyn <- append(did_multiplegt_dyn, p_jointeffects)
+  out_names <- c(out_names, "p_jointeffects")  
+}
 if (isTRUE(effects_equal)) {
   did_multiplegt_dyn <- append(did_multiplegt_dyn, p_equality_effects)
   out_names <- c(out_names, "p_equality_effects")  
