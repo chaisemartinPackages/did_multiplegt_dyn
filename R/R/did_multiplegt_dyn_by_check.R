@@ -3,9 +3,7 @@
 #' @param df df
 #' @param group group
 #' @param by by
-#' @import dplyr
-#' @importFrom magrittr %>%
-#' @importFrom rlang .data
+#' @import data.table
 #' @returns A logical value.
 #' @noRd 
 did_multiplegt_dyn_by_check <- function(
@@ -13,7 +11,8 @@ did_multiplegt_dyn_by_check <- function(
     group,
     by
 ) {
-    df <- df %>% group_by(.data[[group]]) %>%
-            mutate(sd_by = sd(.data[[by]], na.rm = TRUE))
+    sd_by <- NULL
+    df <- data.table(df)
+    df[, sd_by := sd(get(by), na.rm = TRUE), by = c(group)]
     return(mean(df$sd_by, na.rm = TRUE) == 0)
 }

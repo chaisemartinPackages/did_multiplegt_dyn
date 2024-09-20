@@ -4,10 +4,7 @@
 #' @param by by
 #' @param by_index by_index
 #' @param append append
-#' @import dplyr
-#' @importFrom magrittr %>%
-#' @importFrom rlang :=
-#' @importFrom rlang .data
+#' @import data.table
 #' @importFrom xlsx write.xlsx
 #' @returns A list with the date_first_switch output.
 #' @noRd
@@ -23,6 +20,9 @@ did_multiplegt_dyn_dfs <- function(
     df <- data$df
     T_max_XX <- data$T_max_XX
 
+    tot_s <- NULL
+    time <- NULL
+
   suppressWarnings({
 
 	## Fetch the arguments 
@@ -37,24 +37,24 @@ did_multiplegt_dyn_dfs <- function(
 	## Drop non switchers and keep one observation per group
   df <- subset(df, !(df$F_g_XX == T_max_XX + 1 | is.na(df$F_g_XX)))
   df <- subset(df, df$time_XX == df$F_g_XX)
-  df <- df %>% dplyr::select(.data$group, .data$time, .data$F_g_XX, .data$d_sq_XX)
+  df <- subset(df, select = c("group", "time", "F_g_XX", "d_sq_XX"))
 
 	## When by_baseline_treat is not specified
   if (dfs_opt == "") {
 		## collapse the number of groups by time
     df$tot_s <- 1
-    df <- df %>% group_by(.data$time) %>% 
-    mutate(tot_s = sum(.data$tot_s, na.rm = TRUE)) %>% 
-    dplyr::select(-.data$group, -.data$F_g_XX, -.data$d_sq_XX)
+    df[, tot_s := sum(tot_s, na.rm = TRUE), by = time]
+    df$group <- df$F_g_XX <- df$d_sq_XX <- NULL
     df <- unique(df)
     df <- df[order(df$time), ]
 		## generate the share of each group
     df$share_XX <- (df$tot_s / sum(df$tot_s, na.rm = TRUE)) * 100
-    df <- df[c("tot_s", "share_XX", "time")]
+    df <- subset(df, select = c("tot_s", "share_XX", "time"))
 		## make matrix with the number and share of groups by time
     dfsmat <- matrix(NA, ncol = 2, nrow = dim(df)[1])
     rown <- c()
     coln <- c("N", "Share")
+    df <- data.frame(df)
     for (j in 1:2) {
       for (i in 1:dim(df)[1]) {
         if (j == 1) {
@@ -63,6 +63,7 @@ did_multiplegt_dyn_dfs <- function(
         dfsmat[i,j] <- as.numeric(df[i,j])
       }
     }
+    df <- data.table(df)
     colnames(dfsmat) <- coln
     rownames(dfsmat) <- rown 
     dfsmat[, 2] <- sprintf("%s", format(round(dfsmat[,2], 2), big.mark=",", scientific=FALSE, trim=TRUE))
@@ -88,9 +89,8 @@ did_multiplegt_dyn_dfs <- function(
   if (dfs_opt == "by_baseline_treat") {
 		## collapse, but this time by time and status quo treatment
     df$tot_s <- 1
-    df <- df %>% group_by(.data$time, .data$d_sq_XX) %>% 
-    mutate(tot_s = sum(.data$tot_s, na.rm = TRUE)) %>% 
-    dplyr::select(-.data$group, -.data$F_g_XX)
+    df[, tot_s := sum(tot_s, na.rm = TRUE), by = c("time", "d_sq_XX")]
+    df$group <- df$F_g_XX <- NULL
     df <- unique(df)
     df <- df[order(df$d_sq_XX, df$time), ]
     levels_d_sq_XX <- levels(factor(df$d_sq_XX))
@@ -108,11 +108,12 @@ did_multiplegt_dyn_dfs <- function(
     for (l in levels_d_sq_XX) {
       df_by <- subset(df, df$d_sq_XX == l)
       df_by$share_XX <- (df_by$tot_s / sum(df_by$tot_s, na.rm = TRUE)) * 100
-      df_by <- df_by[c("tot_s", "share_XX", "time")]
+      df_by <- subset(df_by, select = c("tot_s", "share_XX", "time"))
 		  ## make matrix with the number and share of groups by time, one for each level of status quo treatment
       dfsmat <- matrix(NA, ncol = 2, nrow = dim(df_by)[1])
       rown <- c()
       coln <- c("N", "Share")
+      df_by <- data.frame(df_by)
       for (j in 1:2) {
         for (i in 1:dim(df_by)[1]) {
           if (j == 1) {
@@ -121,6 +122,7 @@ did_multiplegt_dyn_dfs <- function(
           dfsmat[i,j] <- as.numeric(df_by[i,j])
         }
       }
+      df_by <- data.table(df_by)
       colnames(dfsmat) <- coln
       rownames(dfsmat) <- rown 
       

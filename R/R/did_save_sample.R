@@ -2,10 +2,7 @@
 #' @param data data
 #' @param Gn Gn
 #' @param Tn Tn
-#' @import dplyr
-#' @importFrom magrittr %>%
-#' @importFrom rlang .data
-#' @importFrom data.table setnames
+#' @import data.table
 #' @returns The input dataframe df plus two added columns.
 #' @noRd
 did_save_sample <- function(
@@ -17,7 +14,7 @@ did_save_sample <- function(
   suppressWarnings({
 	## keeping only group, time and switcher status (if not missing)
   df_save <- subset(df, !is.na(df$group) & !is.na(df$time))
-  df_save <- df_save %>% dplyr::select(.data$group, .data$time, .data$S_g_XX, .data$switchers_tag_XX) %>% ungroup()
+  df_save <- subset(df_save, select = c("group", "time", "S_g_XX", "switchers_tag_XX"))
 	## redefine S_g_XX to show if group is switcher in/out or control	
   df_save <- data.table::setnames(df_save, old = c("group", "time", "S_g_XX", "switchers_tag_XX"), new = c(Gn, Tn, "did_sample", "did_effect")) 
   df_save$did_sample <- ifelse(df_save$did_sample == 0, -1, df_save$did_sample)
