@@ -109,9 +109,9 @@
 #' 
 #' Yes it can, see Section 1.7 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details.
 #' @section References:
-#' de Chaisemartin, C, D'Haultfoeuille, X (2024). [Difference-in-Differences Estimators of Intertemporal Treatment Effects](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3731856). Forthcoming, Review of Economics and Statistics.
+#' de Chaisemartin, C, D'Haultfoeuille, X (2024). Difference-in-Differences Estimators of Intertemporal Treatment Effects \doi{10.2139/ssrn.3731856}. Forthcoming, Review of Economics and Statistics.
 #' 
-#' de Chaisemartin, C, D'Haultfoeuille, X (2023). [Two-way fixed effects regressions with several treatments](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=3751060). Journal of Econometrics.
+#' de Chaisemartin, C, D'Haultfoeuille, X (2023). Two-way fixed effects regressions with several treatments \doi{10.2139/ssrn.3751060}. Journal of Econometrics.
 #' 
 #' de Chaisemartin, C, Ciccia, D, D'Haultfoeuille, X, Knau, F, Malézieux, M, Sow, D (2024). [Estimators and Variance Estimators Computed by the did_multiplegt_dyn Command](https://drive.google.com/file/d/1NGgScujLCCS4RrwdN-PC1SnVigfBa32h/view).
 #' 
