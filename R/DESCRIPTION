@@ -10,6 +10,7 @@ Authors@R:
 Maintainer: Diego Ciccia <diego.ciccia@kellogg.northwestern.edu>
 Description: Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, and with a potentially non-binary treatment that may increase or decrease multiple times. 
 License: MIT + file LICENSE
+URL: https://github.com/chaisemartinPackages/did_multiplegt_dyn 
 Author: Diego Ciccia [aut, cre],
 	Felix Knau [aut],
 	Mélitine Malezieux [aut],
