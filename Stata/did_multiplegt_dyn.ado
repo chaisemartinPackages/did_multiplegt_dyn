@@ -1411,6 +1411,10 @@ gen switcher_tag_XX = .
 ///// Perform the estimation: call the program did_multiplegt_dyn_core, 
 ///// for switchers in and for switchers out, and store the results.
 
+// Modif. Diego: tailor the upper bounds of the switcher_tag loops to the actual number of post periods requested/feasible for switchers-in and switchers-out
+scalar L_u_XX_tag = min(L_u_XX, `effects')
+scalar L_a_XX_tag = min(L_a_XX, `effects')
+
 // For switchers in
 if ("`switchers'"==""|"`switchers'"=="in"){
 if L_u_XX!=.&L_u_XX!=0{
@@ -1423,7 +1427,7 @@ if "`trends_lin'"==""{
 	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`=l_XX') placebo(`=l_placebo_XX') switchers_core(in) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' `same_switchers' `same_switchers_pl' `effects_equal' continuous(`continuous') `less_conservative_se' weight(weight_XX)
 
 	// Store the number of the event-study effect for switchers-in
-		forv k = 1/`=l_XX' {
+		forv k = 1/`=L_u_XX_tag' {
 			replace switcher_tag_XX = `k' if distance_to_switch_`k'_XX == 1
 		}
 }	
@@ -1503,7 +1507,7 @@ if "`trends_lin'"==""{
 did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`=l_XX') placebo(`=l_placebo_XX') switchers_core(out) `only_never_switchers' controls(`controls')  trends_nonparam(`trends_nonparam') `normalized' `same_switchers' `same_switchers_pl' `effects_equal' continuous(`continuous') `less_conservative_se' weight(weight_XX)
 
 	// Store the number of the event-study effect for switchers-out
-		forv k = 1/`=l_XX' {
+		forv k = 1/`=L_a_XX_tag' {
 			replace switcher_tag_XX = `k' if distance_to_switch_`k'_XX == 1
 		}
 
@@ -1569,6 +1573,8 @@ if "`trends_lin'"!=""{
 }
 	
 } // end of the loop for switchers out 
+
+scalar drop L_u_XX_tag L_a_XX_tag
 
 ////////// 5. Computing the estimators and their variances
 
@@ -2782,7 +2788,7 @@ if "`het_effects'"!="all"{
 // allow to only show some effects specified in the option
 local all_effects_XX "`het_effects'"
 local test_eff_XX : subinstr local het_effects " " ",", all 
-local count_length_XX: word count `test_eff_XX'
+local count_length_XX: word count `all_effects_XX'
 if `count_length_XX'==1{
 	local max_test_eff_XX=`test_eff_XX'
 }
@@ -2834,7 +2840,6 @@ if "`trends_lin'" != ""{
 	replace prod_het_`i'_XX=prod_het_`i'_XX-`i'*(Yg_Fg_min_1_XX-Yg_Fg_min_2_XX)
 }
 replace prod_het_`i'_XX=S_g_het_XX*prod_het_`i'_XX
-
 
 * keep one observation by group to not artificially increase sample
 bys group_XX: replace prod_het_`i'_XX = . if _n != 1
@@ -2917,7 +2922,145 @@ matlist effect_het_`i'_XX
 di "{hline 80}"
 di as text "{it:Test of joint nullity of the estimates : p-value =} " p_het_`i'_hat_XX
 }
+
+
+
+*****************************************************
+// Note: We need a step to ensure that we only do this for the number of pre peridos that are available in the data -> For now just allow as mayn placebos as specified
+
+// Note: we need to specify "all", correct that in the help file and fix the issue when we specify a numlist
+
+if `=l_placebo_XX'>0{
+qui{		
+if "`het_effects'"=="all"{
+local all_effects_XX ""	
+// Take all effects corresponding to the number of requested effect estimates
+forvalues i=1/`=l_placebo_XX'{
+local all_effects_XX "`all_effects_XX' `i'"
 }
+}
+
+if "`het_effects'"!="all"{ 
+// allow to only show some effects specified in the option
+local all_effects_XX "`het_effects'"
+local test_eff_XX : subinstr local het_effects " " ",", all 
+local count_length_XX: word count `all_effects_XX'
+if `count_length_XX'==1{
+	local max_test_eff_XX=`test_eff_XX'
+}
+else{
+local max_test_eff_XX = max(`test_eff_XX')
+}
+	if `max_test_eff_XX'>`=l_placebo_XX'{
+	* error if specified effects not matching with those actually calculated	
+		di as error ""
+		di as error "You specified some numbers in predict_het that exceed the number of placebos possible to estimate!"
+		di as error "Please specify only numbers that are smaller or equal to the number you request in placebo()."
+		di as input _continue ""
+		exit
+	}
+}
+
+foreach i in `all_effects_XX'{
+
+// Modif Felix: Yg,Fg−1-ℓ
+gen Yg_Fg_pl_`i'_XX_temp=outcome_non_diff_XX if time_XX==F_g_XX-1-`i'
+bys group_XX: gegen Yg_Fg_pl_`i'_XX=mean(Yg_Fg_pl_`i'_XX_temp)
+capture drop Yg_Fg_pl_`i'_XX_temp
+
+// Modif Felix: Now generate Sg*(Yg,Fg−1-ℓ − Yg,Fg−1) 
+gen prod_het_pl_`i'_XX=(Yg_Fg_pl_`i'_XX - Yg_Fg_min_1_XX)
+if "`trends_lin'" != ""{
+	replace prod_het_pl_`i'_XX=prod_het_pl_`i'_XX-`i'*(Yg_Fg_min_1_XX-Yg_Fg_min_2_XX)
+}
+replace prod_het_pl_`i'_XX=S_g_het_XX*prod_het_pl_`i'_XX
+
+* keep one observation by group to not artificially increase sample
+bys group_XX: replace prod_het_pl_`i'_XX = . if _n != 1
+
+// Run regression of interest 
+if "`trends_nonparam'" == "" {
+reg prod_het_pl_`i'_XX `predict_het_good' F_g_XX#d_sq_group_XX#S_g_XX [aw=N_gt_XX] if F_g_XX-1+`i'<=T_g_XX, level(`ci_level') vce(robust) // leave the F_g_XX-1+`i'<=T_g_XX condition as it is to ensure that we only use treated groups or is this already taken into account by the S_g_XX?
+}
+if "`trends_nonparam'" != "" {
+gegen trends_nonparam_temp_XX=group(`trends_nonparam')	
+reg prod_het_pl_`i'_XX `predict_het_good' F_g_XX#d_sq_group_XX#S_g_XX#trends_nonparam_temp_XX [aw=N_gt_XX] if F_g_XX-1+`i'<=T_g_XX, level(`ci_level') vce(robust)
+capture drop trends_nonparam_temp_XX
+}
+
+// Retrieve the results from the regression
+forvalues j=1/`:word count `predict_het_good''{
+scalar beta_het_`j'_pl`i'_hat_XX=_b["`: word `j' of `predict_het_good''"]
+scalar se_het_`j'_pl`i'_hat_XX=_se["`: word `j' of `predict_het_good''"]
+scalar lb_het_`j'_pl`i'_hat_XX=_r_lb["`: word `j' of `predict_het_good''"]
+scalar ub_het_`j'_pl`i'_hat_XX=_r_ub["`: word `j' of `predict_het_good''"]
+scalar t_het_`j'_pl`i'_hat_XX=scalar(beta_het_`j'_pl`i'_hat_XX)/scalar(se_het_`j'_pl`i'_hat_XX)
+}
+scalar N_het_pl_`i'_hat_XX=e(N)
+
+// Add F-test on joint significance
+test `predict_het_good'
+scalar p_het_pl_`i'_hat_XX=r(p)
+scalar F_het_pl_`i'_hat_XX=r(F)
+}
+}
+
+// Generate results matrix
+foreach i in `all_effects_XX'{
+matrix effect_het_pl_`i'_XX=J(`:word count `predict_het_good'',6,.)
+
+local effect_het_pl_rownames_`i'_XX ""
+
+forvalue j=1/`:word count `predict_het_good''{
+matrix effect_het_pl_`i'_XX[`j',1]=scalar(beta_het_`j'_pl`i'_hat_XX)
+matrix effect_het_pl_`i'_XX[`j',2]=scalar(se_het_`j'_pl`i'_hat_XX)
+matrix effect_het_pl_`i'_XX[`j',3]=scalar(t_het_`j'_pl`i'_hat_XX)
+matrix effect_het_pl_`i'_XX[`j',4]=scalar(lb_het_`j'_pl`i'_hat_XX)
+matrix effect_het_pl_`i'_XX[`j',5]=scalar(ub_het_`j'_pl`i'_hat_XX)
+matrix effect_het_pl_`i'_XX[`j',6]=scalar(N_het_pl_`i'_hat_XX)
+
+// Generate local with rownames
+local pl_het_rownames_`i'_XX "`pl_het_rownames_`i'_XX' "`: word `j' of `predict_het_good''""
+}
+
+// Assign names
+matrix colnames effect_het_pl_`i'_XX= "Estimate" "SE" "t" "LB CI" "UB CI" "N"
+matrix rownames effect_het_pl_`i'_XX=`pl_het_rownames_`i'_XX'
+
+}
+
+// Output the table
+display _newline
+di "{hline 80}"
+di _skip(18) "{bf:Predicting effect heterogeneity - Placebos}"
+if "`by'" !=""{
+* Add description with the by variable level if by is specified		
+di _skip(35) "{bf:By: `by' = `val_lab_int_XX'}"
+}	
+di "{hline 80}"
+
+// output only the specified effects
+foreach i in `all_effects_XX'{
+display _newline
+di "{hline 80}"	
+di _skip(37) "{bf:Placebo_`i'}"
+di "{hline 80}"
+matlist effect_het_pl_`i'_XX
+di "{hline 80}"
+di as text "{it:Test of joint nullity of the estimates : p-value =} " p_het_pl_`i'_hat_XX
+}
+} // End condition that at least one placebo specified
+else{
+	noi di "No placebos were specified so predict_het will also not report placebo estimates"
+}
+
+*****************************************************
+
+
+}
+
+
+
 
 
 ///// Store all the ereturns after the last reg was called 
