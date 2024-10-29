@@ -5,10 +5,7 @@
 #' @param by by
 #' @param by_index by_index
 #' @param append append
-#' @import dplyr
-#' @importFrom magrittr %>%
-#' @importFrom rlang :=
-#' @importFrom rlang .data
+#' @import data.table
 #' @importFrom xlsx write.xlsx
 #' @returns A list with the design option output.
 #' @noRd
@@ -26,6 +23,17 @@ did_multiplegt_dyn_design <- function(
     l_XX <- data$l_XX
     T_max_XX <- data$T_max_XX
 
+    time_l_XX <- NULL
+    group_XX <- NULL
+    weight_XX <- NULL
+    treatment_XX <- NULL
+    N_XX <- NULL
+    N_w_XX <- NULL
+    treat_GRP <- NULL
+    id_XX <- NULL
+    in_table_XX <- NULL
+    g_weight_XX <- NULL
+
 	## Error message if the arguments in the option were specified wrong
   suppressWarnings({
 
@@ -40,31 +48,27 @@ did_multiplegt_dyn_design <- function(
   df$sel_XX <- df$time_XX >= df$F_g_XX - 1 & df$time_XX <= df$F_g_plus_n_XX
   df <- subset(df, df$time_XX >= df$F_g_XX - 1 & df$time_XX <= df$F_g_plus_n_XX)
   df <- df[order(df$group_XX, df$time_XX), ]
-  df <- df %>% group_by(.data$group_XX) %>% 
-      mutate(time_l_XX = row_number())  %>% ungroup()
-  df <- df %>% dplyr::select(.data$group_XX, .data$time_l_XX, .data$weight_XX, .data$treatment_XX, .data$F_g_XX)
+  df[, time_l_XX := seq_len(.N), by = group_XX]
+  df <-  subset(df, select = c("group_XX", "time_l_XX", "weight_XX", "treatment_XX", "F_g_XX"))
 
 	## Aggregate weights by group 
   if (!is.null(weight)) {
-    df <- df %>% group_by(.data$group_XX) %>%
-        mutate(g_weight_XX = sum(.data$weight_XX), na.rm = TRUE) 
+    df[, g_weight_XX := sum(weight_XX, na.rm = TRUE), by = group_XX]
   } else {
     df$g_weight_XX <- 1
   }
-  df <- df %>% dplyr::select(-.data$weight_XX)
+  df$weight_XX <- NULL
 
   max_time <- max(df$time_l_XX, na.rm = TRUE)
   treat_list <- c()
   treat_str <- ""
   for (i in 1:max_time) {
-    df <- df %>% group_by(.data$group_XX) %>%
-        mutate(!!paste0("treatment_XX",i) := mean(.data$treatment_XX[.data$time_l_XX == i])) %>%
-        ungroup()
+    df[, paste0("treatment_XX",i) := mean(treatment_XX[time_l_XX == i]), by = group_XX]
     treat_list <- c(treat_list, paste0("treatment_XX",i))
     treat_str <- paste0(treat_str,"treatment_XX",i,",")
   }
   treat_str <- substr(treat_str, 1, nchar(treat_str) - 1)
-  df <- df %>% dplyr::select(-.data$time_l_XX, -.data$treatment_XX)
+  df$time_l_XX <- df$treatment_XX <- NULL
   df <- unique(df)
 
 	## Drop missing treatments 
@@ -75,21 +79,22 @@ did_multiplegt_dyn_design <- function(
 	## Creating varibale to store number of groups per treatment path and collapsing
   df$N_XX <- 1
   df$N_w_XX <- (df$g_weight_XX * df$N_XX) / sum(df$g_weight_XX, na.rm = TRUE)
-  df <- df %>% dplyr::select(-.data$group_XX, -.data$g_weight_XX)
-  df$treatments <- df[treat_list]
-  df <- df %>% group_by(.data$treatments) %>%
-      mutate(N_XX = sum(.data$N_XX, na.rm = TRUE)) %>%
-      mutate(N_w_XX = sum(.data$N_w_XX, na.rm = TRUE))
-  df <- df %>% dplyr::select(-.data$F_g_XX)
+  df$group_XX <- df$g_weight_XX <- NULL
+  df[, N_XX := sum(N_XX, na.rm = TRUE), by = treat_list]
+  df[, N_w_XX := sum(N_w_XX, na.rm = TRUE), by = treat_list]
+  df$F_g_XX <- NULL
   df <- unique(df)
   tot_switch <- sum(df$N_XX, na.rm = TRUE)
 
 	## Keep the observations amounting to p% of the detected treatment paths 
-  df <- df %>% dplyr::arrange(-.data$N_XX, .data$treatments) 
+  df$neg_N_XX <- - df$N_XX
+  df[, treat_GRP := .GRP, by = c(treat_list)]
+  df <- df[order(df$neg_N_XX, df$treat_GRP), ]
+  df$neg_N_XX <- df$treat_GRP <- NULL
   df$cum_sum_XX <- cumsum(df$N_w_XX)
   df$in_table_XX <- as.numeric(df$cum_sum_XX <= des_p)
   df <- df[order(df$in_table_XX, df$cum_sum_XX), ]
-  df <- df %>% group_by(.data$in_table_XX) %>% mutate(id_XX = row_number())
+  df[, id_XX := seq_len(.N), by = in_table_XX]
 
 	## Keep all observations up to the first exceeding the p%	
   df <- subset(df, df$in_table_XX == 1 | (df$in_table_XX == 0 & df$id_XX == 1))
@@ -100,8 +105,10 @@ did_multiplegt_dyn_design <- function(
   } else {
     last_p <- 100
   }
-  df <- df %>% dplyr::arrange(-.data$N_XX, .data$treatments) 
-  df <- df[c("N_XX", "N_w_XX", treat_list)]
+  df$neg_N_XX <- - df$N_XX
+  df[, treat_GRP := .GRP, by = c(treat_list)]
+  df <- df[order(df$neg_N_XX, df$treat_GRP), ]
+  df <- subset(df, select = c("N_XX", "N_w_XX", treat_list))
   df$N_w_XX <- df$N_w_XX * 100
 
 	## Prepare matrix for the output table
@@ -110,6 +117,7 @@ did_multiplegt_dyn_design <- function(
   desmat <- matrix(NA, nrow = dim(df)[1], ncol = 2 + 1 + l_XX)
 
 	## Generate the column/row names and fill treatment path
+  df <- data.frame(df)
   for (j in 1:(2 + 1 + l_XX)) {
     for (i in 1:dim(df)[1]) {
       if (j == 1) {
@@ -121,6 +129,7 @@ did_multiplegt_dyn_design <- function(
       coln <- c(coln, paste0("\U2113","=",j - 2 - 1))
     }
   }
+  df <- data.table(df)
   colnames(desmat) <- coln
   rownames(desmat) <- rown 
   

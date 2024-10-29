@@ -1,8 +1,7 @@
 #' Function for event study plot. the did_multiplegt_dyn command always generates a ggplot object that can be printed right after the end of the routine (graph_off = FALSE) or called afterwards from the global environment after assigning the did_multiplegt_dyn output to a variable.
 #' @param data data
 #' @import ggplot2
-#' @import dplyr
-#' @importFrom magrittr %>%
+#' @importFrom dplyr filter
 #' @returns A ggplot object.
 #' @noRd
 did_multiplegt_dyn_graph <- function(data) {  
