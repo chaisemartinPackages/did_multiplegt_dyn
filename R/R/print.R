@@ -143,7 +143,8 @@ print.did_multiplegt_dyn <- function(x, ...) {
             cat(noquote(strrep("-", 60)));cat("\n");
             cat(strrep(" ", 13));cat("Predicting effect heterogeneity");cat("\n");
             cat(noquote(strrep("-", 60)));cat("\n");
-            for (l in levels(factor(ref$results$predict_het$effect))) {
+            het_ref <- ref$results$predict_het$effect
+            for (l in levels(factor(subset(het_ref, het_ref > 0)))) {
                 het_tab <- subset(ref$results$predict_het, ref$results$predict_het$effect == l)
                 het_mat <- as.matrix(het_tab[,c(3,4,6,7,8)])
                 rownames(het_mat) <- het_tab$covariate
@@ -152,6 +153,20 @@ print.did_multiplegt_dyn <- function(x, ...) {
                 cat(sprintf("Effect %s:\n", l))
                 mat_print(het_mat)
                 cat(sprintf("Test of joint nullity of the estimates : p-value = %.4f\n", pval));cat("\n")
+            }
+            if (length(levels(factor(subset(het_ref, het_ref <  0)))) > 0) {
+                het_pl_ref <- subset(ref$results$predict_het, ref$results$predict_het$effect < 0)
+                het_pl_ref$effect <- - het_pl_ref$effect
+                for (l in levels(factor(het_pl_ref$effect))) {
+                    het_tab <- subset(het_pl_ref, het_pl_ref$effect == l)
+                    het_mat <- as.matrix(het_tab[,c(3,4,6,7,8)])
+                    rownames(het_mat) <- het_tab$covariate
+                    colnames(het_mat) <- c("Estimate", "SE", "LB CI", "UB CI", "N")
+                    pval <- mean(het_tab$pF)
+                    cat(sprintf("Placebo %s:\n", l))
+                    mat_print(het_mat)
+                    cat(sprintf("Test of joint nullity of the estimates : p-value = %.4f\n", pval));cat("\n")
+                }
             }
         }
     }
