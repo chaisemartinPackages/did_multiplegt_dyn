@@ -1645,7 +1645,7 @@ if (!is.null(predict_het)) {
       df$feasible_het_XX <- df$feasible_het_XX & !is.na(df$Yg_Fg_min2_XX)
     }
     df <- df[order(df$group_XX, df$time_XX), ]
-    df[, gr_id = seq_len(.N), by = group_XX]
+    df[, gr_id := seq_len(.N), by = group_XX]
 
     lhyp <- c()
     for (v in predict_het_good) {
@@ -1656,7 +1656,8 @@ if (!is.null(predict_het)) {
     ## Loop the procedure over all requested effects for which potential heterogeneity should be predicted
     for (i in all_effects_XX) {
       # Generation of factor dummies for regression
-      het_sample <- subset(df, df$F_g_XX - 1 + i <= df$T_g_XX & df$feasible_het_XX)[c("F_g_XX", "d_sq_XX", "S_g_XX", trends_nonparam)]
+      het_sample <- subset(df, df$F_g_XX - 1 + i <= df$T_g_XX & df$feasible_het_XX)
+      het_sample <- subset(het_sample, select = c("F_g_XX", "d_sq_XX", "S_g_XX", trends_nonparam))
       het_interact <- ""
       for (v in c("F_g_XX", "d_sq_XX", "S_g_XX", trends_nonparam)) {
         if (length(levels(as.factor(het_sample[[v]]))) > 1) {
@@ -1726,6 +1727,91 @@ if (!is.null(predict_het)) {
     }
     het_res <- het_res[order(het_res$covariate, het_res$effect), ]
   }
+
+  if (l_placebo_XX > 0) {
+    if (-1 %in% predict_het[2]) {
+      all_effects_pl_XX <- 1:l_placebo_XX
+    } else {
+      if (max(het_effects) > l_placebo_XX) {
+        stop("You specified some numbers in predict_het that exceed the number of placebos possible to estimate! Please specify only numbers that are smaller or equal to the number of placebos you requested.")
+      } else {
+        all_effects_pl_XX <- het_effects
+      }
+    }
+
+    for (i in all_effects_pl_XX) {
+      # Generation of factor dummies for regression
+      het_sample <- subset(df, df$F_g_XX - 1 + i <= df$T_g_XX & df$feasible_het_XX)
+      het_sample <- subset(het_sample, select = c("F_g_XX", "d_sq_XX", "S_g_XX", trends_nonparam))
+      het_interact <- ""
+      for (v in c("F_g_XX", "d_sq_XX", "S_g_XX", trends_nonparam)) {
+        if (length(levels(as.factor(het_sample[[v]]))) > 1) {
+          df[[paste0(v,"_h")]] <- factor(df[[v]])
+          for (l in levels(df[[paste0(v,"_h")]])) {
+            df[[paste0(v,"_h",l)]] <- as.numeric(df[[v]] == l)
+          }
+          het_interact <- paste0(het_interact,":",v,"_h")
+        }
+      }
+      het_interact <- substr(het_interact,2,nchar(het_interact))
+      het_sample <- NULL
+
+      # Yg,Fg-1 + l
+      df[[paste0("Yg_Fg_pl_", i, "_XX")]] <- ifelse(df$time_XX == df$F_g_XX - 1 - i, df$outcome_non_diff_XX, NA)
+      df[, paste0("Yg_Fg_pl_",i,"_XX") := mean(get(paste0("Yg_Fg_pl_",i,"_XX")), na.rm = TRUE), by = group_XX]
+
+      df$diff_het_pl_XX <- df[[paste0("Yg_Fg_pl_",i,"_XX")]] - df$Yg_Fg_min1_XX
+      if (isTRUE(trends_lin)) {
+        df$diff_het_pl_XX <- df$diff_het_pl_XX - i * (df$Yg_Fg_min1_XX - df$Yg_Fg_min2_XX)        
+      }
+
+      # Now we can generate Sg*(Yg,Fg−1+l − Yg,Fg−1)
+      df[[paste0("prod_het_pl_",i,"_XX")]] <- df$S_g_het_XX * df$diff_het_pl_XX
+      df$diff_het_pl_XX <- NULL      
+
+      # keep one observation by group to not artificially increase sample
+      df[[paste0("prod_het_pl_",i,"_XX")]] <- ifelse(df$gr_id == 1, df[[paste0("prod_het_pl_",i,"_XX")]], NA) 
+      
+      # In order to perform the test with coeftest, we need a vector of non missing regression coefficients. To avoid collinearity, we run the regression two times: the first time with the full set of regressors (F_g_XX_h#d_sq_XX_h#S_g_XX_h), then with just the non-collinear variables. 
+      het_reg <- paste0("prod_het_pl_",i,"_XX ~ ")
+      for (v in predict_het_good) {
+        het_reg <- paste0(het_reg,v," + ")
+      }
+      het_reg <- paste0(het_reg, het_interact)
+      het_sample <- subset(df, df$F_g_XX - 1 + i <= df$T_g_XX)
+      model <- lm(as.formula(het_reg), data = het_sample, weights = het_sample$weight_XX)
+      het_reg <- gsub(het_interact, "", het_reg)
+      for (k in names(model$coefficients)) {
+        if (!(k %in% c("(Intercept)", predict_het_good))) {
+          if (!is.na(model$coefficients[[k]])) {
+            het_reg <- paste0(het_reg, " + ", k)
+          }
+        }
+      }
+      model <- lm(as.formula(het_reg), data = het_sample, weights = het_sample$weight_XX)
+      model_r <- matrix(coeftest(model, vcov. = vcovHC(model, type = "HC1"))[2:(length(predict_het_good)+1), 1:3], ncol = 3)
+      f_stat <- linearHypothesis(model,lhyp, vcov = vcovHC(model, type = "HC1"))[["Pr(>F)"]][2]
+      t_stat <- qt(0.975, df.residual(model))
+      het_sample <- NULL
+
+      ## Output Part of the predict_het option
+      het_res <- rbind(het_res, data.frame(
+        effect = matrix(-i, nrow = length(predict_het_good)),
+        covariate = predict_het_good,
+        Estimate = model_r[1:nrow(model_r),1],
+        SE = model_r[1:nrow(model_r),2],
+        t = model_r[1:nrow(model_r),3],
+        LB = model_r[1:nrow(model_r),1] - t_stat * model_r[1:nrow(model_r),2],
+        UB = model_r[1:nrow(model_r),1] + t_stat * model_r[1:nrow(model_r),2],
+        N = matrix(nobs(model), nrow = length(predict_het_good)),
+        pF = matrix(f_stat, nrow = length(predict_het_good))
+      ))  
+    }
+    for (v in c("F_g_XX", "d_sq_XX", "S_g_XX", trends_nonparam)) {
+      df[[paste0(v,"_h")]] <- NULL
+    }
+    het_res <- het_res[order(het_res$covariate, het_res$effect), ]
+    }
 }
 
 ###### Performing a test that all DID_\ell effects are equal (similar structure as test on placebos, not commented, except for the small differences with placebos)
