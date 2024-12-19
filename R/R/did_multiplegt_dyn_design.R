@@ -4,9 +4,8 @@
 #' @param weight weight
 #' @param by by
 #' @param by_index by_index
-#' @param append append
+#' @param file file
 #' @import data.table
-#' @importFrom xlsx write.xlsx
 #' @returns A list with the design option output.
 #' @noRd
 did_multiplegt_dyn_design <- function(
@@ -15,7 +14,7 @@ did_multiplegt_dyn_design <- function(
     weight,
     by,
     by_index,
-    append
+    file
     ) {
 
     # Inherited Globals #
@@ -143,14 +142,14 @@ did_multiplegt_dyn_design <- function(
       if (by_index != "_no_by") {
         by_add <- paste0(", ",abbreviate(by,5), "=", by_index)
       }
-      write.xlsx(desmat, des_path, row.names = TRUE, col.names = TRUE, 
-          sheetName = paste0("Design",by_add), append = append)
+      file[[paste0("Design",by_add)]] <- as.data.frame(desmat)
   }
 
   design <- list(
     design_path = des_path,
     design_mat = noquote(desmat),
-    design_const = des_const
+    design_const = des_const,
+    design_file = file
   )
   return(design)
   })

@@ -3,9 +3,8 @@
 #' @param dfs dfs
 #' @param by by
 #' @param by_index by_index
-#' @param append append
+#' @param file file
 #' @import data.table
-#' @importFrom xlsx write.xlsx
 #' @returns A list with the date_first_switch output.
 #' @noRd
 did_multiplegt_dyn_dfs <- function(
@@ -13,7 +12,7 @@ did_multiplegt_dyn_dfs <- function(
     dfs,
     by,
     by_index,
-    append
+    file
     ) {
 
     # Inherited Globals #
@@ -74,8 +73,7 @@ did_multiplegt_dyn_dfs <- function(
       if (by_index != "_no_by") {
         by_add <- paste0(", ",abbreviate(by,5), "=", by_index)
       }
-      write.xlsx(dfsmat, dfs_path, row.names = TRUE, col.names = TRUE, 
-          sheetName = paste0("Switch. Dates",by_add), append = append)
+      file[[paste0("Switch. Dates",by_add)]] <- as.data.frame(dfsmat)
     }
     
     res_dfs <- list(
@@ -136,12 +134,15 @@ did_multiplegt_dyn_dfs <- function(
 		  ## output as excel
       if (dfs_path != "console") {
         sheetn <- paste0("Base treat. ", l)
-        write.xlsx(dfsmat, dfs_path, row.names = TRUE, col.names = TRUE, sheetName = paste0(sheetn, by_add), append = append)
-        append <- TRUE
+        file[[paste0(sheetn, by_add)]] <- as.data.frame(dfsmat)
       }
       index <- index + 1
     }
   }
   })
+
+  if (length(names(file)) > 0) {
+    res_dfs$dfs_file <- file
+  }
   return(res_dfs)
 }

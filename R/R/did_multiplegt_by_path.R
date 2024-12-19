@@ -60,7 +60,7 @@ did_multiplegt_by_path <- function(
 
     data <- did_multiplegt_main(df = df, outcome = outcome, group =  group, time =  time, treatment = treatment, effects = effects, placebo = placebo, ci_level = ci_level,switchers = switchers, trends_nonparam = trends_nonparam, weight = weight, controls = controls, dont_drop_larger_lower = dont_drop_larger_lower, drop_if_d_miss_before_first_switch = drop_if_d_miss_before_first_switch, cluster = cluster, same_switchers = same_switchers, same_switchers_pl = same_switchers_pl, only_never_switchers = only_never_switchers, effects_equal = effects_equal, save_results = save_results, normalized = normalized, predict_het = predict_het, trends_lin = trends_lin, less_conservative_se = less_conservative_se, continuous = continuous, data_only = TRUE)
 
-    design_base <- did_multiplegt_dyn_design(data = data, design_opt = list(1, "console"), weight = weight, by = NULL, by_index = "_no_by", append = FALSE)
+    design_base <- did_multiplegt_dyn_design(data = data, design_opt = list(1, "console"), weight = weight, by = NULL, by_index = "_no_by", file = NULL)
 
     path_index <- copy(data$df)
     l_XX <- data$l_XX

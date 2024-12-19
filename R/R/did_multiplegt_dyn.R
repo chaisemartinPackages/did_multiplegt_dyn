@@ -1,5 +1,6 @@
 #' Core function for did_multiplegt_dyn
 #' @importFrom haven read_dta
+#' @importFrom openxlsx write.xlsx
 #' @md 
 #' @description Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, with a potentially non-binary treatment that may increase or decrease multiple times.
 #' @param df (dataframe) the estimation dataset.
@@ -216,9 +217,13 @@ did_multiplegt_dyn <- function(
         if (!(inherits(get(v), "numeric") & get(v) > 1)) {
           stop(sprintf("Syntax error in %s option. At least 2 bootstrap replications required.", v))
         }
-      } else if (v %in% c("predict_het", "design", "date_first_switch")) {
+      } else if (v %in% c("predict_het")) {
         if (!(inherits(get(v), "list") & length(get(v)) == 2)) {
           stop(sprintf("Syntax error in %s option. List with two arguments required.", v))
+        }
+      } else if (v %in% c("design", "date_first_switch")) {
+        if (!(length(get(v)) == 2)) {
+          stop(sprintf("Syntax error in %s option. Array with two arguments required.", v))
         }
       } else if (v %in% c("controls", "trends_nonparam")) { 
         if (!(inherits(get(v), "character"))) {
@@ -298,8 +303,9 @@ did_multiplegt_dyn <- function(
   ## - if the option is not specified, the output is an object with just one "results" branch.
   ## - if the option is specified, the output takes on as many branches as the levels of the by variable
 
-  append_design <- FALSE
-  append_dfs <- FALSE
+  xlsx_design <- list()
+  xlsx_dfs <- list()
+
   for (b in 1:length(by_levels)) {
 
     if (by_levels[b] != "_no_by") {
@@ -329,13 +335,16 @@ did_multiplegt_dyn <- function(
     }
 
     if (!is.null(design)) {
-      temp_obj <- append(temp_obj, list(did_multiplegt_dyn_design(df_est, design, weight, by, by_levels[b], append_design)))
+      temp_out <- did_multiplegt_dyn_design(df_est, design, weight, by, by_levels[b], xlsx_design)
+      xlsx_design <- temp_out$design_file; temp_out$design_file <- NULL;
+      temp_obj <- append(temp_obj, list(temp_out))
       names(temp_obj)[length(temp_obj)] <- "design"
-      append_design <- TRUE
     }
 
     if (!is.null(date_first_switch)) {
-      temp_obj <- append(temp_obj, list(did_multiplegt_dyn_dfs(df_est, date_first_switch, by, by_levels[b], append_dfs)))
+      temp_out <- did_multiplegt_dyn_dfs(df_est, date_first_switch, by, by_levels[b], xlsx_dfs)
+      xlsx_dfs <- temp_out$dfs_file; temp_out$dfs_file <- NULL
+      temp_obj <- append(temp_obj, list(temp_out))
       names(temp_obj)[length(temp_obj)] <- "date_first_switch"
       append_dfs <- TRUE
     }
@@ -366,6 +375,13 @@ did_multiplegt_dyn <- function(
       did_multiplegt_dyn <- append(did_multiplegt_dyn, list(temp_obj))
       f_names <- c(f_names, paste0("by_level_",b))
     }
+  }
+
+  if (length(names(xlsx_design)) > 0) {
+    openxlsx::write.xlsx(xlsx_design, file =  design[2], gridExpand = TRUE)
+  }
+  if (length(names(xlsx_dfs)) > 0) {
+    openxlsx::write.xlsx(xlsx_dfs, file =  date_first_switch[2], gridExpand = TRUE)
   }
 
   names(did_multiplegt_dyn) <- f_names
