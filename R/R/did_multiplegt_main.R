@@ -68,6 +68,7 @@ did_multiplegt_main <- function(
 suppressWarnings({
 
   ###### 0. Pre-allocate variables that are generated via data.table (to satisfy CRAN requirements)
+  gr_id <- NULL
   weight_XX <- NULL
   F_g_XX <- NULL
   F_g_trunc_XX <- NULL
@@ -623,7 +624,7 @@ suppressWarnings({
           #-- The final matrix should be order k + 1 with k n. of controls
           # Using the matrix accum function, to regress the first difference of outcome on the first differences of covariates. We will obtain the vectors of coefficients \theta_d s, where d indexes values of the baseline treatment.
           Y_vec <- as.matrix(data_XX$diff_y_wXX)
-          X_vec <- as.matrix(data_XX[[mycontrols_XX]])
+          X_vec <- as.matrix(subset(data_XX, select = c(mycontrols_XX)))
           W_vec <- as.matrix(data_XX$weight_XX)
           YX_vec <- cbind(Y_vec, X_vec, matrix(1, nrow = length(Y_vec), ncol = 1))
           overall_XX <- matrix(NA, nrow = count_controls + 2, ncol = count_controls + 2)
