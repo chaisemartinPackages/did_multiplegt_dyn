@@ -65,7 +65,7 @@ did_multiplegt_dyn(
 
 \item{controls}{(atomic char or vector of char) gives the names of the control variables to be included in the estimation. Estimators with controls are similar to those without controls, except that the first-difference of the outcome is replaced by residuals from regressions of the first-difference of the outcome on the first-differences of the controls and time fixed effects. Those regressions are estimated in the sample of control \eqn{(g,t)}s: \eqn{(g,t)}s such that group \eqn{g}'s treatment has not changed yet at \eqn{t}. Those regressions are also estimated separately for each value of the baseline treatment. Estimators with controls are unbiased even if groups experience differential trends, provided such differential trends can be fully explained by a linear model in covariates changes. To control for time-invariant covariates, one needs to interact them with the time variable \eqn{T}, or with time fixed effects. See Section 1.2 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2020a) for further details.}
 
-\item{trends_nonparam}{(atomic char or vector of char) when this option is specified, the DID estimators computed by the command only compare switchers to controls whose treatment has not changed yet, with the same baseline treatment, and with the same value of the varlist. Estimators with the \code{trends_nonparam} option are unbiased even if groups experience differential trends, provided all groups with the same value of the varlist experience parallel trends. The vector can only include time-invariant variables, and the interaction of those variables has to be coarser than the group variable. For instance, if one works with a county \eqn{\times} year data set and one wants to allow for state-specific trends, then one should write \code{trends_nonparam = "state"}, where state is the state identifier. See Section 1.4 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details.}
+\item{trends_nonparam}{(atomic char or vector of char) when this option is specified, the DID estimators computed by the command only compare switchers to controls whose treatment has not changed yet, with the same baseline treatment, and with the same value of the varlist. Estimators with the \code{trends_nonparam} option are unbiased even if groups experience differential trends, provided all groups with the same value of the varlist experience parallel trends. The varlist can only include time-invariant variables, and the interaction of those variables has to be coarser than the group variable. For instance, if one works with a county \eqn{\times} year data set and one wants to allow for state-specific trends, one should specify \code{trends_nonparam = "state"}, where state is the state identifier. Similarly, if one works with firm \eqn{\times} year data set and one wants to allow for industry-specific trends, then one should write \code{trends_nonparam = "industry"}. See Section 1.4 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details.}
 
 \item{trends_lin}{(logical) when this option is specified, the estimation of the treatment effects allows for group-specific linear trends. Estimators with linear trends start by computing event-study effects on the outcome's first-difference, rather than on the outcome itself, thus allowing for group-specific linear trends. Then, to recover event-study effect \eqn{\ell} on the outcome, event-study effects on the outcome's first-difference are summed from 1 to \eqn{\ell}. See Section 1.3 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details. When this option is specified, the estimated average total effect per unit of treatment is not computed.}
 
@@ -79,7 +79,7 @@ did_multiplegt_dyn(
 
 \item{by_path}{(integer)  when this option is specified, the command estimates all the effects separately for the # most common treatment paths from \eqn{F_{g-1}} to \eqn{F_{g-1+\ell}}, where \eqn{\ell} is the argument inputted to the \code{effects} option. If you want to estimate effects separately for all treatment paths, you can input -1 as the option’s argument. This option can not be combined with the \code{by} option.}
 
-\item{predict_het}{(list with 2 args: char or vector of char, -1 or vector of positive integers)  when this option is specified, the command outputs tables showing whether the group-level and time-invariant variables in the char varlist predict groups' estimated event-study effects. With the second argument set to -1, with this option the command produces one table per event-study effect estimated, each displaying the coefficients from regressions of the group-level estimate of the event-study effect on the variables in the char varlist. The p-value of a test on the null hypothesis that all heterogeneity estimates are equal to zero is shown below each table. If you are only interested in predicting a subset of the event-study effects estimated, you can specify those inside an integer vector as the second argument. This option cannot be specified with \code{normalized = TRUE} and when the \code{controls} option is specified. See Section 1.5 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details.}
+\item{predict_het}{(list with 2 args: char or vector of char, -1 or vector of positive integers)  when this option is specified, the command outputs tables showing whether the group-level and time-invariant variables in the char varlist predict groups' estimated event-study effects. With the second argument set to -1, with this option the command produces one table per event-study effect estimated, each displaying the coefficients from regressions of the group-level estimate of the event-study effect on the variables in the char varlist. This method to analyze heterogeneous treatment effects assumes that switchers' counterfactual outcome evolutions is uncorrelated with the variables in varlist. To placebo test this condition, the command also shows placebo regression tables, where switchers' outcome evolutions before their treatment changed is regressed on the covariates. The p-value of a test on the null hypothesis that all heterogeneity estimates are equal to zero is shown below each table. If you are only interested in predicting a subset of the event-study effects estimated, you can specify those inside an integer vector as the second argument. This option cannot be specified with \code{normalized = TRUE} and when the \code{controls} option is specified. See Section 1.5 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details.}
 
 \item{date_first_switch}{(2 args: char in ("", "by_baseline_treat"), char path) the option reports the dates at which switchers experience their first treatment change, and how many groups experienced a first change at each date. The reference population are switchers for which the last event-study effect can be estimated. If "by_baseline_treat" is specified as the first argument, separate tables are displayed for each level of the period-one treatment. Results can be printed in the Stata console specifying "console" in the second argument. Alternatively, the output can be stored in an Excel file providing a valid file path in the second argument.}
 
@@ -97,7 +97,7 @@ did_multiplegt_dyn(
 
 \item{save_results}{(char) if this option is specified, the command saves the estimators requested, their standard error, their 95\% confidence interval, and the number of observations used in the estimation in a separate data set, at the location specified in the char argument.}
 
-\item{save_sample}{(logical) if this option is specified, the command generates a (numeric) variable \emph{did_sample}, tagging all \eqn{(g,t)} cells used in the estimation. This variable may take on three non-missing values: 0 for \eqn{(g,t)} cells used as controls, 1 for (g,t) cells used as switchers-in, and -1 for cells used as switchers-out. This variable is missing for all \eqn{(g,t)} cells not used in the estimation. This option also generates a \emph{did_effect} variable that indicates the number of the event-study effect for which the cell is used in the estimation.}
+\item{save_sample}{(logical) if this option is specified, the command generates a (numeric) variable \emph{did_sample}, tagging all \eqn{(g,t)} cells used in the estimation. This variable may take on three non-missing values: "Control" for \eqn{(g,t)} cells used as controls, "Switcher-in" for (g,t) cells used as switchers-in, and "Switcher-out" for cells used as switchers-out. This variable is missing for all \eqn{(g,t)} cells not used in the estimation. For (g,t) cells used as switchers-in or switchers-out, the variable \emph{did_effect} also indicates the number of the event-study effect for which the cell is used in the estimation.}
 
 \item{less_conservative_se}{(logical) when groups' treatment can change multiple times, the standard errors reported by default by the command may be conservative. Then, less conservative standard errors can be obtained by specifying this option. See de Chaisemartin et al. (2024) for further details.}
 
@@ -111,13 +111,44 @@ did_multiplegt_dyn(
 A list of class did_multiplegt_dyn containing the arguments used, the results for the estimation requested and a ggplot object with the event-study graph. If the by option is specified, the did_multiplegt_dyn object will contain the arguments, a list with the levels of the by option, a sublist for each of these levels with the results and ggplot objects from these by-estimations and a ggplot object for the combined event-study graph. The class did_multiplegt_dyn is assigned to enable customized print and summary methods.
 }
 \description{
-Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, with a potentially non-binary treatment that may increase or decrease multiple times.
+Estimation of heterogeneity-robust difference-in-differences (DID) estimators, with a binary, discrete, or continuous treatment, in designs where past treatments may affect the current outcome.
 }
 \section{Overview}{
 
 \code{did_multiplegt_dyn()} estimates the effect of a treatment on an outcome, using group-(e.g. county- or state-) level panel data. The command computes the DID event-study estimators introduced in de Chaisemartin and D'Haultfoeuille (2024). Like other recently proposed DID estimation commands (\code{did}, \code{didimputation}, ...), \code{did_multiplegt_dyn()} can be used with a binary and staggered (absorbing) treatment. But unlike those other commands, \code{did_multiplegt_dyn()} can also be used with a non-binary treatment (discrete or continuous) that can increase or decrease multiple times. Lagged treatments may affect the outcome, and the current and lagged treatments may have heterogeneous effects, across space and/or over time.  The event-study estimators computed by the command rely on a no-anticipation and parallel trends assumptions. The panel may be unbalanced:  not all groups have to be observed at every period.  The data may also be at a more disaggregated level than the group level (e.g. individual-level wage data to measure the effect of a regional-level minimum-wage on individuals' wages).
+}
 
-For all "switchers", namely groups that experience a change of their treatment over the study period, let \eqn{F_g} denote the first time period when g's treatment changes. The command computes the non-normalized event-study estimators \eqn{\text{DID}_\ell}. \eqn{\text{DID}_1} is the average, across all switchers, of DID estimators comparing the \eqn{F_{g-1}} to \eqn{F_g} outcome evolution of \eqn{g} to that of groups with the same period-one treatment as \eqn{g} but whose treatment has not changed yet at \eqn{F_g}. More generally, \eqn{\text{DID}_l} is the average, across all switchers, of DID estimators comparing the \eqn{F_{g-1}} to \eqn{F_{g-1+\ell}} outcome evolution of \eqn{g} to that of groups with the same period-one treatment as \eqn{g} but whose treatment has not changed yet at \eqn{F_{g-1+\ell}}. Non-normalized event-study effects are average effects of having been exposed to a weakly higher treatment dose for \eqn{\ell} periods, where the magnitude and timing of the incremental treatment doses can vary across groups. The command also computes the normalized event-study estimators \eqn{\text{DID}^n_\ell}, that normalize \eqn{\text{DID}_\ell} by the average total incremental treatment dose received by switchers from \eqn{F_{g-1}} to \eqn{F_{g-1+\ell}} with respect to their period-one treatment. This normalization ensures that \eqn{DID^n_\ell} estimates a weighted average of the effects of the current treatment and of its \eqn{\ell-1} first lags on the outcome. The command also computes an estimated average total effect per unit of treatment, where "total effect" refers to the sum of the effects of a treatment increment, at the time when it takes place and at later periods, see Section 3.3 of de Chaisemartin and D'Haultfoeuille (2024) for further details. Finally, the command also computes placebo estimators, that average DIDs comparing the outcome evolution of switcher \eqn{g} and of its control groups, from \eqn{F_{g-1}} to \eqn{F_{g-1-\ell}}, namely before g's treatment changes for the first time. Those placebos can be used to test the parallel trends and no-anticipation assumptions under which the estimators computed by \code{did_multiplegt_dyn()} are unbiased.
+\section{Further detail}{
+
+\subsection{Non-normalized event-study estimators (the default)}{
+
+For all "switchers", namely groups that experience a change of their treatment over the study period, let \eqn{F_g} denote the first time period when g's treatment changes. The command computes the non-normalized event-study estimators \eqn{\text{DID}_\ell}. \eqn{\text{DID}_1} is the average, across all switchers, of DID estimators comparing the \eqn{F_g-1} to \eqn{F_g} outcome evolution of \eqn{g} to that of groups with the same period-one treatment as \eqn{g} but whose treatment has not changed yet at \eqn{F_g}. More generally, \eqn{\text{DID}_\ell} is the average, across all switchers, of DID estimators comparing the \eqn{F_g-1} to \eqn{F_g-1+\ell} outcome evolution of \eqn{g} to that of groups with the same period-one treatment as \eqn{g} but whose treatment has not changed yet at \eqn{F_g-1+\ell}. Those estimators are unbiased for non-normalized event-study effects, which are average effects of having been exposed to a weakly higher treatment dose for \eqn{\ell} periods, where the magnitude and timing of the incremental treatment doses can vary across groups.
+}
+
+\subsection{Normalized event-study estimators}{
+
+The command also computes the normalized event-study estimators \eqn{\text{DID}^n_\ell}, that normalize \eqn{\text{DID}_\ell} by the average cumulative (total) incremental treatment dose received by switchers from \eqn{F_{g}-1} to \eqn{F_{g}-1+\ell} with respect to their period-one treatment.  This normalization ensures that \eqn{\text{DID}^n_\ell} estimates a weighted average of the effects of the current treatment and of its \eqn{\ell-1} first lags on the outcome. While the effects of the current and lagged treatments cannot be separately estimated, the weight that \eqn{\text{DID}^n_\ell} puts on the effect of each lag can be estimated.
+}
+
+\subsection{Average cumulative (total) effect per dose}{
+
+The command also computes an estimated average cumulative (total) effect per unit of treatment, where “cumulative effect” refers to the sum of the effects of a treatment dose, at the time when it takes place and at later periods, see Section 3.3 of de Chaisemartin and D'Haultfoeuille (2024) for further details. The command also shows the number of time periods over which the effect of a dose is accumulated, on average across all incremental doses received by switchers over the study period. By dividing the average cumulative effect by the average number of periods across which effects are accumulated, one can get an estimator of the effect of being exposed to one more dose for one more period.
+}
+
+\subsection{Placebos}{
+
+The command also computes placebo estimators, that average \eqn{\text{DID}}s comparing the outcome evolution of switcher \eqn{g} and of its control groups, from \eqn{F_g-1} to \eqn{F_g-1-\ell}, namely before \eqn{g}'s treatment changes for the first time.  Those placebos can be used to test the parallel trends and no-anticipation assumptions under which the estimators computed by \code{did_multiplegt_dyn} are unbiased.
+}
+
+\subsection{Designs compatible with the command}{
+
+The command accommodates many DID designs. It covers the canonical binary and absorbing treatment case. It also covers more complicated treatment paths: groups may have heterogeneous treatments at period one, their treatment may change at different dates, some groups may experience increases in their treatment while other groups experience decreases, some groups may experience more than one change of their treatment, and finally some groups may experience larger treatment changes than others. The command can also be used to separately estimate the effects of several treatment variables, see references in the FAQ section. The only requirement is that not all groups experience their first treatment change at the same date. If groups’ period-one treatment is continuously distributed, meaning essentially that all groups have a different period-one treatment, the option \code{continuous} needs to be used.
+}
+
+\subsection{Relaxing parallel trends assumptions}{
+
+This command allows for many relaxations of the parallel-trends assumption: see the controls option for estimators allowing for  time-varying covariates, see the \code{trends_lin} option for estimators allowing for group-specific linear trends, and see the trends_nonparam option for estimators allowing to interact time fixed effects with time-invariant variables (e.g. industry\eqn{\times}year effect with firm-level panel data).
+}
 }
 
 \section{Contacts}{
@@ -130,57 +161,80 @@ Mail: \href{mailto:chaisemartin.packages@gmail.com}{chaisemartin.packages@gmail.
 
 \section{FAQ}{
 
-\strong{\code{did_multiplegt_dyn()} does not output exactly the same results as \code{did_multiplegt()}, is this normal?}
+\subsection{\code{did_multiplegt_dyn()} does not output exactly the same results as \code{did_multiplegt()}, is this normal?}{
 
 Yes, the two commands can sometimes output different results. This is mostly due to different conventions in the way the two commands deal with missing values. See Appendix B of de Chaisemartin et al (2024) for further details.
+}
 
-\strong{Do I have to include group and time fixed effects as controls when using \code{did_multiplegt_dyn()}?}
+\subsection{Do I have to include group and time fixed effects as controls when using \code{did_multiplegt_dyn()}?}{
 
 No, you do not have to. Group and time fixed effects are automatically controlled for.
+}
 
-\strong{My group-level panel is unbalanced: some groups (e.g. counties) are not observed in every year. Can I still use the command?}
+\subsection{My group-level panel is unbalanced: some groups (e.g. counties) are not observed in every year. Can I still use the command?}{
 
 You can. A frequent case of unbalancedness is when some groups are not observed over the full duration of the panel. For instance, your data may be a yearly county-level panel from 1990 to 2000, where some counties appear after 1990 while some exit before 2000. Then, the command just redefines group's period-one treatment as their treatment at the first period when they are observed.
 
 It may also be that some groups enter and exit the data multiple times. For instance, you observe a county in 1990, 1991, 1994, 1996, and 2000. Then, the command may impute some of that county's missing treatments. Those imputations are detailed in Appendix A of de Chaisemartin et al (2024). In designs where groups' treatments can change at most once, all those imputations are justified by the design. In other designs, some of those imputations may be liberal.drop_if_d_miss_before_first_switch can be used to overrule the potentially liberal imputations that are not innocuous for the non-normalized event-study estimators. See Appendix A of de Chaisemartin et al (2024) for further details.
 
 Finally, it may also be the case that the data is fully missing at one or several time periods. For instance, you have data for 1990, 1991, and 1993, but 1992 is missing for every group. Then, it is important to fill the gap in the data, as otherwise the estimation will assume that 1991 and 1993 are as far apart as 1990 and 1991. There are two ways of doing so. First, you can append to your data a data set identical to your 1991 data, but with the year equal to 1992, and the outcome missing for every observation. This is a conservative solution, where no first treatment change occurring between 1991 and 1993 will be used in the estimation, which may be reasonable because the year in which the change occurred is effectively unknown. Second, you can append to your data a data set identical to your 1993 data, with the year equal to 1992, and the outcome missing for every observation. Then, treatment changes occurring between 1991 and 1993 will be used in the estimation, assuming they all took place between 1991 and 1992.
+}
 
-\strong{Related to imbalanced panels, my outcomes (and potentially the control variables) are measured less frequently than the treatment. For instance, the outcome is measured every two years, but I know the treatment of every group in every year. How should I proceed?}
+\subsection{Related to imbalanced panels, my outcomes (and potentially the control variables) are measured less frequently than the treatment. For instance, the outcome is measured every two years, but I know the treatment of every group in every year. How should I proceed?}{
 
 To fix ideas, let us first assume that the outcome is measured every two years, but you know the treatment of every group in every year. Then, you should split the sample into two subsamples, and run the command twice, one time on each of the subsamples. In the first estimation, you should include all group \eqn{\times} time cells \eqn{(g,t)} such that at \eqn{t}, \eqn{g}'s treatment has never changed since the start of the panel, and all \eqn{(g,t)}s such that i) \eqn{g}'s treatment has changed at least once at \eqn{t} and ii) the change occurred at a period where the outcome is observed. Since the outcome is measured every two years, in that subsample the first event-study effect (denoted effect_1) is the effect of being exposed to a higher treatment for one period, the second effect (effect_2) is the effect of being exposed to a higher treatment for three periods, etc. In the second estimation, you should include all group \eqn{\times} time cells \eqn{(g,t)} such that at \eqn{t}, \eqn{g}'s treatment has never changed since the start of the panel, and all \eqn{(g,t)}s such that i) \eqn{g}'s treatment has changed at least once at \eqn{t} and ii) the change occurred at a period where the outcome is not observed. In that subsample, the first event-study effect (denoted effect_1) is the effect of being exposed to a higher treatment for two periods, the second effect (effect_2) is the effect of being exposed to a higher treatment for four periods, etc. You may then combine the two sets of estimated effects into one event-study graph, with the only caveat that the "odd" and "even" effects are estimated on different subsamples. Importantly, the two estimations have to be run on a dataset at the same bi-yearly level as the outcome variable: the yearly level treatment information should only be used to select the relevant subsamples.
 
 If the treatment is observed three times more often than the treatment, you can follow the same logic, splitting the sample into three subsamples and running the command three times, etc.
 
 A short do file with a simple example where the treatment status is observed in each period while the outcome is only observed every second period can be found \href{https://drive.google.com/uc?export=download&id=1NBwfsFeNltU3XSOsORdthUW49LIezm1z}{here}.
+}
 
-\strong{What is the maximum number of event-study effects I can estimate?}
+\subsection{What is the maximum number of event-study effects I can estimate?}{
 
 With a balanced panel of groups, the maximum number of event-study effects one can estimate can be determined as follows. For each value of the period-one treatment \eqn{d}, start by computing the difference between the last period at which at least one group has had treatment \eqn{d} since period 1, and the first period at which a group with treatment \eqn{d} at period 1 changed its treatment. Add one to this difference. Then, the maximum number of event-study effects is equal to the maximum of the obtained values, across all values of the period-one treatment. With an unbalanced panel, this method can still be used to derive an upper bound of the maximum number of event-study effects one can estimate.
+}
 
-\strong{How many control variables can I include in the estimation?}
+\subsection{How many control variables can I include in the estimation?}{
 
 Estimators with control variables are similar to those without controls, except that the first-difference of the outcome is replaced by residuals from regressions of the first-difference of the outcome on the first-differences of the controls and time fixed effects. Those regressions are estimated in the sample of control \eqn{(g,t)}s: \eqn{(g,t)}s such that group \eqn{g}'s treatment has not changed yet at period \eqn{t}. Those regressions are also estimated separately for each value of the period-one treatment. If at period one, treatment takes values 0, 1, 2, 3, and 4, one regression is estimated for control \eqn{(g,t)}s with a period-one treatment equal to 0, one regression is estimated for control \eqn{(g,t)}s with a period-one treatment equal to 1, etc. The number of control variables needs to be significantly smaller than the number of control \eqn{(g,t)}s in each of those regressions. Otherwise, those regressions will overfit and produce noisy estimates. If the number of observations is lower than the number of variables in one of those regressions, the command will run but will not take into account all the controls for all values of the period-one treatment. An error message will let the user know that they are encountering this situation, and may thus want to reduce their number of control variables.
+}
 
-\strong{My design is such that treatment is binary, and groups can enter the treatment, and then leave it once. Can I use the command to separately estimate the effect of joining and leaving the treatment?}
+\subsection{My design is such that treatment is binary, and groups can enter the treatment, and then leave it once. Can I use the command to separately estimate the effect of joining and leaving the treatment?}{
 
 Yes you can. See Section 1.6 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details.
+}
 
-\strong{My design has several treatments. Can I use the command to estimate the event-study effects of a treatment controlling for other treatments?}
+\subsection{My design has several treatments. Can I use the command to estimate the event-study effects of a treatment controlling for other treatments?}{
 
-Yes, if those treatments follow binary and staggered designs. See Section 3.2 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2023) for further details.
+Yes, if those treatments follow binary and staggered designs. See Section 3.2 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2023) for further details, keeping in mind that the did_multiplegt command referenced at the time is now superseded by this command.
+}
 
-\strong{Can I perform triple difference-in-differences with the command?}
+\subsection{Can I perform triple difference-in-differences with the command?}{
 
 Yes. Suppose for instance your third difference is across men and women in the same \eqn{(g,t)} cell. Then, for each \eqn{(g,t)} cell, you just need to compute the difference between the average outcome of men and women in cell \eqn{(g,t)}. Then, you simply run the command with this new outcome.
+}
 
-\strong{Is it possible to compute switchers' average counterfactual outcome at periods \eqn{F_g}, \eqn{F_{g+1}}, ..., \eqn{F_{g-1+\ell}}, so as to then express the event-study effects in percentage points of the counterfactual outcome level?}
+\subsection{Is it possible to compute switchers' average counterfactual outcome at periods \eqn{F_g}, \eqn{F_{g+1}}, ..., \eqn{F_{g-1+\ell}}, so as to then express the event-study effects in percentage points of the counterfactual outcome level?}{
 
 Yes. You just need to define a new outcome variable \eqn{Y' = - 1{t < F_g} Y}, where \eqn{F_g} is the first date at which \eqn{g}'s treatment has changed. Essentially, you replace the outcome by 0 after the treatment change, and by \eqn{-Y} before the treatment change. Then, you compute non-normalized event-study  estimators with \eqn{Y'} as the outcome.
+}
 
-\strong{Can the command be used in fuzzy designs, where the treatment varies within group \eqn{\times} time cells?}
+\subsection{Can the command be used in fuzzy designs, where the treatment varies within group \eqn{\times} time cells?}{
 
 Yes it can, see Section 1.7 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details.
+}
+}
+
+\section{Authors}{
+
+\itemize{
+\item Clément de Chaisemartin, Economics Department, Sciences Po, France.
+\item Diego Ciccia, Northwestern University, USA.
+\item Xavier D'Haultfoeuille, CREST-ENSAE, France.
+\item Felix Knau, LMU Munich, Germany.
+\item Mélitine Malézieux, Stockholm School of Economics, Sweden.
+\item Doulo Sow, Princeton University, USA.
+}
 }
 
 \section{References}{

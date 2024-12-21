@@ -1,6 +1,6 @@
 Package: DIDmultiplegtDYN
 Title: Estimation in Difference-in-Difference Designs with Multiple Groups and Periods
-Version: 2.1.0
+Version: 2.1.1
 Authors@R: 
     c(person("Diego", "Ciccia", role = c("aut", "cre"), email = "diego.ciccia@kellogg.northwestern.edu"),
 	person("Felix", "Knau", role = "aut", email = "felix.knau@sciencespo.fr"),
@@ -8,7 +8,7 @@ Authors@R:
 	person("Doulo", "Sow", role = "aut", email = "doulo.sow@ensae.fr"),
     person("Clément", "de Chaisemartin", role = "aut", email = "clement.dechaisemartin@sciencespo.fr"))
 Maintainer: Diego Ciccia <diego.ciccia@kellogg.northwestern.edu>
-Description: Estimation of event-study Difference-in-Difference (DID) estimators in designs with multiple groups and periods, and with a potentially non-binary treatment that may increase or decrease multiple times. 
+Description:  Estimation of heterogeneity-robust difference-in-differences estimators, with a binary, discrete, or continuous treatment, in designs where past treatments may affect the current outcome.
 License: MIT + file LICENSE
 URL: https://github.com/chaisemartinPackages/did_multiplegt_dyn 
 Author: Diego Ciccia [aut, cre],
