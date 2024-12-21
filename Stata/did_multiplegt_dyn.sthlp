@@ -2,6 +2,7 @@
 {* *! version 1  2023-06-29}{...}
 {viewerjumpto "Syntax" "did_multiplegt_dyn##syntax"}{...}
 {viewerjumpto "Description" "did_multiplegt_dyn##description"}{...}
+{viewerjumpto "Further detail" "did_multiplegt_dyn##detail"}{...}
 {viewerjumpto "Options" "did_multiplegt_dyn##options"}{...}
 {viewerjumpto "Examples" "did_multiplegt_dyn##examples"}{...}
 {viewerjumpto "Saved results" "did_multiplegt_dyn##saved_results"}{...}
@@ -79,46 +80,6 @@ regional-level minimum-wage on individuals' wages).
 {p_end}
 
 {p 8 8}
-For all "switchers", namely groups that experience a change of their treatment
-over the study period, let F_g denote the first time period when g's treatment changes.
-The command computes the non-normalized event-study estimators DID_ℓ.
-DID_1 is the average, across all switchers,
-of DID estimators comparing the F_g-1 to F_g outcome evolution of g to that of groups
-with the same period-one treatment
-as g but whose treatment has not changed yet at F_g.
-More generally,
-DID_ℓ is the average, across all switchers,
-of DID estimators comparing the F_g-1 to F_g-1+ℓ
-outcome evolution of g to that of groups
-with the same period-one treatment as g
-but whose treatment has not changed yet at F_g-1+ℓ.
-Non-normalized event-study effects are average effects of having been
-exposed to a weakly higher treatment dose for ℓ periods,
-where the magnitude and timing of
-the incremental treatment doses can vary across groups.
-The command also computes the normalized event-study estimators DID^n_ℓ,
-that normalize DID_ℓ by the average cumulative (total) incremental treatment dose
-received by switchers from F_g-1 to F_g-1+ℓ
-with respect to their period-one treatment.
-This normalization ensures that DID^n_ℓ estimates
-a weighted average of the effects of the current treatment and
-of its ℓ-1 first lags on the outcome.
-The command also computes an estimated average cumulative (total)
-effect per unit of treatment (and the average number of time periods over which a 
-treatment's effect is accumulated), where “cumulative effect”
-refers to the sum of the effects of a treatment
-increment, at the time when it takes place and at later periods,
-see Section 3.3 of de Chaisemartin and D'Haultfoeuille (2024) for further details.
-Finally, the command also computes placebo estimators,
-that average DIDs comparing the outcome evolution of switcher g
-and of its control groups, from F_g-1 to F_g-1-ℓ,
-namely before g's treatment changes for the first time.
-Those placebos can be used to test
-the parallel trends and no-anticipation assumptions
-under which the estimators computed by {cmd:did_multiplegt_dyn} are unbiased.
-{p_end}
-
-{p 8 8}
 {cmd:Y} is the outcome variable.
 {p_end}
 
@@ -140,6 +101,35 @@ see FAQ section below.
 {p 8 8}
 {cmd:D} is the treatment variable.
 {p_end}
+
+
+{marker detail}{...}
+{title:Further detail}
+
+{p 4 8}
+{cmd:Non-normalized event-study estimators (default)} - For all "switchers", namely groups that experience a change of their treatment over the study period, let F_g denote the first time period when g's treatment changes. The command computes the non-normalized event-study estimators DID_ℓ.  DID_1 is the average, across all switchers, of DID estimators comparing the F_g-1 to F_g outcome evolution of g to that of groups with the same period-one treatment as g but whose treatment has not changed yet at F_g.  More generally, DID_ℓ is the average, across all switchers, of DID estimators comparing the F_g-1 to F_g-1+ℓ outcome evolution of g to that of groups with the same period-one treatment as g but whose treatment has not changed yet at F_g-1+ℓ.  Those estimators are unbiased for non-normalized event-study effects, which are average effects of having been exposed to a weakly higher treatment dose for ℓ periods, where the magnitude and timing of the incremental treatment doses can vary across groups.  
+{p_end}
+
+{p 4 8}
+{cmd:Normalized event-study estimators} - The command also computes the normalized event-study estimators DID^n_ℓ, that normalize DID_ℓ by the average cumulative (total) incremental treatment dose received by switchers from F_g-1 to F_g-1+ℓ with respect to their period-one treatment.  This normalization ensures that DID^n_ℓ estimates a weighted average of the effects of the current treatment and of its ℓ-1 first lags on the outcome. While the effects of the current and lagged treatments cannot be separately estimated, the weight that DID^n_ℓ puts on the effect of each lag can be estimated.    
+{p_end}
+
+{p 4 8}
+{cmd:Average cumulative (total) effect per dose} - The command also computes an estimated average cumulative (total) effect per unit of treatment, where “cumulative effect” refers to the sum of the effects of a treatment dose, at the time when it takes place and at later periods, see Section 3.3 of de Chaisemartin and D'Haultfoeuille (2024) for further details. The command also shows the number of time periods over which the effect of a dose is accumulated, on average across all incremental doses received by switchers over the study period. By dividing the average cumulative effect by the average number of periods across which effects are accumulated, one can get an estimator of the effect of being exposed to one more dose for one more period.  
+{p_end}
+
+{p 4 8}
+{cmd:Placebos} - The command also computes placebo estimators, that average DIDs comparing the outcome evolution of switcher g and of its control groups, from F_g-1 to F_g-1-ℓ, namely before g's treatment changes for the first time.  Those placebos can be used to test the parallel trends and no-anticipation assumptions under which the estimators computed by {cmd:did_multiplegt_dyn} are unbiased.  
+{p_end}
+
+{p 4 8}
+{cmd:Designs compatible with the command} - The command accommodates many DID designs. It covers the canonical binary and absorbing treatment case. It also covers more complicated treatment paths: groups may have heterogeneous treatments at period one, their treatment may change at different dates, some groups may experience increases in their treatment while other groups experience decreases, some groups may experience more than one change of their treatment, and finally some groups may experience larger treatment changes than others. The command can also be used to separately estimate the effects of several treatment variables, see references in the FAQ section. The only requirement is that not all groups experience their first treatment change at the same date. If groups’ period-one treatment is continuously distributed, meaning essentially that all groups have a different period-one treatment, the option {cmd:continuous} needs to be used.
+{p_end}
+
+{p 4 8}
+{cmd:Relaxing parallel trends assumptions} - This command allows for many relaxations of the parallel-trends assumption: see the {cmd:controls} option for estimators allowing for  time-varying covariates, see the {cmd:trends_lin} option for estimators allowing for group-specific linear trends, and see the {cmd:trends_nonparam} option for estimators allowing to interact time fixed effects with time-invariant variables (e.g. industry*year effect with firm-level panel data). 
+{p_end}
+
 
 {marker options}{...}
 {title:Options}
@@ -240,22 +230,7 @@ effect per unit of treatment is not computed.
 {p_end}
 
 {p 4 8}
-{cmd:trends_nonparam(}{it:varlist}{cmd:)}: when this option is specified,
-the DID estimators computed by the command only compare switchers
-to controls whose treatment has not changed yet,
-with the same period-one treatment, and with the same value of {it:varlist}.
-Estimators with the {cmd:trends_nonparam(}{it:varlist}{cmd:)}
-option are unbiased even if groups experience differential trends,
-provided all groups with the same value of {it:varlist}
-experience parallel trends.
-{it:varlist} can only include time-invariant variables,
-and the interaction of those variables
-has to be coarser than the group variable.
-For instance, if one works with a county*year data set
-and one wants to allow for state-specific trends,
-one should specify {cmd:trends_nonparam(}state{cmd:)},
-where state is the state identifier. See Section 1.4 of the Web Appendix
-of de Chaisemartin and D'Haultfoeuille (2024) for further details.
+{cmd:trends_nonparam(}{it:varlist}{cmd:)}: when this option is specified, the DID estimators computed by the command only compare switchers to controls whose treatment has not changed yet, with the same period-one treatment, and with the same value of {it:varlist}.  Estimators with the {cmd:trends_nonparam(}{it:varlist}{cmd:)} option are unbiased even if groups experience differential trends, provided all groups with the same value of {it:varlist} experience parallel trends. {it:varlist} can only include time-invariant variables, and the interaction of those variables has to be coarser than the group variable.  For instance, if one works with a county*year data set and one wants to allow for state-specific trends, one should specify {cmd:trends_nonparam(}state{cmd:)}, where state is the state identifier. Similarly, if one works with a firm*year data and one wants to allow for industry-specific trends, one should specify {cmd:trends_nonparam(}industry{cmd:)}. See Section 1.4 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details.
 {p_end}
 
 {p 4 8}
@@ -265,8 +240,7 @@ But with a truly continuous period-one treatment, there will be no two groups wi
 treatment. Then, the command assumes that group's status-quo outcome evolution is a polynomial in their period-one treatment. 
 The user's chosen polynomial order is the option's argument. See Section 1.10 of the Web Appendix
 of de Chaisemartin and D'Haultfoeuille (2024) for further details.
-Unlike the other variance estimators computed by the command, those computed when the {cmd:continuous} option is specified are not backed by a 
-proven asymptotic normality result. Preliminary simulation evidence indicates that when the option is used with a 
+Unlike the other variance estimators computed by the command, those computed when the {cmd:continuous} option is specified are not backed by a proven asymptotic normality result. Preliminary simulation evidence indicates that when the option is used with a 
 correctly-specified polynomial order, those variance estimators are conservative. 
 On the other hand, when the specified polynomial order is strictly larger than needed, 
 those variance estimators can become liberal. Thus, when this option is specified, we recommend using the bootstrap for inference, 
@@ -317,15 +291,7 @@ This option can not be combined with the {cmd:by} option.
 {p_end}
 
 {p 4 8}
-{cmd:predict_het(}{it:varlist,numlist}{cmd:)}: when this option is specified, the command outputs tables showing whether the group-level
-and time-invariant variables in {it:varlist} predict groups' estimated event-study effects. By default,
-with this option the command produces one table per event-study effect estimated, each displaying the coefficients from regressions of the group-level estimate of the event-study effect on the variables in
-{it:varlist}. The p-value of a test that all coefficients are equal to zero is shown below each table. If you are only interested in predicting a subset of
-the event-study effects estimated, you can specify that subset inside {it:numlist}. You always need to put a comma after
-{it:varlist}, even if you are not including a specific {it:numlist}.  
-This option cannot be specified together with {cmd:normalized} or {cmd:controls}. 
-See Section 1.5 of the Web Appendix
-of de Chaisemartin and D'Haultfoeuille (2024) for further details.
+{cmd:predict_het(}{it:varlist,numlist}{cmd:)}: when this option is specified, the command outputs tables showing whether the group-level and time-invariant variables in {it:varlist} predict groups' estimated event-study effects. By default, with this option the command produces one table per event-study effect estimated, each displaying the coefficients from regressions of the group-level estimate of the event-study effect on the variables in {it:varlist}. This method to analyze heterogeneous treatment effects assumes that switchers' counterfactual outcome evolutions is uncorrelated with the variables in {it:varlist}. To placebo test this condition, the command also shows placebo regression tables, where switchers' outcome evolutions before their treatment changed is regressed on the covariates. The p-value of a test that all coefficients are equal to zero is shown below each table. If you are interested in predicting all the event-study effects estimated, you can specify all as the option's second argument, instead of {it:numlist}. This option cannot be specified together with {cmd:normalized} or {cmd:controls}. See Section 1.5 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details.
 {p_end}
 
 {p 4 8}
@@ -404,10 +370,8 @@ at the location specified in {it:path}.
 {p 4 8}
 {cmd:save_sample}: if this option is specified, the command generates a
 variable {it:_did_sample}, tagging all (g,t) cells used in the estimation. 
-This variable can take three non-missing values: 0 for (g,t) cells used as controls, 
-1 for (g,t) cells used as switchers-in, and -1 for cells used as switchers out. {it:_did_sample} is missing for (g,t) cells 
-not used in the estimation. For (g,t) cells used as switchers-in or switchers-out, the variable {it:_effect} also indicates the number
-of the event-study effect for which the cell is used in the estimation.
+This variable can take three non-missing values: ‘Control’ for (g,t) cells used as controls, 
+‘Switcher-in’ for (g,t) cells used as switchers-in, and ‘Switcher-out’ for cells used as switchers out. {it:_did_sample} is missing for (g,t) cells not used in the estimation. For (g,t) cells used as switchers-in or switchers-out, the variable {it:_effect} also indicates the number of the event-study effect for which the cell is used in the estimation.
 {p_end}
 
 {p 4 8}
@@ -488,7 +452,7 @@ be estimated, and testing that effects are equal:
 {p 4 4}
 Estimating eight non-normalized event-study effects 
 and three placebo effects of banking deregulations on house prices, 
-seperately for the four most common treatment paths:
+separately for the four most common treatment paths:
 {p_end}
 
 {phang2}{stata did_multiplegt_dyn Dl_hpi county year inter_bra, effects(8) placebo(3) cluster(state_n) by_path(2)}{p_end}
@@ -693,8 +657,7 @@ number of control variables.
 {p_end}
 
 {p 4 4}
-Yes you can. See Section 1.6 of the Web Appendix
-of de Chaisemartin and D'Haultfoeuille (2024) for further details.
+Yes you can. See Section 1.6 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details.
 {p_end}
 
 {p 4 4}
@@ -703,9 +666,7 @@ of de Chaisemartin and D'Haultfoeuille (2024) for further details.
 {p_end}
 
 {p 4 4}
-Yes, if those treatments follow binary and staggered designs.
-See Section 3.2 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2023)
-for further details.
+Yes.  See Section 3.2 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2023) for further details, keeping in mind that the {cmd:did_multiplegt_dyn} command referenced at the time is now superseded by this command. 
 {p_end}
 
 {p 4 4}
@@ -769,19 +730,19 @@ The command requires that the gtools package be installed on the user's machine.
 Clément de Chaisemartin, Economics Department, Sciences Po, France.
 {p_end}
 {p 4 4}
-Diego Ciccia, Sciences Po, France.
+Diego Ciccia, Northwestern University, USA.
 {p_end}
 {p 4 4}
 Xavier D'Haultfoeuille, CREST-ENSAE, France.
 {p_end}
 {p 4 4}
-Felix Knau, Sciences Po, France.
+Felix Knau, LMU Munich, Germany.
 {p_end}
 {p 4 4}
 Mélitine Malézieux, Stockholm School of Economics, Sweden.
 {p_end}
 {p 4 4}
-Doulo Sow, Sciences Po, France.
+Doulo Sow, Princeton University, USA.
 {p_end}
 
 {title:Contact}
@@ -804,11 +765,19 @@ GitHub:
 {p_end}
 
 {p 8 10}
-{cmd:e(estimates)}: Vector storing the estimated event-study and placebo effects.
+{cmd:e(estimates)}: Column vector storing the estimated event-study and placebo effects.
 {p_end}
 
 {p 8 10}
 {cmd:e(variances)}: Vector storing the corresponding variance estimates
+{p_end}
+
+{p 8 10}
+{cmd:e(b)}: Row vector storing the estimated event-study and placebo effects
+{p_end}
+
+{p 8 10}
+{cmd:e(V)}: Variance/Covariance Matrix of the estimated event-study and placebo effects
 {p_end}
 
 {p 8 10}
@@ -842,6 +811,10 @@ for effect i.
 
 {p 8 10}
 {cmd:e(se_effect_ℓ)}: estimated standard error of {cmd:e(Effect_ℓ)}.
+{p_end}
+
+{p 8 10}
+{cmd:e(p_jointeffects)}: p-value of a joint test that all effects are equal to 0, if two or more estimators were requested.
 {p_end}
 
 {p 8 10}
