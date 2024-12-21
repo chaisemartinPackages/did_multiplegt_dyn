@@ -59,3 +59,7 @@ First official R release.
 ## Changes in version 2.1.0
 
 + Switched from xlsx (rJava dependent) to openxlsx (not rJava dependent)
+
+## Changes in version 2.1.1
+
++ New helpfile
