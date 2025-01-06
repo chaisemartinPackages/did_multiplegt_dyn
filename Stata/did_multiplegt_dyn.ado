@@ -92,14 +92,12 @@ if `by_path'<=0{
 }
 
 if "`bootstrap'"!=""&`continuous'==0{
-	di as error "You specified the bootstrap option without the continuous option. Please be aware that we strongly recommend to only compute bootstraped standard errors" 
-	di as error "when you want to use the continuous option. Otherwise you can rely on the (much faster) computation of analytical standard errors."	
+	di as error "You specified the bootstrap option without the continuous option. Please be aware that we strongly recommend to only compute bootstraped standard errors when you want to use the continuous option. Otherwise you can rely on the (much faster) computation of analytical standard errors."	
 	di as input _continue ""
 }
 
 if "`bootstrap'"==""&`continuous'>0{
-	di as error "You specified the continuous option without the bootstrap option. Please be aware that we recommend to compute bootstraped standard errors"
-	di as error "when you are using the continuous option as the analytical standard errors can be liberal in that case."	
+	di as error "You specified the continuous option without the bootstrap option. Please be aware that we recommend to compute bootstraped standard errors when you are using the continuous option as the analytical standard errors can be liberal in that case."	
 	di as input _continue ""
 }
 
