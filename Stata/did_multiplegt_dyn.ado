@@ -316,9 +316,7 @@ if "`by'" !=""{
 	xtset `2' `3'
 	xtsum `by'
 	if `r(sd_w)'!=0{
-		display as error "The variable specified in the option by"
-		display as error "is time-varying. That variable should"
-		display as error "be time-invariant."
+		display as error "The variable specified in the option by is time-varying. That variable should be time-invariant."
 		di as input _continue ""
 		exit
 	}
@@ -395,8 +393,7 @@ local het_nums_XX = strtrim(substr("`predict_het'", strpos("`predict_het'", ",")
 
 	// Modif Felix: Add checks for correct inputs in predict_het
 	if "`het_vars_XX'"==""{
-		di as error "You did not specify any variables to be used in the predict_het option,"
-		di as error "therefore this option will be ignored"
+		di as error "You did not specify any variables to be used in the predict_het option, therefore this option will be ignored"
 		di as input _continue ""
 	}
 	
@@ -413,9 +410,7 @@ if "`normalized'"!=""{
 	local het_effects ""
 	local predict_het ""
 	di as error ""
-	di as error "The options normalized and predict_het can not be"
-	di as error "specified at the same time, therefore predict_het"
-	di as error "will be ignored."
+	di as error "The options normalized and predict_het can not be specified at the same time, therefore predict_het will be ignored."
 	di as input _continue ""
 }
 
@@ -425,9 +420,7 @@ if "`predict_het'"!=""&"`controls'"!=""{
 	local het_effects ""
 	local predict_het ""
 	di as error ""
-	di as error "The options controls() and predict_het can not be"
-	di as error "specified at the same time, therefore predict_het"
-	di as error "will be ignored."
+	di as error "The options controls() and predict_het can not be specified at the same time, therefore predict_het will be ignored."
 	di as input _continue ""
 }
 }	
@@ -569,20 +562,7 @@ drop var_F_g_XX
 count
 if r(N)==0{
 	di as error ""
-	di as error "No treatment effect can be estimated."
-	di as error "This is because Design Restriction 1 in"
-	di as error "de Chaisemartin & D'Haultfoeuille (2024)"
-	di as error "is not satisfied in the data, given the"
-	di as error "options requested. This may be due to"
-	di as error "the fact that groups' period-one treatment" 
-	di as error "is continuous, or takes a large number of values," 
-	di as error "and you have not specified the continuous option."
-	di as error "If so, you can try to specify this option."
-	di as error "If the issue persists even with this option,"
-	di as error "this means that all groups experience their first"
-	di as error "treatment change at the same date, a situation"
-	di as error "where the estimators of de Chaisemartin & D'Haultfoeuille (2024)"
-	di as error "cannot be used."
+	di as error "No treatment effect can be estimated. This is because Design Restriction 1 in de Chaisemartin & D'Haultfoeuille (2024) is not satisfied in the data, given the options requested. This may be due to the fact that groups' period-one treatment is continuous, or takes a large number of values, and you have not specified the continuous option. If so, you can try to specify this option. If the issue persists even with this option, this means that all groups experience their first treatment change at the same date, a situation where the estimators of de Chaisemartin & D'Haultfoeuille (2024) cannot be used."
 	di as input _continue ""
 
 	exit
@@ -997,14 +977,8 @@ if ("`store_singular_XX'"!=""){
 	
 	di as error "Some control variables are not taken into account for groups with baseline treatment equal to: [`store_singular_XX']"
 	di as error "This may occur in the following situations:"
-	di as error "1. For groups with those values of the baseline treatment,"
-	di as error "the regression of the outcome first difference on the controls' first differences "
-	di as error "and time fixed effects has fewer observations than variables."
-	di as error "Note that for each value of the baseline treatment,"
-	di as error "those regressions are estimated among (g,t)s such that g has not changed treatment yet at t."
-	di as error "2. For groups with those values of the baseline treatment, "
-	di as error "two or more of your control variables are perfectly collinear "
-	di as error "in the sample where the regression is run, for instance because those control variables do not vary over time."
+	di as error "1. For groups with those values of the baseline treatment, the regression of the outcome first difference on the controls' first differences and time fixed effects has fewer observations than variables. Note that for each value of the baseline treatment, those regressions are estimated among (g,t)s such that g has not changed treatment yet at t."
+	di as error "2. For groups with those values of the baseline treatment, two or more of your control variables are perfectly collinear in the sample where the regression is run, for instance because those control variables do not vary over time."
 	di as input _continue ""
 }
 
@@ -1061,20 +1035,7 @@ if "`trends_lin'"!=""{
 
 if ("`switchers'"=="in"&(L_u_XX==.|L_u_XX==0))|("`switchers'"=="out"&(L_a_XX==.|L_a_XX==0))|("`switchers'"==""&(L_u_XX==.|L_u_XX==0)&(L_a_XX==.|L_a_XX==0)){
 	di as error ""
-	di as error "No treatment effect can be estimated."
-	di as error "This is because Design Restriction 1 in"
-	di as error "de Chaisemartin & D'Haultfoeuille (2024)"
-	di as error "is not satisfied in the data, given the"
-	di as error "options requested. This may be due to"
-	di as error "the fact that groups' period-one treatment" 
-	di as error "is continuous, or takes a large number of values," 
-	di as error "and you have not specified the continuous option."
-	di as error "If so, you can try to specify this option."
-	di as error "If the issue persists even with this option,"
-	di as error "this means that all groups experience their first"
-	di as error "treatment change at the same date, a situation"
-	di as error "where the estimators of de Chaisemartin & D'Haultfoeuille (2024)"
-	di as error "cannot be used."
+	di as error "No treatment effect can be estimated. This is because Design Restriction 1 in de Chaisemartin & D'Haultfoeuille (2024) is not satisfied in the data, given the options requested. This may be due to the fact that groups' period-one treatment is continuous, or takes a large number of values, and you have not specified the continuous option. If so, you can try to specify this option. If the issue persists even with this option, this means that all groups experience their first treatment change at the same date, a situation where the estimators of de Chaisemartin & D'Haultfoeuille (2024) cannot be used."
 	di as input _continue ""
 		
 	exit
@@ -1126,24 +1087,20 @@ else{
 // display an error message.
 if l_XX<`effects'{
 	di as error ""
-	di as error "The number of effects requested is too large."
-	di as error "The number of effects which can be estimated is at most " l_XX "."
-	di as error "The command will therefore try to estimate " l_XX " effect(s)."
+	di as error "The number of effects requested is too large. The number of effects which can be estimated is at most " l_XX ". The command will therefore try to estimate " l_XX " effect(s)."
 	di as input _continue ""
 }
 
 if `placebo'!=0{
 	if l_placebo_XX<`placebo'&`effects'>=`placebo'{
 		di as error ""
-		di as error "The number of placebos which can be estimated is at most " l_placebo_XX "."
-		di as error "The command will therefore try to estimate " l_placebo_XX " placebo(s)."
+		di as error "The number of placebos which can be estimated is at most " l_placebo_XX ". The command will therefore try to estimate " l_placebo_XX " placebo(s)."
 		di as input _continue ""
 	}
 
 	if `effects'<`placebo'{
 		di as error ""
-		di as error "The number of placebo requested cannot be larger than the number of effects requested."
-		di as error "The command cannot compute more than " l_placebo_XX " placebo(s)."
+		di as error "The number of placebo requested cannot be larger than the number of effects requested. The command cannot compute more than " l_placebo_XX " placebo(s)."
 		di as input _continue ""
 	}
 }
@@ -1197,8 +1154,7 @@ if "`by_path'"=="all"{ // case where we dont specify a numeric value
 // Warnings
 if `by_path'>`num_paths_XX'{
 	di ""
-	di as error "You specified a number that exceeds the number of treatment paths in the by_path() option!"
-	di as error "The number of paths is automatically set to the number of treatment paths in the sample."
+	di as error "You specified a number that exceeds the number of treatment paths in the by_path() option! The number of paths is automatically set to the number of treatment paths in the sample."
 	di as input _continue ""
 	
 	local by_path=`num_paths_XX'
@@ -2334,9 +2290,7 @@ if `bootstrap_XX'!=0{
 	// Error message if not all of the specified effects/placebos could be estimated 
 	else{
 		di as error ""
-		di as error "Some placebos/effects could not be estimated."
-		di as error "Therefore, the command will not be compatible"
-		di as error "with the honestdid command."
+		di as error "Some placebos/effects could not be estimated. Therefore, the command will not be compatible with the honestdid command."
 		di as input _continue ""
 	}
 
@@ -2432,9 +2386,7 @@ if (l_placebo_XX!=0)&l_placebo_XX>1{
 	// Error message if not all of the specified placebos could be estimated 
 	else{
 		di as error ""
-		di as error "Some placebos could not be estimated."
-		di as error "Therefore, the test of joint nullity of the placebos "
-		di as error "could not be computed."
+		di as error "Some placebos could not be estimated. Therefore, the test of joint nullity of the placebos could not be computed."
 		di as input _continue ""
 	}
 	
@@ -2534,9 +2486,7 @@ if l_XX>1{
 	// Error message if not all of the specified placebos could be estimated 
 	else{
 		di as error ""
-		di as error "Some effects could not be estimated."
-		di as error "Therefore, the test of joint nullity of the effects "
-		di as error "could not be computed."
+		di as error "Some effects could not be estimated. Therefore, the test of joint nullity of the effects could not be computed."
 		di as input _continue ""
 	}
 	
@@ -2622,9 +2572,7 @@ if `bootstrap_XX'!=0{
 	
 	else{
 		di as error ""
-		di as error "Some effects could not be estimated."
-		di as error "Therefore, the test of equality of the effects "
-		di as error "could not be computed."
+		di as error "Some effects could not be estimated. Therefore, the test of equality of the effects could not be computed."
 		di as input _continue ""
 	}
 	
