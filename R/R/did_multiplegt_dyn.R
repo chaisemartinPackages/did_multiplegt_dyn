@@ -143,14 +143,11 @@
 #' 
 #' @examples
 #' # In the following example, we use data from Favara and Imbs (2015). 
-#' # The dataset can be downloaded from GitHub:
-#' repo <- "chaisemartinPackages/ApplicationData/main" 
-#' file <- "favara_imbs_did_multiplegt_dyn.dta"
-#' url <- paste("https://raw.githubusercontent.com", repo, file, sep = "/")
-#' favara_imbs <-  haven::read_dta(url)
+#' # See data description for more detail.
+#' data(favara_imbs)
 #' 
 #' # Estimating 3 non-normalized event-study effects and two placebo 
-#' # effects of banking deregulations on loans volume:
+#' # effects of banking deregulations on loans volume (in 10 states):
 #' summary(did_multiplegt_dyn(
 #'     df = favara_imbs,
 #'     outcome = "Dl_vloans_b",
