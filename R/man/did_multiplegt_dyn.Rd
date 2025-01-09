@@ -255,9 +255,9 @@ url <- paste("https://raw.githubusercontent.com", repo, file, sep = "/")
 favara_imbs <-  haven::read_dta(url)
 
 # Estimating 3 non-normalized event-study effects and two placebo 
-# effects of banking deregulations on loans volume:
+# effects of banking deregulations on loans volume using a subset of states:
 summary(did_multiplegt_dyn(
-    df = favara_imbs,
+    df = subset(favara_imbs, favara_imbs$state_n < 10),
     outcome = "Dl_vloans_b",
     group = "county",
     time = "year",
