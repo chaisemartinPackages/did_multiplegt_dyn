@@ -10,6 +10,7 @@ Authors@R:
 Maintainer: Diego Ciccia <diego.ciccia@kellogg.northwestern.edu>
 Description:  Estimation of heterogeneity-robust difference-in-differences estimators, with a binary, discrete, or continuous treatment, in designs where past treatments may affect the current outcome.
 License: MIT + file LICENSE
+LazyData: true
 URL: https://github.com/chaisemartinPackages/did_multiplegt_dyn 
 Author: Diego Ciccia [aut, cre],
 	Felix Knau [aut],
