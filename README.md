@@ -36,13 +36,12 @@ library(devtools)
 devtools::install_github("chaisemartinPackages/did_multiplegt_dyn/R")
 ```
 
-#### R (no_xlsx)
+#### R (Recent macs)
 
-Several users have reported issues in the installation of DIDmultiplegtDYN due to the fact that one of the dependency ('xlsx') relies on the 'rJava' library, which seems to be unstable on MacOS and several Linux distros. To circumvent this issue, we maintain a version of DIDmultiplegtDYN in the no_xlsx folder. This version preserves all the features of the DIDmultiplegtDYN distribution currently available on CRAN, except saving the output of the design and date_first_switch options in an Excel document. The user can still retrieve the options' output by assigning the DIDmultiplegtDYN object and browsing its content. 
+Some users might encounter an issue with the R version of the package due to dependencies incompatibility. Switching off this dependency (rgl) usually solves this issue. You can either run the following line of code before loading the package or add the line to your .Rprofile.
 
 ```r
-library(devtools)
-devtools::install_github("chaisemartinPackages/did_multiplegt_dyn/no_xlsx/DIDmultiplegtDYN")
+Sys.setenv(RGL_USE_NULL = TRUE)
 ```
 
 ## Syntax
