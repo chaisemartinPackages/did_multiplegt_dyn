@@ -63,3 +63,7 @@ First official R release.
 ## Changes in version 2.1.1
 
 + New helpfile
+
+## Changes in version 2.1.2
+
++ New graph option and preset
