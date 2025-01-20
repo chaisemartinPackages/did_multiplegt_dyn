@@ -1,10 +1,11 @@
 #' Function for event study plot. the did_multiplegt_dyn command always generates a ggplot object that can be printed right after the end of the routine (graph_off = FALSE) or called afterwards from the global environment after assigning the did_multiplegt_dyn output to a variable.
 #' @param data data
+#' @param args args
 #' @import ggplot2
 #' @importFrom dplyr filter
 #' @returns A ggplot object.
 #' @noRd
-did_multiplegt_dyn_graph <- function(data) {  
+did_multiplegt_dyn_graph <- function(data, args = list()) {  
   grmat <- rbind(cbind(data$Effects, 1:nrow(data$Effects)),cbind(data$ATE, 0))
   if (!is.null(data$Placebos)) {
     grmat <- rbind(grmat, cbind(data$Placebos, (-1) * 1:nrow(data$Placebos)))
@@ -18,9 +19,15 @@ did_multiplegt_dyn_graph <- function(data) {
     geom_point(colour = "blue") + 
     ggtitle("DID, from last period before treatment changes (t=0) to t") + 
     xlab("Relative time to last period before treatment changes (t=0)") +
-    theme(plot.title = element_text(hjust = 0.5))
+    theme(plot.title = element_text(hjust = 0.5)) + theme_minimal_grid()
+
+  for (layer in args) {
+    did_multiplegt_dyn_plot <- did_multiplegt_dyn_plot + layer
+  }
+
   return(did_multiplegt_dyn_plot)
 }
+
 
 #' Internal function of did_multiplegt_dyn to overlay plots
 #' @param obj A did_multiplegt_dyn object

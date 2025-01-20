@@ -36,6 +36,7 @@
 #' @param bootstrap (integer) when this option is specified, bootstraped instead of analytical standard errors are reported. The number of bootstrap replications is the option's only argument. If the \code{cluster} option is also requested, the bootstrap is clustered at the level requested in the \code{cluster} option.
 #' @param dont_drop_larger_lower (logical) by default, the command drops all the \eqn{(g,t)} cells such that at \eqn{t}, group \eqn{g} has experienced both a strictly larger and a strictly lower treatment than its baseline treatment. de Chaisemartin and D'Haultfoeuille (2020a) recommend this procedure, if you are interested in more details you can see their Section 3.1. The option \code{dont_drop_larger_lower} allows to overwrite this procedure and keeps \eqn{(g,t)} cells such that at \eqn{t}, group \eqn{g} has experienced both a strictly larger and a strictly lower treatment than its baseline treatment in the estimation sample.
 #' @param drop_if_d_miss_before_first_switch (logical) This option is relevant when the treatment of some groups is missing at some time periods. Then, the command imputes some of those missing treatments. Those imputations are detailed in Appendix A of de Chaisemartin et al (2024). In designs where groups' treatments can change at most once, all those imputations are justified by the design. In other designs, some of those imputations may be liberal. \code{drop_if_d_miss_before_first_switch} can be used to overrule the potentially liberal imputations that are not innocuous for the non-normalized event-study estimators. See Appendix A of de Chaisemartin et al (2024) for further details.
+#' @param ggplot_args (list) This option allows you to enter additional ggplot features to the event-study graph produced by the command. Enter all your arguments in the list, as you would list them with + in general.
 #' @section Overview:
 #' \code{did_multiplegt_dyn()} estimates the effect of a treatment on an outcome, using group-(e.g. county- or state-) level panel data. The command computes the DID event-study estimators introduced in de Chaisemartin and D'Haultfoeuille (2024). Like other recently proposed DID estimation commands (\code{did}, \code{didimputation}, ...), \code{did_multiplegt_dyn()} can be used with a binary and staggered (absorbing) treatment. But unlike those other commands, \code{did_multiplegt_dyn()} can also be used with a non-binary treatment (discrete or continuous) that can increase or decrease multiple times. Lagged treatments may affect the outcome, and the current and lagged treatments may have heterogeneous effects, across space and/or over time.  The event-study estimators computed by the command rely on a no-anticipation and parallel trends assumptions. The panel may be unbalanced:  not all groups have to be observed at every period.  The data may also be at a more disaggregated level than the group level (e.g. individual-level wage data to measure the effect of a regional-level minimum-wage on individuals' wages).
 #' @section Further detail:
@@ -200,7 +201,8 @@ did_multiplegt_dyn <- function(
     less_conservative_se = FALSE,
     bootstrap = NULL,
     dont_drop_larger_lower = FALSE, 
-    drop_if_d_miss_before_first_switch = FALSE
+    drop_if_d_miss_before_first_switch = FALSE,
+    ggplot_args = NULL
     ) { 
 
   #### General syntax checks ####
@@ -377,7 +379,7 @@ did_multiplegt_dyn <- function(
       names(temp_obj)[length(temp_obj)] <- "normalized_weights"
     }
 
-    temp_obj <- append(temp_obj, list(did_multiplegt_dyn_graph(temp_obj$results)))
+    temp_obj <- append(temp_obj, list(did_multiplegt_dyn_graph(temp_obj$results, ggplot_args)))
     names(temp_obj)[length(temp_obj)] <- "plot"
     
     if (isTRUE(save_sample)) {
