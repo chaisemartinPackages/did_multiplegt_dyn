@@ -718,6 +718,9 @@ else if `continuous'>0{
 	drop if avg_post_switch_treat_XX==d_sq_XX_orig&F_g_XX!=T_g_XX+1
 	gen S_g_XX=(avg_post_switch_treat_XX>d_sq_XX_orig) if F_g_XX!=T_max_XX+1
 }	
+// correct for the fact that if all avg_post_switch_treat_XX are missing it is considered as +inf
+egen aux_XX = min(avg_post_switch_treat_XX), by(group_XX)
+replace S_g_XX = . if aux_XX ==.
 
 // Define another version where S_g=-1 for switchers out, which we need 
 // when predict_het or continuous specified.
