@@ -741,6 +741,7 @@ suppressWarnings({
     ## For placebos
     if (placebo != 0) {
       L_placebo_u_XX <- max(df$L_g_placebo_XX[df$S_g_XX == 1], na.rm = TRUE)  
+      L_placebo_u_XX <- ifelse(L_placebo_u_XX < 0,0, L_placebo_u_XX)
       ## If the trends_lin option was specified, L_placebo_u_XX should be decreased by 1
       ## because data starts at period 2 instead of 1.
       if (isTRUE(trends_lin)) {
@@ -757,6 +758,7 @@ suppressWarnings({
     }
     if (placebo != 0) {
       L_placebo_a_XX <- max(df$L_g_placebo_XX[df$S_g_XX == 0], na.rm = TRUE)  
+      L_placebo_a_XX <- ifelse(L_placebo_a_XX < 0,0, L_placebo_a_XX)
       if (isTRUE(trends_lin)) {
         L_placebo_a_XX <- L_placebo_a_XX - 1
       }
