@@ -934,8 +934,8 @@ did_multiplegt_dyn_core <- function(
       }
     }
 
+    Ntrendslin_pl <- 1
     if (isTRUE(trends_lin)) {
-      Ntrendslin_pl <- 1
       for (i in 1:l_placebo_u_a_XX) {
         Ntrendslin_pl <- min(Ntrendslin_pl, get(paste0("N",increase_XX,"_placebo_",i,"_XX")), na.rm = TRUE)
         }
