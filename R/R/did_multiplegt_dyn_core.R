@@ -97,9 +97,7 @@ did_multiplegt_dyn_core <- function(
   if (switchers_core == "in") {
     l_u_a_XX <- min(L_u_XX, effects, na.rm = TRUE)
     if (placebo != 0) {
-      if (!is.na(L_placebo_u_XX) & L_placebo_u_XX != 0) {
         l_placebo_u_a_XX <- min(placebo, L_placebo_u_XX)
-      }
     }
     increase_XX <- 1
   }
@@ -107,9 +105,7 @@ did_multiplegt_dyn_core <- function(
   if (switchers_core == "out") {
     l_u_a_XX <- min(L_a_XX, effects, na.rm = TRUE)
     if (placebo != 0) {
-      if (!is.na(L_placebo_a_XX) & L_placebo_a_XX != 0) {
         l_placebo_u_a_XX <- min(placebo, L_placebo_a_XX)
-      }
     }
     increase_XX <- 0
   }
@@ -938,9 +934,11 @@ did_multiplegt_dyn_core <- function(
       }
     }
 
-    Ntrendslin_pl <- 1
-    for (i in 1:l_placebo_u_a_XX) {
-      Ntrendslin_pl <- min(Ntrendslin_pl, get(paste0("N",increase_XX,"_placebo_",i,"_XX")), na.rm = TRUE)
+    if (isTRUE(trends_lin)) {
+      Ntrendslin_pl <- 1
+      for (i in 1:l_placebo_u_a_XX) {
+        Ntrendslin_pl <- min(Ntrendslin_pl, get(paste0("N",increase_XX,"_placebo_",i,"_XX")), na.rm = TRUE)
+        }
     }
 
     if (isTRUE(trends_lin) & Ntrendslin_pl != 0) {
