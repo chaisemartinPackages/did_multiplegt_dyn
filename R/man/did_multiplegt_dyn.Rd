@@ -108,7 +108,7 @@ did_multiplegt_dyn(
 
 \item{drop_if_d_miss_before_first_switch}{(logical) This option is relevant when the treatment of some groups is missing at some time periods. Then, the command imputes some of those missing treatments. Those imputations are detailed in Appendix A of de Chaisemartin et al (2024). In designs where groups' treatments can change at most once, all those imputations are justified by the design. In other designs, some of those imputations may be liberal. \code{drop_if_d_miss_before_first_switch} can be used to overrule the potentially liberal imputations that are not innocuous for the non-normalized event-study estimators. See Appendix A of de Chaisemartin et al (2024) for further details.}
 
-\item{ggplot_args}{(list) This option allows you to enter additional ggplot features to the event-study graph produced by the command. Enter all your arguments in the list, as you would list them with + in general.}
+\item{ggplot_args}{(list) This option allows you to enter additional ggplot features to the event-study graph produced by the command. Enter all your arguments in the list, as you would list them with a + in general. For instance, you can modify legends by using \code{ggplot_args = list(labs(…))}. More pervasive changes can be done by directly interacting with the ggplot object stored in the \code{$plot} sub-list of the assigned \code{did_multiplegt_dyn} object.}
 }
 \value{
 A list of class did_multiplegt_dyn containing the arguments used, the results for the estimation requested and a ggplot object with the event-study graph. If the by option is specified, the did_multiplegt_dyn object will contain the arguments, a list with the levels of the by option, a sublist for each of these levels with the results and ggplot objects from these by-estimations and a ggplot object for the combined event-study graph. The class did_multiplegt_dyn is assigned to enable customized print and summary methods.
@@ -250,27 +250,7 @@ de Chaisemartin, C, Ciccia, D, D'Haultfoeuille, X, Knau, F, Malézieux, M, Sow, 
 }
 
 \examples{
-# In the following example, we use data from Favara and Imbs (2015). 
-# See data description for more detail.
-data(favara_imbs)
 
-# Estimating 3 non-normalized event-study effects and two placebo 
-# effects of banking deregulations on loans volume (in 10 states):
-summary(did_multiplegt_dyn(
-    df = favara_imbs,
-    outcome = "Dl_vloans_b",
-    group = "county",
-    time = "year",
-    treatment = "inter_bra",
-    effects = 2,
-    placebo = 1,
-    cluster = "state_n",
-    graph_off = TRUE
-))
+# See the did_multiplegt_dyn GitHub page for examples and details.
 
-# Please note that some of the standard errors displayed above could differ from those 
-# reported in de Chaisemartin and D'Haultfoeuille (2020b) due to coverage-improving 
-# changes to the variance estimator.
-
-# See the did_multiplegt_dyn GitHub page for further examples and details.
 }

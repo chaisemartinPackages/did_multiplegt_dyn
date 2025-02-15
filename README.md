@@ -194,10 +194,8 @@ deregulations on loans volume, restricting the estimation to switchers for which
 Same steps and data as above.
 
 ```applescript
-repo <- "chaisemartinPackages/ApplicationData/main" 
-file <- "favara_imbs_did_multiplegt_dyn.dta"
-url <- paste("https://raw.githubusercontent.com", repo, file, sep = "/")
-favara_imbs <-  haven::read_dta(url)
+library(DIDmultiplegtDYN)
+data(favara_imbs)
 ```
 
 ```applescript
@@ -229,6 +227,7 @@ summary(did_multiplegt_dyn(
     effects_equal = TRUE
 ))
 ```
+Please note that some of the standard errors displayed above could differ from those reported in de Chaisemartin and D'Haultfoeuille (2020b) due to coverage-improving changes to the variance estimator.
 
 ## FAQ
 
