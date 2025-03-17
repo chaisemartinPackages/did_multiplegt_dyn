@@ -721,6 +721,7 @@ else if `continuous'>0{
 // correct for the fact that if all avg_post_switch_treat_XX are missing it is considered as +inf
 egen aux_XX = min(avg_post_switch_treat_XX), by(group_XX)
 replace S_g_XX = . if aux_XX ==.
+drop aux_XX
 
 // Define another version where S_g=-1 for switchers out, which we need 
 // when predict_het or continuous specified.
