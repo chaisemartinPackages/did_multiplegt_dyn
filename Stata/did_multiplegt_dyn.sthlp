@@ -1,5 +1,5 @@
 {smcl}
-{* *! version 1  2023-06-29}{...}
+{* *! version 1  2025-03-25}{...}
 {viewerjumpto "Syntax" "did_multiplegt_dyn##syntax"}{...}
 {viewerjumpto "Description" "did_multiplegt_dyn##description"}{...}
 {viewerjumpto "Further detail" "did_multiplegt_dyn##detail"}{...}
@@ -170,14 +170,15 @@ on the effect of the first treatment lag, etc.
 {p_end}
 
 {p 4 8}
-{cmd:effects_equal}: when this option is specified and the user requests
-that at least two effects be estimated,
-the command performs an F-test that all effects are
-equal. When the {cmd:normalized} option is specified,
-this test can be useful to assess if the current and
-lagged treatments all have the same effect on
-the outcome or if their effects differ,
-see Lemma 7 of de Chaisemartin and D'Haultfoeuille (2024).
+{cmd:effects_equal(}{it:lower bound, upper bound}{cmd:)} or {cmd:effects_equal(}{it:"all"}{cmd:)} : When this option is
+specified with a lower 
+and upper bound, the command performs an F-test to determine
+whether all effects within the specified range are equal. The lower and upper bounds
+should belong to the range of estimated effects. If the argument {it:“all”} is provided, the
+command defaults to testing whether all estimated effects are equal. When used with the
+{cmd:normalized} option, this test can help assess whether the current and lagged treatments
+have the same effect on the outcome or if their effects differ. See Lemma 7 of de
+Chaisemartin and D'Haultfoeuille (2024).
 {p_end}
 
 {p 4 8}
