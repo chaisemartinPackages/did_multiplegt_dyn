@@ -26,7 +26,7 @@ affect the current outcome.
 {cmd:design(}{it:string}{cmd:)}
 {cmd:normalized}
 {cmd:normalized_weights}
-{cmd:effects_equal}
+{cmd:effects_equal}{it:lower bound, upper bound}{cmd:)}
 {cmd:placebo(}{it:#}{cmd:)}
 {cmd:controls(}{it:varlist}{cmd:)}
 {cmd:trends_nonparam(}{it:varlist}{cmd:)}
