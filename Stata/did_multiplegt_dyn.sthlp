@@ -448,7 +448,7 @@ restricting the estimation to switchers for which all effects can
 be estimated, and testing that effects are equal:
 {p_end}
 
-{phang2}{stata did_multiplegt_dyn Dl_vloans_b county year inter_bra, effects(8) cluster(state_n) normalized same_switchers effects_equal}{p_end}
+{phang2}{stata did_multiplegt_dyn Dl_vloans_b county year inter_bra, effects(8) cluster(state_n) normalized same_switchers effects_equal(all)}{p_end}
 
 {p 4 4}
 Estimating eight non-normalized event-study effects 
