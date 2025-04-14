@@ -523,6 +523,14 @@ suppressWarnings({
 
   #### If cluster option if specified, flagging first obs in cluster and checking if the cluster variable is weakly coarser than the group one.
   if (!is.null(cluster)) {
+
+    ## convert to integer (easier to manipulate)
+    df[, cluster_XX := as.integer(as.factor(cluster_XX))]
+
+    ## complete missing clusters based on the min
+    df[, cluster_group_XX := min(cluster_XX, na.rm = TRUE), by = group_XX]
+    df[, cluster_XX := fifelse(is.na(cluster_XX), cluster_group_XX, cluster_XX)]
+
     df[, first_obs_by_clust_XX := seq_len(.N) == 1, by = cluster_XX]
     df$first_obs_by_clust_XX <- as.numeric(df$first_obs_by_clust_XX)
 
@@ -623,10 +631,13 @@ suppressWarnings({
           # R version of the accum function
           #-- The final matrix should be order k + 1 with k n. of controls
           # Using the matrix accum function, to regress the first difference of outcome on the first differences of covariates. We will obtain the vectors of coefficients \theta_d s, where d indexes values of the baseline treatment.
-          Y_vec <- as.matrix(data_XX$diff_y_wXX)
-          X_vec <- as.matrix(subset(data_XX, select = c(mycontrols_XX)))
-          W_vec <- as.matrix(data_XX$weight_XX)
-          YX_vec <- cbind(Y_vec, X_vec, matrix(1, nrow = length(Y_vec), ncol = 1))
+          Y_vec <- as.numeric(data_XX$diff_y_wXX)
+          X_vec <- as.matrix(data_XX[, ..mycontrols_XX])
+          W_vec <- as.numeric(data_XX$weight_XX)
+          # YX_vec <- cbind(Y_vec, X_vec, W_vec)
+
+          YX_vec <- cbind(Y_vec, X_vec, rep(1, length(Y_vec)))
+
           overall_XX <- matrix(NA, nrow = count_controls + 2, ncol = count_controls + 2)
           for (i in 1:(2 + count_controls)) {
             for (j in 1:(2 + count_controls)) {

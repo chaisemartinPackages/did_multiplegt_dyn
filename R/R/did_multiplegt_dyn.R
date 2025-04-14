@@ -366,7 +366,7 @@ did_multiplegt_dyn <- function(
       df_save_XX <- did_save_sample(df_est, group, time)
       df_m <- merge(df, df_save_XX, by = c(group, time)) 
       df_m <- df_m[order(df_m[[group]], df_m[[time]]), ]
-      rownames(df_m) <- 1:nrow(df_m)
+      # rownames(df_m) <- 1:nrow(df_m)
       temp_obj <- append(temp_obj, list(df_m))
       names(temp_obj)[length(temp_obj)] <- "save_sample"
     }

@@ -540,8 +540,23 @@ did_multiplegt_dyn_core <- function(
     df[[paste0("E_hat_g_t_",i,"_XX")]] <- ifelse(df$time_XX == df$F_g_XX -1 + i,  df[[paste0("mean_cohort_",i,"_s_t_XX")]] * (df[[paste0("dof_cohort_",i,"_s_t_XX")]] >= 2), df[[paste0("E_hat_g_t_",i,"_XX")]])
 
     ## DOF_(g,t) for DOF adjustement, defined from parts depending on the cohort definition 
-    df[[paste0("DOF_g_t_",i,"_XX")]] <- ifelse(df$F_g_XX-1+i==df$time_XX,1+(df[[paste0("dof_cohort_",i,"_s_t_XX")]] >= 2) * ((sqrt( df[[paste0("dof_cohort_",i,"_s_t_XX")]]/(df[[paste0("dof_cohort_",i,"_s_t_XX")]] -1)))-1), NA)
-    df[[paste0("DOF_g_t_",i,"_XX")]] <- ifelse(df$F_g_XX > df$time_XX, 1 + (df[[paste0("dof_cohort_",i,"_ns_t_XX")]] >= 2) * ((sqrt( df[[paste0("dof_cohort_",i,"_ns_t_XX")]]/(df[[paste0("dof_cohort_",i,"_ns_t_XX")]] -1)))-1), df[[paste0("DOF_g_t_",i,"_XX")]])
+    # df[[paste0("DOF_g_t_",i,"_XX")]] <- ifelse(df$F_g_XX-1+i==df$time_XX,1+(df[[paste0("dof_cohort_",i,"_s_t_XX")]] >= 2) * ((sqrt( df[[paste0("dof_cohort_",i,"_s_t_XX")]]/(df[[paste0("dof_cohort_",i,"_s_t_XX")]] -1)))-1), NA)
+    # df[[paste0("DOF_g_t_",i,"_XX")]] <- ifelse(df$F_g_XX > df$time_XX, 1 + (df[[paste0("dof_cohort_",i,"_ns_t_XX")]] >= 2) * ((sqrt( df[[paste0("dof_cohort_",i,"_ns_t_XX")]]/(df[[paste0("dof_cohort_",i,"_ns_t_XX")]] -1)))-1), df[[paste0("DOF_g_t_",i,"_XX")]])
+    
+    ## correct DOF when there is only 1 switcher
+    df[[paste0("DOF_g_t_", i, "_XX")]] <- ifelse(
+      (df$F_g_XX - 1 + i == df$time_XX | df$time_XX < df$F_g_XX), 
+      1,NA)
+
+    df[[paste0("DOF_g_t_", i, "_XX")]] <- ifelse(
+      df$F_g_XX - 1 + i == df$time_XX & df[[paste0("dof_cohort_", i, "_s_t_XX")]] > 1,
+      df[[paste0("DOF_g_t_", i, "_XX")]] + (df[[paste0("dof_cohort_", i, "_s_t_XX")]] >= 2) * (sqrt(df[[paste0("dof_cohort_", i, "_s_t_XX")]] / (df[[paste0("dof_cohort_", i, "_s_t_XX")]] - 1)) - 1),
+      df[[paste0("DOF_g_t_", i, "_XX")]])
+      
+    df[[paste0("DOF_g_t_", i, "_XX")]] <- ifelse(
+      df$time_XX < df$F_g_XX & df[[paste0("dof_cohort_", i, "_ns_t_XX")]] > 1,
+      df[[paste0("DOF_g_t_", i, "_XX")]] + (df[[paste0("dof_cohort_", i, "_ns_t_XX")]] >= 2) * (sqrt(df[[paste0("dof_cohort_", i, "_ns_t_XX")]] / (df[[paste0("dof_cohort_", i, "_ns_t_XX")]] - 1)) - 1),
+      df[[paste0("DOF_g_t_", i, "_XX")]])
 
     ###### 3. Computing U_Gg_\ell variables
     #### If the dynamic effect can be estimated (as there are switchers), we compute the U_Gg_\ell variables etc.
@@ -863,9 +878,22 @@ did_multiplegt_dyn_core <- function(
         df[[paste0("E_hat_g_t_pl_",i,"_XX")]] <- ifelse(df$F_g_XX > df$time_XX, df[[paste0("mean_cohort_pl_",i,"_ns_t_XX")]] * (df[[paste0("dof_cohort_pl_",i,"_ns_t_XX")]] >= 2), NA)
         df[[paste0("E_hat_g_t_pl_",i,"_XX")]] <- ifelse(df$time_XX == df$F_g_XX -1 + i,  df[[paste0("mean_cohort_pl_",i,"_s_t_XX")]] * (df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]] >= 2), df[[paste0("E_hat_g_t_pl_",i,"_XX")]])
 
-        ## DOF_pl_(g,t) for DOF adjustement, defined from parts depending on the cohort definition 
-        df[[paste0("DOF_g_t_pl_",i,"_XX")]] <- ifelse(df$F_g_XX-1+i==df$time_XX,1+(df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]] >= 2) * ((sqrt( df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]]/(df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]] -1)))-1), NA)
-        df[[paste0("DOF_g_t_pl_",i,"_XX")]] <- ifelse(df$F_g_XX > df$time_XX, 1 + (df[[paste0("dof_cohort_pl_",i,"_ns_t_XX")]] >= 2) * ((sqrt( df[[paste0("dof_cohort_pl_",i,"_ns_t_XX")]]/(df[[paste0("dof_cohort_pl_",i,"_ns_t_XX")]] -1)))-1), df[[paste0("DOF_g_t_pl_",i,"_XX")]])
+        # ## DOF_pl_(g,t) for DOF adjustement, defined from parts depending on the cohort definition 
+        # df[[paste0("DOF_g_t_pl_",i,"_XX")]] <- ifelse(df$F_g_XX-1+i==df$time_XX,1+(df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]] >= 2) * ((sqrt( df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]]/(df[[paste0("dof_cohort_pl_",i,"_s_t_XX")]] -1)))-1), NA)
+        # df[[paste0("DOF_g_t_pl_",i,"_XX")]] <- ifelse(df$F_g_XX > df$time_XX, 1 + (df[[paste0("dof_cohort_pl_",i,"_ns_t_XX")]] >= 2) * ((sqrt( df[[paste0("dof_cohort_pl_",i,"_ns_t_XX")]]/(df[[paste0("dof_cohort_pl_",i,"_ns_t_XX")]] -1)))-1), df[[paste0("DOF_g_t_pl_",i,"_XX")]])
+
+        ## correct DOF when there is only 1 switcher
+        df[[paste0("DOF_g_t_pl_", i, "_XX")]] <- ifelse((df$F_g_XX - 1 + i == df$time_XX | df$time_XX < df$F_g_XX), 1, NA)
+        
+        df[[paste0("DOF_g_t_pl_", i, "_XX")]] <- ifelse(
+          df$F_g_XX - 1 + i == df$time_XX & df[[paste0("dof_cohort_pl_", i, "_s_t_XX")]] > 1, 
+          df[[paste0("DOF_g_t_pl_", i, "_XX")]] + (df[[paste0("dof_cohort_pl_", i, "_s_t_XX")]] >= 2) * (sqrt(df[[paste0("dof_cohort_pl_", i, "_s_t_XX")]] / (df[[paste0("dof_cohort_pl_", i, "_s_t_XX")]] - 1)) - 1),
+          df[[paste0("DOF_g_t_pl_", i, "_XX")]])
+        
+        df[[paste0("DOF_g_t_pl_", i, "_XX")]] <- ifelse(
+          df$time_XX < df$F_g_XX & df[[paste0("dof_cohort_pl_", i, "_ns_t_XX")]] > 1, 
+          df[[paste0("DOF_g_t_pl_", i, "_XX")]] + (df[[paste0("dof_cohort_pl_", i, "_ns_t_XX")]] >= 2) * (sqrt(df[[paste0("dof_cohort_pl_", i, "_ns_t_XX")]] / (df[[paste0("dof_cohort_pl_", i, "_ns_t_XX")]] - 1)) - 1), 
+          df[[paste0("DOF_g_t_pl_", i, "_XX")]])
 
         #### 6. Computing U_Gg_\ell variables for the placebos (similar to part 4, less commented)
         df[[paste0("dummy_U_Gg_pl_",i,"_XX")]] <- i <= df$T_g_XX - 1
@@ -917,9 +945,9 @@ did_multiplegt_dyn_core <- function(
         ###### 7. Computing adjustements for the normalized and trends_lin options for placebos (similar to part 4, not commented) 
         if (normalized == TRUE) {
           if (is.null(continuous)) {
-            df$sum_temp_pl_XX <- ifelse(df$time_XX >= df$F_g_XX & df$time_XX <= df$F_g_XX - 1 + i & !is.na(df[[paste0("diff_y_pl_",i,"_XX")]]) & df$S_g_XX == increase_XX, df$treatment_XX - df$d_sq_XX, NA)
+            df$sum_temp_pl_XX <- ifelse(df$time_XX >= df$F_g_XX & df$time_XX <= df$F_g_XX - 1 + i & df$S_g_XX == increase_XX, df$treatment_XX - df$d_sq_XX, NA) ## FELIX 18.03.2025 (delete the !is.na(diff_y_pl_`i'_XX) condition)
           } else {
-            df$sum_temp_pl_XX <- ifelse(df$time_XX >= df$F_g_XX & df$time_XX <= df$F_g_XX - 1 + i & !is.na(df[[paste0("diff_y_pl_",i,"_XX")]]) & df$S_g_XX == increase_XX, df$treatment_XX_orig - df$d_sq_XX_orig, NA)
+            df$sum_temp_pl_XX <- ifelse(df$time_XX >= df$F_g_XX & df$time_XX <= df$F_g_XX - 1 + i & df$S_g_XX == increase_XX, df$treatment_XX_orig - df$d_sq_XX_orig, NA) ## FELIX 18.03.2025 (delete the !is.na(diff_y_pl_`i'_XX) condition)
           }
           df[, paste0("sum_treat_until_",i,"_pl_XX") := sum(sum_temp_pl_XX, na.rm = TRUE), by = group_XX]
           df$sum_temp_pl_XX <- NULL
