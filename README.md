@@ -36,7 +36,7 @@ library(devtools)
 devtools::install_github("chaisemartinPackages/did_multiplegt_dyn/R")
 ```
 
-#### R (Recent macs)
+#### R (Recent Macs)
 
 Some users might encounter an issue with the R version of the package due to dependencies incompatibility. Switching off this dependency (rgl) usually solves this issue. You can either run the following line of code before loading the package or add the line to your .Rprofile.
 
