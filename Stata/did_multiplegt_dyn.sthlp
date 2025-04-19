@@ -51,7 +51,7 @@ affect the current outcome.
 {cmd:bootstrap(}{it:#,#}{cmd:)}
 {cmd:dont_drop_larger_lower}
 {cmd:drop_if_d_miss_before_first_switch}
-{cmd:no_updates}]
+{cmd:_no_updates}]
 {p_end}
 
 {synoptset 28 tabbed}{...}
@@ -417,7 +417,7 @@ See Appendix A of de Chaisemartin et al (2024) for further details.
 {p_end}
 
 {p 4 8}
-{cmd:no_updates}: this option stops 
+{cmd:_no_updates}: this option stops 
 automatic self-updates of the 
 program, which are performed 
 (on average) every 100 runs.
