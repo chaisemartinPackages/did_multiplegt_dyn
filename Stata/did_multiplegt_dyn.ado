@@ -4598,7 +4598,8 @@ replace combined`=increase_XX'_temp_`l'_`i'_XX=combined`=increase_XX'_temp_`l'_`
 } // end loop over j
 
 // Final sum over the status quo treatment (outer sum over d in the formula)
-replace part2_switch`=increase_XX'_`i'_XX=part2_switch`=increase_XX'_`i'_XX+combined`=increase_XX'_temp_`l'_`i'_XX if d_sq_int_XX==`l'
+// Modif. Diego: dropped  if d_sq_int_XX==`l'
+replace part2_switch`=increase_XX'_`i'_XX=part2_switch`=increase_XX'_`i'_XX+combined`=increase_XX'_temp_`l'_`i'_XX
 } // Modif FELIX: condition "useful residual" 
 } // end loop over l
 
