@@ -9,7 +9,7 @@
 ** Subsections may contain unnumbered subsubsections, tagged with "//".
 ** Subsubsections may be further divided into paragraphs, tagged with "*".
 ** Comments are also tagged with "*".
-** This version : April 28th, 2025
+** This version : April 29th, 2025
 
 ** This version includes Diego's changes:
 **** Fixes to variance estimation with controls() (tks)
@@ -20,6 +20,8 @@
 ** Felix:
 **** Delete if d_sq_int_XX==`l' condition when summing placebo variances 
 **** Adjust - when storing the switcher out variances
+**** Add cap drop group2_XX to Tom's change regarding the re-counting of groups
+**** Add different_paths_XX in the group statement "gegen rank_paths_XX=group(-count_path_XX different_paths_XX) if count_path_XX!=." when generating variable to distinguish paths for the by_path() option
 
 ********************************************************************************
 *                                 PROGRAM 1                                    *
@@ -569,6 +571,7 @@ drop var_F_g_XX
 
 //// CHANGE BELOW - tks
 //// Counting number of groups after the drop above
+cap drop group2_XX
 egen group2_XX = group(group_XX)
 sum group2_XX
 scalar G_XX=r(max)
@@ -1223,7 +1226,7 @@ forvalues k=1/`num_paths_XX'{
 	replace count_path_XX=r(N) if different_paths_XX==`k' 
 }
 
-gegen rank_paths_XX=group(-count_path_XX) if count_path_XX!=.
+gegen rank_paths_XX=group(-count_path_XX different_paths_XX) if count_path_XX!=.
 replace different_paths_XX=rank_paths_XX
 }
 
