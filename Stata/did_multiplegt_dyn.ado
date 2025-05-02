@@ -1566,7 +1566,8 @@ if "`trends_lin'"!=""{
 	if N0_placebo_`i'_XX!=0{
 			replace U_Gg_pl_`i'_minus_XX  = -U_Gg_placebo_`i'_XX
 			replace count`i'_pl_minus_XX= count`i'_pl_core_XX
-			replace U_Gg_var_pl_`i'_out_XX=U_Gg_pl_`i'_var_XX 
+			//// CHANGE BELOW - tks (add minus sign)
+			replace U_Gg_var_pl_`i'_out_XX= - U_Gg_pl_`i'_var_XX 
 			scalar N0_placebo_`i'_XX_new=N0_placebo_`i'_XX
 			
 			if "`normalized'"!=""{
@@ -4624,7 +4625,8 @@ if "`controls'" != "" {
 	}
 
 	if `=increase_XX'==0{
-	replace U_Gg`i'_var_XX=U_Gg`i'_var_XX + part2_switch0_`i'_XX 
+	//// CHANGE BELOW - tks (switching plus to minus in the sum since the final sign flip won't be until later)
+	replace U_Gg`i'_var_XX=U_Gg`i'_var_XX - part2_switch0_`i'_XX 
 	}
 }
 
@@ -4966,7 +4968,8 @@ if "`controls'"!=""{
 	}
 
 	if `=increase_XX'==0{
-	replace U_Gg_pl_`i'_var_XX=U_Gg_pl_`i'_var_XX + part2_pl_switch0_`i'_XX 
+	//// CHANGE BELOW - tks (change plus to minus since final sign flip won't be until later)
+	replace U_Gg_pl_`i'_var_XX=U_Gg_pl_`i'_var_XX - part2_pl_switch0_`i'_XX 	
 	}
 }
 
