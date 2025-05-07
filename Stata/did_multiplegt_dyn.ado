@@ -9,13 +9,19 @@
 ** Subsections may contain unnumbered subsubsections, tagged with "//".
 ** Subsubsections may be further divided into paragraphs, tagged with "*".
 ** Comments are also tagged with "*".
-** This version : April 19th, 2025
+** This version : April 29th, 2025
 
 ** This version includes Diego's changes:
 **** Fixes to variance estimation with controls() (tks)
 **** Fixes to same_switchers() and same_switchers_pl() with unbalanced panel
 **** Fixes to controls() with unbalanced panel
 **** no_updates turned into _no_updates
+
+** Felix:
+**** Delete if d_sq_int_XX==`l' condition when summing placebo variances 
+**** Adjust - when storing the switcher out variances
+**** Add cap drop group2_XX to Tom's change regarding the re-counting of groups
+**** Add different_paths_XX in the group statement "gegen rank_paths_XX=group(-count_path_XX different_paths_XX) if count_path_XX!=." when generating variable to distinguish paths for the by_path() option
 
 ********************************************************************************
 *                                 PROGRAM 1                                    *
@@ -565,6 +571,7 @@ drop var_F_g_XX
 
 //// CHANGE BELOW - tks
 //// Counting number of groups after the drop above
+cap drop group2_XX
 egen group2_XX = group(group_XX)
 sum group2_XX
 scalar G_XX=r(max)
@@ -1219,7 +1226,7 @@ forvalues k=1/`num_paths_XX'{
 	replace count_path_XX=r(N) if different_paths_XX==`k' 
 }
 
-gegen rank_paths_XX=group(-count_path_XX) if count_path_XX!=.
+gegen rank_paths_XX=group(-count_path_XX different_paths_XX) if count_path_XX!=.
 replace different_paths_XX=rank_paths_XX
 }
 
@@ -1532,7 +1539,8 @@ if "`trends_lin'"!=""{
 if N0_`i'_XX!=0{
 		replace U_Gg`i'_minus_XX = - U_Gg`i'_XX
 		replace count`i'_minus_XX= count`i'_core_XX
-		replace U_Gg_var_`i'_out_XX=U_Gg`i'_var_XX
+		//// CHANGE BELOW - tks (add minus sign)
+		replace U_Gg_var_`i'_out_XX= - U_Gg`i'_var_XX
 		scalar N0_`i'_XX_new=N0_`i'_XX
 		
 		if "`normalized'"!=""{
@@ -1558,7 +1566,8 @@ if "`trends_lin'"!=""{
 	if N0_placebo_`i'_XX!=0{
 			replace U_Gg_pl_`i'_minus_XX  = -U_Gg_placebo_`i'_XX
 			replace count`i'_pl_minus_XX= count`i'_pl_core_XX
-			replace U_Gg_var_pl_`i'_out_XX=U_Gg_pl_`i'_var_XX 
+			//// CHANGE BELOW - tks (add minus sign)
+			replace U_Gg_var_pl_`i'_out_XX= - U_Gg_pl_`i'_var_XX 
 			scalar N0_placebo_`i'_XX_new=N0_placebo_`i'_XX
 			
 			if "`normalized'"!=""{
@@ -4616,7 +4625,8 @@ if "`controls'" != "" {
 	}
 
 	if `=increase_XX'==0{
-	replace U_Gg`i'_var_XX=U_Gg`i'_var_XX + part2_switch0_`i'_XX 
+	//// CHANGE BELOW - tks (switching plus to minus in the sum since the final sign flip won't be until later)
+	replace U_Gg`i'_var_XX=U_Gg`i'_var_XX - part2_switch0_`i'_XX 
 	}
 }
 
@@ -4943,7 +4953,7 @@ gen combined_pl`=increase_XX'_temp_`l'_`j'_`i'_XX=M_pl`=increase_XX'_`l'_`j'_`i'
 replace combined_pl`=increase_XX'_temp_`l'_`i'_XX=combined_pl`=increase_XX'_temp_`l'_`i'_XX+combined_pl`=increase_XX'_temp_`l'_`j'_`i'_XX
 } 
 
-replace part2_pl_switch`=increase_XX'_`i'_XX=part2_pl_switch`=increase_XX'_`i'_XX+combined_pl`=increase_XX'_temp_`l'_`i'_XX if d_sq_int_XX==`l' 
+replace part2_pl_switch`=increase_XX'_`i'_XX=part2_pl_switch`=increase_XX'_`i'_XX+combined_pl`=increase_XX'_temp_`l'_`i'_XX
 } // MODIF FELIX
 } // end loop oveer l
 
@@ -4958,7 +4968,8 @@ if "`controls'"!=""{
 	}
 
 	if `=increase_XX'==0{
-	replace U_Gg_pl_`i'_var_XX=U_Gg_pl_`i'_var_XX + part2_pl_switch0_`i'_XX 
+	//// CHANGE BELOW - tks (change plus to minus since final sign flip won't be until later)
+	replace U_Gg_pl_`i'_var_XX=U_Gg_pl_`i'_var_XX - part2_pl_switch0_`i'_XX 	
 	}
 }
 
