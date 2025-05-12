@@ -9,7 +9,7 @@
 ** Subsections may contain unnumbered subsubsections, tagged with "//".
 ** Subsubsections may be further divided into paragraphs, tagged with "*".
 ** Comments are also tagged with "*".
-** This version : May 7th, 2025
+** This version : May 12th, 2025
 
 ** This version includes Diego's changes:
 **** Fixes to variance estimation with controls() (tks)
@@ -24,6 +24,7 @@
 **** Add different_paths_XX in the group statement "gegen rank_paths_XX=group(-count_path_XX different_paths_XX) if count_path_XX!=." when generating variable to distinguish paths for the by_path() option
 
 **** Line 3204, add if "`trends_lin'"=="" condition when adding the avg_effect estimate to the matrix used for esttab (solve delta_XX not found error) -> needed to add this condition at multiple places
+**** Add ereturn for p-value test joint nullity effects
 
 ********************************************************************************
 *                                 PROGRAM 1                                    *
@@ -3331,6 +3332,10 @@ capture ereturn scalar Effect_`i' = scalar(DID_`i'_XX)
 capture ereturn scalar N_effect_`i' = N_effect_`i'_XX
 capture ereturn scalar N_switchers_effect_`i' = N_switchers_effect_`i'_XX
 capture ereturn scalar se_effect_`i'=scalar(se_`i'_XX)
+}
+// Modif Felix 12.05.25
+if (l_XX>1&all_Ns_not_zero==l_XX&all_delta_not_zero==l_XX&"`normalized'"!="")|(l_XX>1&all_Ns_not_zero==l_XX&"`normalized'"==""){
+capture ereturn scalar p_jointeffects=scalar(p_jointeffects)
 }
 
 if "`effects_equal'" != ""{
