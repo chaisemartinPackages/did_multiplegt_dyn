@@ -9,7 +9,7 @@
 ** Subsections may contain unnumbered subsubsections, tagged with "//".
 ** Subsubsections may be further divided into paragraphs, tagged with "*".
 ** Comments are also tagged with "*".
-** This version : April 29th, 2025
+** This version : May 12th, 2025
 
 ** This version includes Diego's changes:
 **** Fixes to variance estimation with controls() (tks)
@@ -22,6 +22,9 @@
 **** Adjust - when storing the switcher out variances
 **** Add cap drop group2_XX to Tom's change regarding the re-counting of groups
 **** Add different_paths_XX in the group statement "gegen rank_paths_XX=group(-count_path_XX different_paths_XX) if count_path_XX!=." when generating variable to distinguish paths for the by_path() option
+
+**** Line 3204, add if "`trends_lin'"=="" condition when adding the avg_effect estimate to the matrix used for esttab (solve delta_XX not found error) -> needed to add this condition at multiple places
+**** Add ereturn for p-value test joint nullity effects
 
 ********************************************************************************
 *                                 PROGRAM 1                                    *
@@ -2914,6 +2917,8 @@ local max_test_eff_XX = max(`test_eff_XX')
 	}
 }
 
+local all_effects_XX_e "`all_effects_XX'" // Modif Felix (delta_XX error)
+
 // Loop the procedure over all requested effects for which potential heterogeneity should be predicted
 foreach i in `all_effects_XX'{
 	
@@ -3070,6 +3075,8 @@ local max_test_eff_XX = max(`test_eff_XX')
 	}
 }
 
+local all_effects_XX_pl "`all_effects_XX'" // Modif Felix (delta_XX error)
+
 foreach i in `all_effects_XX'{
 
 // Modif Felix: Yg,Fg−1-ℓ
@@ -3201,15 +3208,32 @@ local minus Av_tot_eff
 local rownames_alt : list rownames-minus
 
 ////// Integration with esttab
-matrix b=(didmgt_results_no_avg_XX, scalar(delta_XX))
+if "`trends_lin'"==""{ // Modif Felix (delta_XX error)
+	matrix b=(didmgt_results_no_avg_XX, scalar(delta_XX))
+}
+else if "`trends_lin'"!=""{ // Modif Felix (delta_XX error) -> Also check if I need to change the way in which the variances are retrieved from didmgt_Var_all_XX -> no because avg effect not in there!
+	matrix b=(didmgt_results_no_avg_XX)
+}	
+
 local nc = colsof(b)
 matrix V = J(`nc', `nc', 0)
 if "`bootstrap'"==""{ // Modif Felix: Adapt Matrix for bootstrap
-forv i=1/`=`nc'-1' {
-	forv j =1/`=`nc'-1' {
-		mat V[`i', `j'] = didmgt_Var_all_XX[`i', `j']
+
+if "`trends_lin'"==""{ // Modif Felix (delta_XX error)
+	forv i=1/`=`nc'-1' {
+		forv j =1/`=`nc'-1' {
+			mat V[`i', `j'] = didmgt_Var_all_XX[`i', `j']
+		}
 	}
 }
+else if "`trends_lin'"!=""{ // Modif Felix (delta_XX error)
+forv i=1/`=`nc'' {
+		forv j =1/`=`nc'' {
+			mat V[`i', `j'] = didmgt_Var_all_XX[`i', `j']
+		}
+	}
+}
+
 }
 if "`bootstrap'"!=""{ // Modif Felix: Adapt Matrix for bootstrap
 	mat V=didmgt_Var_all_XX
@@ -3218,25 +3242,45 @@ if "`bootstrap'"!=""{ // Modif Felix: Adapt Matrix for bootstrap
 // Note Felix: Drop this bootstrap distiction after we reeplaced  didmgt_Var_all_XX by bs_var_cov_XX above so we get the "correct" variance covariance matrix with and without bootstrap.
 
 // Modif Felix: Adjust for cases where SE cant be computed -> with bootstrap we already have the Avg_tot_eff in there
-if "`bootstrap'"==""{
-	if scalar(se_XX)!=. {
-		mat V[`nc', `nc'] = scalar(se_XX)^2
+if "`trends_lin'"==""{ // Modif Felix (delta_XX error)
+	if "`bootstrap'"==""{
+		if scalar(se_XX)!=. {
+			mat V[`nc', `nc'] = scalar(se_XX)^2
+		}
+		if scalar(se_XX)==. {
+			mat V[`nc', `nc'] = 0
+		}
 	}
-	if scalar(se_XX)==. {
-		mat V[`nc', `nc'] = 0
-	}
+}	
+
+
+if "`trends_lin'"==""{ // Modif Felix (delta_XX error)
+	matrix colnames b= `rownames_alt' Av_tot_eff
+	matrix rownames V = `rownames_alt' Av_tot_eff
+	matrix colnames V = `rownames_alt' Av_tot_eff
+}
+else if "`trends_lin'"!=""{ // Modif Felix (delta_XX error)
+	matrix colnames b= `rownames_alt'
+	matrix rownames V = `rownames_alt'
+	matrix colnames V = `rownames_alt'
 }
 
-matrix colnames b= `rownames_alt' Av_tot_eff
-matrix rownames V = `rownames_alt' Av_tot_eff
-matrix colnames V = `rownames_alt' Av_tot_eff
-
+// Modif Felix (delta_XX error) -> does the following section also need to be changed??? -> yes
 if "`predict_het'" != "" {
 	local het_rown ""
-	foreach v in `rownames_alt' Av_tot_eff {
+	
+	if "`trends_lin'"==""{ // Modif Felix (delta_XX error)
+		local rownames_het "`rownames_alt' Av_tot_eff"
+	}
+	else if "`trends_lin'"!=""{ // Modif Felix (delta_XX error)
+		local rownames_het "`rownames_alt'"
+	}
+	
+	foreach v in `rownames_het' {
 		local het_rown "`het_rown' `1':`v'"
 	}
-	foreach i in `all_effects_XX'{ 
+	
+	foreach i in `all_effects_XX_e'{ // Modif Felix (delta_XX error)
 		local nc = rowsof(effect_het_`i'_XX)
 		local nv = rowsof(V)
 		mat V`i' = J(`nc', `nc', 0)
@@ -3251,6 +3295,24 @@ if "`predict_het'" != "" {
 		}
 		local het_rown "`het_rown' `rnames'"
 	}	
+	
+	// split this to add both effects and placebos to the ereturn
+	foreach i in `all_effects_XX_pl'{ // Modif Felix (delta_XX error)
+		local nc = rowsof(effect_het_pl_`i'_XX)
+		local nv = rowsof(V)
+		mat V`i' = J(`nc', `nc', 0)
+		forv j = 1/`nc' {
+			mat b = (b, scalar(effect_het_pl_`i'_XX[`j', 1]))
+			mat V`i'[`j', `j'] = scalar(effect_het_pl_`i'_XX[`j', 2])^2
+		}
+		mat V = (V, J(`nv',`nc', 0)\J(`nc', `nv', 0), V`i')
+		local rnames ""
+		foreach rn in `pl_het_rownames_`i'_XX' {
+			local rnames "`rnames' Placebo_`i':`rn'"
+		}
+		local het_rown "`het_rown' `rnames'"
+	}
+	
 	mat coln b = `het_rown'
 	mat rown V = `het_rown'
 	mat coln V = `het_rown'
@@ -3270,6 +3332,10 @@ capture ereturn scalar Effect_`i' = scalar(DID_`i'_XX)
 capture ereturn scalar N_effect_`i' = N_effect_`i'_XX
 capture ereturn scalar N_switchers_effect_`i' = N_switchers_effect_`i'_XX
 capture ereturn scalar se_effect_`i'=scalar(se_`i'_XX)
+}
+// Modif Felix 12.05.25
+if (l_XX>1&all_Ns_not_zero==l_XX&all_delta_not_zero==l_XX&"`normalized'"!="")|(l_XX>1&all_Ns_not_zero==l_XX&"`normalized'"==""){
+capture ereturn scalar p_jointeffects=scalar(p_jointeffects)
 }
 
 if "`effects_equal'" != ""{
