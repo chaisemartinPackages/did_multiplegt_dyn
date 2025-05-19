@@ -16,6 +16,7 @@
 **** Fixes to same_switchers() and same_switchers_pl() with unbalanced panel
 **** Fixes to controls() with unbalanced panel
 **** no_updates turned into _no_updates
+**** Fix to cluster variances
 
 ** Felix:
 **** Delete if d_sq_int_XX==`l' condition when summing placebo variances 
@@ -1585,7 +1586,7 @@ if "`trends_lin'"!=""{
 	if sum_N0_l_XX!=0{
 	replace U_Gg_minus_XX = - U_Gg_XX
 	scalar U_Gg_den_minus_XX=U_Gg_den_XX
-	replace U_Gg_var_minus_XX = U_Gg_var_XX
+	replace U_Gg_var_minus_XX = - U_Gg_var_XX
 	}
 	}
 
@@ -2045,7 +2046,7 @@ if "`cluster'"==""{
 // Compute sigma_hat_2_l with clustering: sum U_Gg_var_l within a cluster, and then take average of square. 
 
 if "`cluster'"!=""{
-		
+	
 	capture drop clust_U_Gg_var_glob_`i'_XX
 	capture drop clust_U_Gg_var_glob_`i'_2_XX
 	
