@@ -2707,7 +2707,8 @@ if `ee_called' == 1 & l_XX>1 {
 
 
 			/* Just subsetting everything */			
-			matrix didmgt_D = (1+1/(`=`length'-1')) * didmgt_identity - J(`=`length'-1', `=`length'', 1/(`=`length'-1'))
+			//matrix didmgt_D = (1+1/(`=`length'-1')) * didmgt_identity - J(`=`length'-1', `=`length'', 1/(`=`length'-1'))
+			matrix didmgt_D = didmgt_identity - J(`=`length'-1', `=`length'', 1/(`=`length''))
 			* Demeaned effect matrix vector
 			matrix didmgt_test_effects = didmgt_D * didmgt_Effects
 			* Variance Covariance matrix of demeaned effects
