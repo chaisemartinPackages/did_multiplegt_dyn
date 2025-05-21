@@ -17,6 +17,8 @@
 **** Fixes to controls() with unbalanced panel
 **** no_updates turned into _no_updates
 **** Fix to cluster variances
+**** Fixed norm weights with unbalanced panels
+**** Fixed effect_equal()
 
 ** Felix:
 **** Delete if d_sq_int_XX==`l' condition when summing placebo variances 
@@ -2705,7 +2707,8 @@ if `ee_called' == 1 & l_XX>1 {
 
 
 			/* Just subsetting everything */			
-			matrix didmgt_D = didmgt_identity - J(`=`length'-1', `=`length'', 1/(`=`length'-1'))
+			//matrix didmgt_D = (1+1/(`=`length'-1')) * didmgt_identity - J(`=`length'-1', `=`length'', 1/(`=`length'-1'))
+			matrix didmgt_D = didmgt_identity - J(`=`length'-1', `=`length'', 1/(`=`length''))
 			* Demeaned effect matrix vector
 			matrix didmgt_test_effects = didmgt_D * didmgt_Effects
 			* Variance Covariance matrix of demeaned effects
@@ -3390,7 +3393,7 @@ if "`normalized_weights'" != "" {
 	forv i = 1/`=l_XX'{	
 		local m = "ℓ=`i'"
 		local cols `cols' `m'
-		gen N_gt_`i'_temp_XX = N_gt_XX if time_XX == F_g_XX - 1 + `i'
+		gen N_gt_`i'_temp_XX = N_gt_XX if time_XX == F_g_XX - 1 + `i' & `i' <= L_g_XX & N_gt_control_`i'_XX > 0 & N_gt_control_`i'_XX != . & diff_y_`i'_XX != .
 		gegen N_gt_`i'_XX = mean(N_gt_`i'_temp_XX), by(group_XX)
 		drop N_gt_`i'_temp_XX
 		forv k = 0/`=`i' - 1' {
