@@ -233,8 +233,8 @@ suppressWarnings({
 
   #### Generate factorized versions of Y, G, T and D
   df$outcome_XX <- df$outcome
-  df %>% setorder(time) %>%
-  .[, group_XX := .GRP, by = group]
+  setorder(df,time) 
+  df[, group_XX := .GRP, by = group]
   df[, time_XX := .GRP, by = time]
   df$treatment_XX <- df$treatment
 
