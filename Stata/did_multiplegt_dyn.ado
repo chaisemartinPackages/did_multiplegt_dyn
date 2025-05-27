@@ -2960,7 +2960,7 @@ if "`trends_lin'" != ""{
 replace prod_het_`i'_XX=S_g_het_XX*prod_het_`i'_XX
 
 * keep one observation by group to not artificially increase sample
-bys group_XX: replace prod_het_`i'_XX = . if _n != 1
+bys group_XX: replace prod_het_`i'_XX = . if switcher_tag_XX != `i' // Change by DAC to fix issue with the number of units
 
 * F_g_XX#d_sq_XX#S_g_het_XX
 gegen d_sq_group_XX=group(d_sq_XX)
@@ -3096,7 +3096,7 @@ if "`trends_lin'" != ""{
 replace prod_het_pl_`i'_XX=S_g_het_XX*prod_het_pl_`i'_XX
 
 * keep one observation by group to not artificially increase sample
-bys group_XX: replace prod_het_pl_`i'_XX = . if _n != 1
+bys group_XX: replace prod_het_pl_`i'_XX = . if switcher_tag_XX != `i' // Change by DAC to fix issue with the number of units
 
 // Run regression of interest 
 if "`trends_nonparam'" == "" {
