@@ -322,6 +322,12 @@ if scalar(aggregated_data)==0{
 	replace weight_XX=0 if tag_y_miss_XX==1
 }
 	
+//// Modif Felix 26.05.2025 -> tempvar to use the correct weights when we use by_path and the data is collapsed becausee the group variable is coarser than the panel identifier
+if "`by_path'" != ""{
+	tempvar weight_path_XX
+	generate `weight_path_XX' = weight_XX
+}	
+	
 ///// by option for heterogeneous treatment effects analysis
 
 // define local so we run the loop once if by is not specified
@@ -1283,8 +1289,8 @@ global l_placebo_graph_XX=`=-l_placebo_XX'
 
 capture graph drop graph_`k'_XX
 
-// call did_multiplegt_dyn with the corresponding options
-noisily did_multiplegt_dyn `1' `2' `3' `4' if (different_paths_XX==`k'|cont_path_alt_XX==1), effects(`=l_XX') placebo(`=l_placebo_XX') same_switchers switchers(`switchers') `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') weight(`weight') `dont_drop_larger_lower' `normalized' cluster(`cluster') `same_switchers_pl' `trends_lin' by(`by_var_path') predict_het(`predict_het') ci_level(`ci_level') design(`design') date_first_switch(`date_first_switch') continuous(`continuous') `less_conservative_se' `normalized_weights' `graph_off' `save_sample' graphoptions(xlabel(`=-l_placebo_XX'[1]`=l_XX') title(Treatment path (${path_`k'_XX}); ${num_g_path_`k'_XX} switchers, size(small)) xtitle(Relative time to last period before treatment changes (t=0), size(small)) graphregion(color(white)) plotregion(color(white)) legend(pos(6) order(`graph_options_int') rows(1) size(small)) name(graph_`k'_XX) legend(off))
+// call did_multiplegt_dyn with the corresponding options // Modif Felix 26.05.2025 -> change the weight to the tempvar
+noisily did_multiplegt_dyn `1' `2' `3' `4' if (different_paths_XX==`k'|cont_path_alt_XX==1), effects(`=l_XX') placebo(`=l_placebo_XX') same_switchers switchers(`switchers') `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') weight(`weight_path_XX') `dont_drop_larger_lower' `normalized' cluster(`cluster') `same_switchers_pl' `trends_lin' by(`by_var_path') predict_het(`predict_het') ci_level(`ci_level') design(`design') date_first_switch(`date_first_switch') continuous(`continuous') `less_conservative_se' `normalized_weights' `graph_off' `save_sample' graphoptions(xlabel(`=-l_placebo_XX'[1]`=l_XX') title(Treatment path (${path_`k'_XX}); ${num_g_path_`k'_XX} switchers, size(small)) xtitle(Relative time to last period before treatment changes (t=0), size(small)) graphregion(color(white)) plotregion(color(white)) legend(pos(6) order(`graph_options_int') rows(1) size(small)) name(graph_`k'_XX) legend(off))
 
 // Save global with all the graph names to do the combine 
 global graph_by_path "$graph_by_path graph_`k'_XX"
@@ -2960,7 +2966,7 @@ if "`trends_lin'" != ""{
 replace prod_het_`i'_XX=S_g_het_XX*prod_het_`i'_XX
 
 * keep one observation by group to not artificially increase sample
-bys group_XX: replace prod_het_`i'_XX = . if switcher_tag_XX != `i' // Change by DAC to fix issue with the number of units
+bys group_XX: replace prod_het_`i'_XX = . if _n != 1
 
 * F_g_XX#d_sq_XX#S_g_het_XX
 gegen d_sq_group_XX=group(d_sq_XX)
@@ -3096,7 +3102,7 @@ if "`trends_lin'" != ""{
 replace prod_het_pl_`i'_XX=S_g_het_XX*prod_het_pl_`i'_XX
 
 * keep one observation by group to not artificially increase sample
-bys group_XX: replace prod_het_pl_`i'_XX = . if switcher_tag_XX != `i' // Change by DAC to fix issue with the number of units
+bys group_XX: replace prod_het_pl_`i'_XX = . if _n != 1
 
 // Run regression of interest 
 if "`trends_nonparam'" == "" {
