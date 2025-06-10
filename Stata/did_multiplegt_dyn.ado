@@ -29,6 +29,9 @@
 **** Line 3204, add if "`trends_lin'"=="" condition when adding the avg_effect estimate to the matrix used for esttab (solve delta_XX not found error) -> needed to add this condition at multiple places
 **** Add ereturn for p-value test joint nullity effects
 
+*** DAC:
+**** Added HC2 BM DOF SES to predict_het
+
 ********************************************************************************
 *                                 PROGRAM 1                                    *
 ********************************************************************************
@@ -37,7 +40,7 @@ capture program drop did_multiplegt_dyn
 
 program did_multiplegt_dyn, eclass
 	version 12.0
-	syntax varlist(min=4 max=4 numeric) [if] [in] [, effects(integer 1) placebo(integer 0) switchers(string) only_never_switchers controls(varlist numeric) trends_nonparam(varlist numeric) weight(varlist numeric max=1) dont_drop_larger_lower NORMALIZED cluster(varlist numeric max=1) graphoptions(string) save_results(string) graph_off same_switchers same_switchers_pl effects_equal(string)  drop_if_d_miss_before_first_switch trends_lin ci_level(integer 95) by(varlist numeric max=1) predict_het(string) design(string) date_first_switch(string)  NORMALIZED_weights CONTinuous(integer 0) save_sample less_conservative_se by_path(string) bootstrap(string) _no_updates]
+	syntax varlist(min=4 max=4 numeric) [if] [in] [, effects(integer 1) placebo(integer 0) switchers(string) only_never_switchers controls(varlist numeric) trends_nonparam(varlist numeric) weight(varlist numeric max=1) dont_drop_larger_lower NORMALIZED cluster(varlist numeric max=1) graphoptions(string) save_results(string) graph_off same_switchers same_switchers_pl effects_equal(string)  drop_if_d_miss_before_first_switch trends_lin ci_level(integer 95) by(varlist numeric max=1) predict_het(string) predict_het_hc2bm design(string) date_first_switch(string)  NORMALIZED_weights CONTinuous(integer 0) save_sample less_conservative_se by_path(string) bootstrap(string) _no_updates]
 	
 ////////// 0. Auto-updates
 if "`_no_updates'" == "" {
@@ -470,7 +473,18 @@ if "`pred_het'" !=""{
 	display as error "is(are) time-varying, the command will therefore ignore them."
 	di as input _continue ""
 	}
-} 
+}
+
+*Limit use of predict_het_hc2bm to cases where predict_het is specified
+if "`predict_het'"=="" & "`predict_het_hc2bm'" != "" {
+	di as error ""
+	di as error "Option predict_het_hc2bm only available when predict_het is specified."
+	
+	di as input _continue ""
+	
+	exit
+}
+
 
 ///// Creating Y G T D variables
 
@@ -2971,13 +2985,29 @@ bys group_XX: replace prod_het_`i'_XX = . if switcher_tag_XX != `i' // Change by
 * F_g_XX#d_sq_XX#S_g_het_XX
 gegen d_sq_group_XX=group(d_sq_XX)
 
+//Define clusters for the SE in the predict_het in case the predict_het_hc2bm option is specified
+if "`cluster'" != ""{
+	local cluster_het `cluster'
+}
+if "`cluster'" == ""{
+	local cluster_het group_XX
+}
+//Define SE type according to if predict_het_hc2bm was specified or not
+if "`predict_het_hc2bm'" == ""{
+	local ses = "hc2"
+}
+if "`predict_het_hc2bm'" != ""{
+	local ses = "hc2 `cluster_het', dfadjust"
+} 
+
+
 // Run regression of interest 
 if "`trends_nonparam'" == "" {
-reg prod_het_`i'_XX `predict_het_good' F_g_XX#d_sq_group_XX#S_g_XX [aw=N_gt_XX] if F_g_XX-1+`i'<=T_g_XX, level(`ci_level') vce(robust)
+reg prod_het_`i'_XX `predict_het_good' F_g_XX#d_sq_group_XX#S_g_XX [aw=N_gt_XX] if F_g_XX-1+`i'<=T_g_XX, level(`ci_level') vce(`ses')
 }
 if "`trends_nonparam'" != "" {
 gegen trends_nonparam_temp_XX=group(`trends_nonparam')	
-reg prod_het_`i'_XX `predict_het_good' F_g_XX#d_sq_group_XX#S_g_XX#trends_nonparam_temp_XX [aw=N_gt_XX] if F_g_XX-1+`i'<=T_g_XX, level(`ci_level') vce(robust)
+reg prod_het_`i'_XX `predict_het_good' F_g_XX#d_sq_group_XX#S_g_XX#trends_nonparam_temp_XX [aw=N_gt_XX] if F_g_XX-1+`i'<=T_g_XX, level(`ci_level') vce(`ses')
 capture drop trends_nonparam_temp_XX
 }
 
@@ -3106,11 +3136,11 @@ bys group_XX: replace prod_het_pl_`i'_XX = . if switcher_tag_XX != `i' // Change
 
 // Run regression of interest 
 if "`trends_nonparam'" == "" {
-reg prod_het_pl_`i'_XX `predict_het_good' F_g_XX#d_sq_group_XX#S_g_XX [aw=N_gt_XX] if F_g_XX-1+`i'<=T_g_XX, level(`ci_level') vce(robust) // leave the F_g_XX-1+`i'<=T_g_XX condition as it is to ensure that we only use treated groups or is this already taken into account by the S_g_XX?
+reg prod_het_pl_`i'_XX `predict_het_good' F_g_XX#d_sq_group_XX#S_g_XX [aw=N_gt_XX] if F_g_XX-1+`i'<=T_g_XX, level(`ci_level') vce(`ses') // leave the F_g_XX-1+`i'<=T_g_XX condition as it is to ensure that we only use treated groups or is this already taken into account by the S_g_XX?
 }
 if "`trends_nonparam'" != "" {
 gegen trends_nonparam_temp_XX=group(`trends_nonparam')	
-reg prod_het_pl_`i'_XX `predict_het_good' F_g_XX#d_sq_group_XX#S_g_XX#trends_nonparam_temp_XX [aw=N_gt_XX] if F_g_XX-1+`i'<=T_g_XX, level(`ci_level') vce(robust)
+reg prod_het_pl_`i'_XX `predict_het_good' F_g_XX#d_sq_group_XX#S_g_XX#trends_nonparam_temp_XX [aw=N_gt_XX] if F_g_XX-1+`i'<=T_g_XX, level(`ci_level') vce(`ses')
 capture drop trends_nonparam_temp_XX
 }
 
