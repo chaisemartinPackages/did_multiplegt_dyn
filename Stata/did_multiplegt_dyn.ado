@@ -3517,7 +3517,7 @@ if "`save_sample'" != "" {
 		replace _did_sample = -1 if _did_sample == 0
 		replace _did_sample = 0 if _did_sample == .
 		cap label drop switch_lab_XX 
-		label define switch_lab_XX 0 "Control" 1 "Switcher-in" -1 "Switcher-out"
+		label define switch_lab_XX 0 "Never-switcher" 1 "Switcher-in" -1 "Switcher-out"
 		label values _did_sample switch_lab_XX
 		
 		// Save dataset to be in the memory at the end
