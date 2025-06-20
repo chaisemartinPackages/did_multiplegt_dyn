@@ -31,7 +31,15 @@ did_multiplegt_dyn_normweights <- function(
   rown <- c()
   for (i in 1:l_XX) {
     coln <- c(coln, paste0("\U2113","=",i))
-    df[[paste0("N_gt_",i,"_temp_XX")]] <- ifelse(df$time_XX == df$F_g_XX - 1 + i, df$N_gt_XX, NA)
+    
+    df[[paste0("N_gt_",i,"_temp_XX")]] <- ifelse(
+      df$time_XX == df$F_g_XX - 1 + i 
+      & i <= df$L_g_XX
+      & !is.na(df[[paste0("N_gt_control_",i,"_XX")]])
+      & df[[paste0("N_gt_control_",i,"_XX")]] >0
+      & !is.na(df[[paste0("diff_y_",i,"_XX")]]), 
+      df$N_gt_XX, NA)
+
     df[, paste0("N_gt_",i,"_XX") := mean(get(paste0("N_gt_",i,"_temp_XX")), na.rm = TRUE), by = group_XX]
     df[[paste0("N_gt_",i,"_temp_XX")]] <- NULL
     for (k in 0:(i-1)) {
