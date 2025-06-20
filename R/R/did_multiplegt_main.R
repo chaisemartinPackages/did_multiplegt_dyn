@@ -187,7 +187,7 @@ suppressWarnings({
       het_effects <- unlist(predict_het[2])
       ## Checks if only time-invariant variables are specified in predict_het
       for (v in pred_het) {
-        df[, sd_het := sd(get(v), na.rm = TRUE), by = group]
+        df[, sd_het := fifelse(is.na(sd(get(v), na.rm = TRUE)),0,sd(get(v), na.rm = TRUE)), by = group]
         if (mean(df$sd_het) == 0) {
           predict_het_good <- c(predict_het_good, v)
         } else {
