@@ -352,8 +352,12 @@ suppressWarnings({
   #### If that date is before the first period when g's treatment changes, we do not know when g's treatment has changed for the first time. Then, a conservative option is to drop all of g's outcomes starting at FMD_g.
 
   if (drop_if_d_miss_before_first_switch == TRUE) {
-    df$outcome_XX <- ifelse(
-      df$min_time_d_miss_aft_ynm_XX < df$F_g_XX & df$time_XX >= df$min_time_d_miss_aft_ynm_XX, NA, df$outcome_XX)
+    df$outcome_XX <- 
+    ifelse(
+      ifelse(!is.na(df$min_time_d_miss_aft_ynm_XX),
+        df$min_time_d_miss_aft_ynm_XX < df$F_g_XX & df$time_XX >= df$min_time_d_miss_aft_ynm_XX, FALSE), 
+      NA, df$outcome_XX)
+      ## RA 23/06/25 : do not filter if min_time_d_miss_aft_ynm_XX is na
   }
 
   ######## Dealing with missing treatments: most liberal option
