@@ -221,7 +221,7 @@ did_multiplegt_dyn_core <- function(
 
       for(q in 1:effects){
 
-        setorder(df,c("group_XX","time_XX"))
+        setorder(df,"group_XX","time_XX")
         df[, diff_y_last_XX := outcome_XX - shift(outcome_XX, n = q, type = "lag"), by = group_XX]
         df[, never_change_d_last_XX := ifelse(!is.na(diff_y_last_XX) & F_g_XX > time_XX, 1, NA_real_)]
 
@@ -283,7 +283,7 @@ did_multiplegt_dyn_core <- function(
 
         ## tag switchers who have no missings from F_g_XX-1-placebo to F_g_XX-1+effects
         df[[paste0("still_switcher_",i,"_XX")]] <- 
-            df$F_g_XX - 1 + effects <= df $ T_g_XX & N_g_control_check_XX == effects
+            df$F_g_XX - 1 + effects <= df$T_g_XX & df$N_g_control_check_XX == effects
 
         df[[paste0("distance_to_switch_", i, "_XX")]] <- 
         ifelse(!is.na(df[[paste0("diff_y_", i, "_XX")]]),
@@ -305,8 +305,7 @@ did_multiplegt_dyn_core <- function(
         # df[, fillin_g_XX := sum(dum_fillin_temp_XX, na.rm = TRUE), by = group_XX]
 
         ## tag switchers who have no missings from F_g_XX-1 to F_g_XX-1+effects
-        df[[paste0("still_switcher_",i,"_XX")]] <- 
-            df$F_g_XX - 1 + effects <= df$T_g_XX & df$fillin_g_XX > 0
+        df[[paste0("still_switcher_",i,"_XX")]] <- df$F_g_XX - 1 + effects <= df$T_g_XX & df$N_g_control_check_XX == effects
         df[[paste0("distance_to_switch_", i, "_XX")]] <- 
         ifelse(!is.na(df[[paste0("diff_y_", i, "_XX")]]),
         df[[paste0("still_switcher_", i, "_XX")]] == 1 &
