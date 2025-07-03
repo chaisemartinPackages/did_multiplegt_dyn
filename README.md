@@ -1,3 +1,5 @@
+🔊🔊 **Check out [this](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5337463) new document with examples on how to implement the did_multiplegt_dyn on various, complex designs!** We provide detailed guidelines on how to address designs with (1) a binary treatment that can turn on an off, (2) a continuous absorbing treatment, (3) a discrete multivalued treatment that can increase or decrease multiple times over time, and (4) two, binary and absorbing treatments, where the second treatment always happens after the first. 🔊🔊
+
 ⚠️⚠️ **We have been making changes and correcting bugs to the did_multiplegt_dyn Stata command. We are in the process of incorporating those same changes into the R command, and are momentarily taking down that command from GitHub while we do so. We will put it back on GitHub as soon as those changes have been incorporated. Thank you for your patience.** ⚠️⚠️
 
 # did_multiplegt_dyn
