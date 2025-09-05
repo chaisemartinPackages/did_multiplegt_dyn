@@ -48,7 +48,7 @@ affect the current outcome.
 {cmd:graph_off}
 {cmd:save_results(}{it:path}{cmd:)}
 {cmd:save_sample}
-{cmd:less_conservative_se}
+{cmd:more_granular_demeaning}
 {cmd:bootstrap(}{it:#,#}{cmd:)}
 {cmd:dont_drop_larger_lower}
 {cmd:drop_if_d_miss_before_first_switch}
@@ -471,8 +471,9 @@ the number of the event-study effect for which the cell is used in the estimatio
 {p_end}
 
 {p 4 8}
-{cmd:less_conservative_se}: when groups' treatment can change multiple times, the standard errors reported
-by default by the command may be conservative. Then, less conservative standard errors can be obtained by specifying this option. See 
+{cmd:more_granular_demeaning}: when groups' treatment can change multiple times, the standard errors reported
+by default by the command may be conservative. Then, standard errors that may be less conservative when the 
+sample size is large enough can be obtained by specifying this option. See 
 de Chaisemartin et al. (2024) for further details.
 {p_end}
 
@@ -824,8 +825,7 @@ de Chaisemartin, C, D'Haultfoeuille, X (2023).
 {p_end}
 {p 4 8}
 de Chaisemartin, C, Ciccia, D, D'Haultfoeuille, X, Knau, F, Malézieux, M, Sow, D (2024).
-{browse "https://drive.google.com/file/d/1NGgScujLCCS4RrwdN-PC1SnVigfBa32h/view?usp=drive_link":Event-Study 
-Estimators and Variance Estimators Computed by the did_multiplegt_dyn Command}.
+{browse "https://drive.google.com/file/d/1NGgScujLCCS4RrwdN-PC1SnVigfBa32h/view?usp=drive_link": Event-Study Estimators and Variance Estimators Computed by the did_multiplegt_dyn Command}.
 {p_end}
 
 {title:Auxiliary packages}
