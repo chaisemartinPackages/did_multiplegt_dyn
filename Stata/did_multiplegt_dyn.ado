@@ -4980,7 +4980,10 @@ gen never_change_d_pl_`i'_wXX=never_change_d_pl_`i'_XX*N_gt_XX
 bys time_XX d_sq_XX `trends_nonparam': gegen N_gt_control_placebo_`i'_XX=total(never_change_d_pl_`i'_wXX) 
 
 ///// Creating binary variable indicating whether g is \ell periods away from switch & (diff_y_pl_`i'_XX!=.) is well defined -> based on the already defined distance_to_switch_`i'_XX variable 
-gen dist_to_switch_pl_`i'_XX=distance_to_switch_`i'_XX*(diff_y_pl_`i'_XX!=.) 
+*Modif Clément 26/09/2025:
+*gen dist_to_switch_pl_`i'_XX=distance_to_switch_`i'_XX*(diff_y_pl_`i'_XX!=.)
+gen dist_to_switch_pl_`i'_XX=distance_to_switch_`i'_XX*(diff_y_pl_`i'_XX!=.)*(N_gt_control_placebo_`i'_XX>0&N_gt_control_placebo_`i'_XX!=.)
+ 
 if "`same_switchers_pl'"!=""{
 	replace dist_to_switch_pl_`i'_XX=dist_to_switch_pl_`i'_XX*fillin_g_pl_XX
 }
