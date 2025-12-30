@@ -462,12 +462,13 @@ at the location specified in {it:path}.
 
 {p 4 8}
 {cmd:save_sample}: if this option is specified, the command generates a
-variable {it:_did_sample}, tagging all (g,t) cells used in the estimation. 
-This variable can take three non-missing values: ‘Never-switcher’ for (g) cells whose treatment status never change. 
-‘Switcher-in’ for (g) cells used as switchers-in, and ‘Switcher-out’ for cells used as 
-switchers out. {it:_did_sample} is missing for (g,t) cells not used in the estimation. For (g) 
-cells used as switchers-in or switchers-out, the variable {it:_effect} also indicates 
-the number of the event-study effect for which the cell is used in the estimation.
+group-level variable {it:_did_sample}, tagging all groups used in the estimation.
+This variable can take three non-missing values: ‘Never-switcher’ for groups whose treatment status never change.
+‘Switcher-in’ for groups used as switchers-in, and ‘Switcher-out’ for groups used as
+switchers out. {it:_did_sample} is missing for groups not used in the estimation. For
+switchers-in or switchers-out, the command generates a (g,t) level variable 
+{it:_effect}, that indicates the number of the event-study effect 
+for which the cell is used in the estimation.
 {p_end}
 
 {p 4 8}
@@ -526,6 +527,20 @@ program, which are performed
 
 {marker Example}{...}
 {title:Example: estimating the effect of banking deregulations on loans volume, using the data of Favara and Imbs (2015)}
+
+{p 4 4}
+To preserve space we only give one example in this
+help file. See 
+{browse "https://papers.ssrn.com/sol3/papers.cfm?abstract_id=5337463": Using did multiplegt dyn in Stata to Estimate Event-Study Effects in Complex Designs: Four Examples Based on Real Datasets}
+for four other examples. The first example has a binary treatment that can
+turn on an off. The second example has a continuous 
+absorbing treatment. The third example has
+a discrete multivalued treatment that can 
+increase or decrease multiple times over time. The fourth
+example has two, binary and absorbing treatments, 
+where the second treatment always happens after
+the first. 
+{p_end}
 
 {p 4 4}
 The data for this example can be downloaded by running:
@@ -785,8 +800,8 @@ Then, you simply run the command with this new outcome.
 {p_end}
 
 {p 4 4}
-{it: Is it possible to compute switchers' average counterfactual outcome at periods F_g, F_g+1, ..., 
-F_g-1+ℓ, so as to then express the event-study effects in percentage points of the counterfactual outcome level?}
+{it:Is it possible to compute switchers' average counterfactual outcome at periods F_g, F_g+1 etc,} 
+{it:so as to then express event-study effects in percentage points of the counterfactual outcome level?}
 {p_end}
 
 {p 4 4}

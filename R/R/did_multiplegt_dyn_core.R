@@ -216,8 +216,52 @@ did_multiplegt_dyn_core <- function(
     ## If the same_switchers option is specified:
     if (same_switchers == TRUE) {
       df <- df[order(df$group_XX, df$time_XX), ]
+
+      df[, N_g_control_check_XX := 0]
+
+      for(q in 1:effects){
+
+        setorder(df,"group_XX","time_XX")
+        df[, diff_y_last_XX := outcome_XX - shift(outcome_XX, n = q, type = "lag"), by = group_XX]
+        df[, never_change_d_last_XX := ifelse(!is.na(diff_y_last_XX) & F_g_XX > time_XX, 1, NA_real_)]
+
+        if (isTRUE(only_never_switchers)) {
+          df[F_g_XX > time_XX & F_g_XX < T_max_XX + 1 & !is.na(diff_y_last_XX), never_change_d_last_XX := 0]
+          }
+
+        df[, N_gt_control_last_XX := sum(never_change_d_last_XX * N_gt_XX, na.rm = TRUE), by = c("time_XX", "d_sq_XX", trends_nonparam)]
+
+        df[, N_g_control_last_m_XX := mean(ifelse(time_XX == F_g_XX - 1 + q, N_gt_control_last_XX, NA_real_), na.rm = TRUE), by = group_XX]
+
+        df[, diff_y_relev_XX := mean(ifelse(time_XX == F_g_XX - 1 + q, diff_y_last_XX, NA_real_), na.rm = TRUE), by = group_XX]
+
+        df[, N_g_control_check_XX := N_g_control_check_XX + as.numeric(N_g_control_last_m_XX > 0 & !is.na(diff_y_relev_XX))]
+      }
+
       ## If the same_switchers_pl option is specified:
       if (same_switchers_pl == TRUE) {
+
+        df[, N_g_control_check_pl_XX := 0]
+
+        for (q in 1:placebo) {
+          
+          df[, diff_y_last_XX := outcome_XX - shift(outcome_XX, n = q, type = "lead"), by = group_XX]
+          
+          df[, never_change_d_last_XX := ifelse(!is.na(diff_y_last_XX) & F_g_XX > time_XX, 1, NA_real_)]
+
+          if (isTRUE(only_never_switchers)) {
+            df[F_g_XX > time_XX & F_g_XX < T_max_XX + 1 & !is.na(diff_y_last_XX), never_change_d_last_XX := 0]
+          }
+    
+          df[, N_gt_control_last_XX := sum(never_change_d_last_XX * N_gt_XX, na.rm = TRUE), by = c("time_XX", "d_sq_XX", trends_nonparam)]
+                    
+          df[, N_g_control_last_m_XX := mean(ifelse(time_XX == F_g_XX - 1 - q, N_gt_control_last_XX, NA_real_), na.rm = TRUE), by = group_XX]
+                    
+          df[, diff_y_relev_XX := mean(ifelse(time_XX == F_g_XX - 1 - q, diff_y_last_XX, NA_real_), na.rm = TRUE), by = group_XX]
+          
+          df[, N_g_control_check_pl_XX := N_g_control_check_pl_XX + as.numeric(N_g_control_last_m_XX > 0 & !is.na(diff_y_relev_XX))]
+          }
+
         ## Generate a variable tagging the switchers that should be dropped
         ## Is the case if at least one of the placebos or effects we try to estimate is missing:
         df$relevant_y_missing_XX <- (is.na(df$outcome_XX) & df$time_XX >= df$F_g_XX - 1 - placebo & df$time_XX <= df$F_g_XX - 1 + effects)
@@ -225,19 +269,22 @@ did_multiplegt_dyn_core <- function(
         if (!is.null(controls)) {
           df$relevant_y_missing_XX <- ifelse(df$fd_X_all_non_missing_XX == 0 & df$time_XX >= df$F_g_XX - 1 - placebo & df$time_XX <= df$F_g_XX - 1 + effects, 1, df$relevant_y_missing_XX)
         }
-        df[, cum_fillin_XX := sum(relevant_y_missing_XX, na.rm = TRUE), by = group_XX]
-        df$dum_fillin_temp_XX <- df$cum_fillin_XX == 0 & df$time_XX == df$F_g_XX - 1 + effects
-        df[, fillin_g_XX := sum(dum_fillin_temp_XX, na.rm = TRUE), by = group_XX]
-        #v1.0.1
-        if (!is.null(placebo)) {
-          df$dum_fillin_temp_pl_XX <- 
-              df$cum_fillin_XX == 0 & df$time_XX == df$F_g_XX - 1 - placebo
-          df[, fillin_g_pl_XX := sum(dum_fillin_temp_pl_XX, na.rm = TRUE), by = group_XX]
-        }
+        
+        # df[, cum_fillin_XX := sum(relevant_y_missing_XX, na.rm = TRUE), by = group_XX]
+        # df$dum_fillin_temp_XX <- df$cum_fillin_XX == 0 & df$time_XX == df$F_g_XX - 1 + effects
+        # df[, fillin_g_XX := sum(dum_fillin_temp_XX, na.rm = TRUE), by = group_XX]
+        # #v1.0.1
+        # if (!is.null(placebo)) {
+        #   df$dum_fillin_temp_pl_XX <- 
+        #       df$cum_fillin_XX == 0 & df$time_XX == df$F_g_XX - 1 - placebo
+        #   df[, fillin_g_pl_XX := sum(dum_fillin_temp_pl_XX, na.rm = TRUE), by = group_XX]
+        # }
+        df[, fillin_g_pl_XX := N_g_control_check_pl_XX == placebo]
 
         ## tag switchers who have no missings from F_g_XX-1-placebo to F_g_XX-1+effects
         df[[paste0("still_switcher_",i,"_XX")]] <- 
-            df$F_g_XX - 1 + effects <= df$T_g_XX & df$fillin_g_XX > 0
+            df$F_g_XX - 1 + effects <= df$T_g_XX & df$N_g_control_check_XX == effects
+
         df[[paste0("distance_to_switch_", i, "_XX")]] <- 
         ifelse(!is.na(df[[paste0("diff_y_", i, "_XX")]]),
         df[[paste0("still_switcher_", i, "_XX")]] == 1 &
@@ -252,12 +299,13 @@ did_multiplegt_dyn_core <- function(
         if (!is.null(controls)) {
           df$relevant_y_missing_XX <- ifelse(df$fd_X_all_non_missing_XX == 0 & df$time_XX >= df$F_g_XX & df$time_XX <= df$F_g_XX - 1 + effects, 1, df$relevant_y_missing_XX)
         }
-        df[, cum_fillin_XX := sum(relevant_y_missing_XX, na.rm = TRUE), by = group_XX]
-        df$dum_fillin_temp_XX <- df$cum_fillin_XX == 0 & df$time_XX == df$F_g_XX - 1 + effects
-        df[, fillin_g_XX := sum(dum_fillin_temp_XX, na.rm = TRUE), by = group_XX]
+
+        # df[, cum_fillin_XX := sum(relevant_y_missing_XX, na.rm = TRUE), by = group_XX]
+        # df$dum_fillin_temp_XX <- df$cum_fillin_XX == 0 & df$time_XX == df$F_g_XX - 1 + effects
+        # df[, fillin_g_XX := sum(dum_fillin_temp_XX, na.rm = TRUE), by = group_XX]
+
         ## tag switchers who have no missings from F_g_XX-1 to F_g_XX-1+effects
-        df[[paste0("still_switcher_",i,"_XX")]] <- 
-            df$F_g_XX - 1 + effects <= df$T_g_XX & df$fillin_g_XX > 0
+        df[[paste0("still_switcher_",i,"_XX")]] <- df$F_g_XX - 1 + effects <= df$T_g_XX & df$N_g_control_check_XX == effects
         df[[paste0("distance_to_switch_", i, "_XX")]] <- 
         ifelse(!is.na(df[[paste0("diff_y_", i, "_XX")]]),
         df[[paste0("still_switcher_", i, "_XX")]] == 1 &
@@ -317,9 +365,9 @@ did_multiplegt_dyn_core <- function(
         ## index l corresponds to d in the paper
         for (l in levels_d_sq_XX) { 
 
-          ## intermediate variable to count the number of groups within each not yet switched cohort          
-          df$dummy_XX <- NULL
-          df$dummy_XX <- as.numeric(df$F_g_XX > df$time_XX & df$d_sq_int_XX == l)
+          # ## intermediate variable to count the number of groups within each not yet switched cohort          
+          # df$dummy_XX <- NULL
+          # df$dummy_XX <- as.numeric(df$F_g_XX > df$time_XX & df$d_sq_int_XX == l)
 
           ## Computing coordinates of vectors m^+_{g,d,\ell} and m^-_{g,d,\ell}
           # small m
@@ -337,6 +385,7 @@ did_multiplegt_dyn_core <- function(
               sum(df[[paste0("m",increase_XX,"_",l,"_", count_controls,"_",i,"_XX")]], na.rm = TRUE) / G_XX          
 
           ## number of groups within each not yet switched cohort
+          df[, dummy_XX := ifelse(F_g_XX > time_XX & d_sq_int_XX == l & !is.na(diff_y_XX) ,1,0)]
           df[, paste0("E_hat_denom_", count_controls,"_", l, "_XX") := sum(dummy_XX[d_sq_int_XX == l], na.rm = TRUE), by = c("time_XX", "d_sq_int_XX")]
           df[[paste0("E_hat_denom_", count_controls,"_", l, "_XX")]] <- ifelse(
             df$d_sq_int_XX == l, df[[paste0("E_hat_denom_", count_controls,"_", l, "_XX")]], NA)
@@ -349,8 +398,8 @@ did_multiplegt_dyn_core <- function(
           ## of U^{+,var,X}_{g,\ell} and U^{-,var,X}_{g,\ell}, defined in the companion paper.          
           df[[paste0("N_c_",l,"_temp_XX")]] <- df[[paste0("N_c_",l,"_XX")]] <- df[[paste0("in_sum_temp_",count_controls,"_",l,"_XX")]]
 
-          df[[paste0("N_c_",l,"_temp_XX")]] <- df$d_sq_int_XX == l & df$time_XX >= 2 &
-              df$time_XX <= df$T_d_XX & df$time_XX < df$F_g_XX 
+          df[[paste0("N_c_",l,"_temp_XX")]] <- df$N_gt_XX* (df$d_sq_int_XX == l & df$time_XX >= 2 &
+              df$time_XX <= df$T_d_XX & df$time_XX < df$F_g_XX & !is.na(df$diff_y_XX))
           df[[paste0("N_c_",l,"_XX")]] <- sum(df[[paste0("N_c_",l,"_temp_XX")]], na.rm = TRUE)
 
           df[[paste0("in_sum_temp_",count_controls,"_",l,"_XX")]] <- 
@@ -603,21 +652,24 @@ did_multiplegt_dyn_core <- function(
           df[[paste0("combined",increase_XX,"_temp_",l,"_",i,"_XX")]] <-  df[[paste0("combined",increase_XX,"_temp_",l,"_",i,"_XX")]] + df[[paste0("M",increase_XX,"_",l,"_",j,"_",i,"_XX")]] * df[[paste0("in_brackets_",l,"_",j,"_XX")]]
           }
           #### Final sum over the status quo treatment (outer sum over d in the formula)
-          df[[paste0("part2_switch",increase_XX,"_",i,"_XX")]] <- as.numeric(df[[paste0("part2_switch",increase_XX,"_",i,"_XX")]] + df[[paste0("combined",increase_XX,"_temp_",l,"_",i,"_XX")]] * (df$d_sq_int_XX == l))
-        }
-
-        #### Making the adjustement to U^(+,var)_{G,g,l} when controls are included
-        if (increase_XX == 1) {
-          df[[paste0("U_Gg",i,"_temp_var_XX")]] <- df[[paste0("U_Gg",i,"_temp_var_XX")]] - df[[paste0("part2_switch1_",i,"_XX")]]
-        } else {
-          df[[paste0("U_Gg",i,"_temp_var_XX")]] <- df[[paste0("U_Gg",i,"_temp_var_XX")]] + df[[paste0("part2_switch0_",i,"_XX")]]
+          df[[paste0("part2_switch",increase_XX,"_",i,"_XX")]] <- as.numeric(df[[paste0("part2_switch",increase_XX,"_",i,"_XX")]] + df[[paste0("combined",increase_XX,"_temp_",l,"_",i,"_XX")]] )
         }
       }
 
-      df[[paste0("U_Gg",i,"_temp_var_XX")]] <- as.numeric(df[[paste0("U_Gg",i,"_temp_var_XX")]])
-
       # Summing the U_{G,g,l} over time periods for each group
+      df[[paste0("U_Gg",i,"_temp_var_XX")]] <- as.numeric(df[[paste0("U_Gg",i,"_temp_var_XX")]])
       df[, paste0("U_Gg",i,"_var_XX") := sum(get(paste0("U_Gg", i,"_temp_var_XX")), na.rm = TRUE), by = group_XX]
+
+      if (!is.null(controls)) {
+
+        #### Making the adjustement to U^(+,var)_{G,g,l} when controls are included
+        if (increase_XX == 1) {
+          df[[paste0("U_Gg",i,"_var_XX")]] <- df[[paste0("U_Gg",i,"_var_XX")]] - df[[paste0("part2_switch1_",i,"_XX")]]
+        } else {
+          df[[paste0("U_Gg",i,"_var_XX")]] <- df[[paste0("U_Gg",i,"_var_XX")]] - df[[paste0("part2_switch0_",i,"_XX")]]
+        }
+      }
+
     }
 
     ###### 4. Computing adjustements for the normalized and trends_lin options 
@@ -925,21 +977,22 @@ did_multiplegt_dyn_core <- function(
                 df[[paste0("in_brackets_pl_",l,"_",j,"_XX")]] <- df[[paste0("in_brackets_pl_",l,"_",j,"_XX")]] - get(paste0("coefs_sq_",l,"_XX"))[j,1]
                 df[[paste0("combined_pl",increase_XX,"_temp_",l,"_",i,"_XX")]] <-  df[[paste0("combined_pl",increase_XX,"_temp_",l,"_",i,"_XX")]] + df[[paste0("M_pl",increase_XX,"_",l,"_",j,"_",i,"_XX")]] * df[[paste0("in_brackets_pl_",l,"_",j,"_XX")]]
               }
-              df[[paste0("part2_pl_switch",increase_XX,"_",i,"_XX")]] <- as.numeric(df[[paste0("part2_pl_switch",increase_XX,"_",i,"_XX")]] + df[[paste0("combined_pl",increase_XX,"_temp_",l,"_",i,"_XX")]] * (df$d_sq_int_XX == l))
+              df[[paste0("part2_pl_switch",increase_XX,"_",i,"_XX")]] <- as.numeric(df[[paste0("part2_pl_switch",increase_XX,"_",i,"_XX")]]) + df[[paste0("combined_pl",increase_XX,"_temp_",l,"_",i,"_XX")]] 
             }
+          }
+
+          df[, paste0("U_Gg_pl_",i,"_var_XX"):= sum(get(paste0("U_Gg_pl_", i,"_temp_var_XX")), na.rm = TRUE), by = group_XX]
+
+          if(!is.null(controls)){
             if (increase_XX == 1) {
-              df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]] <- df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]] - 
+              df[[paste0("U_Gg_pl_",i,"_var_XX")]] <- df[[paste0("U_Gg_pl_",i,"_var_XX")]] - 
                   df[[paste0("part2_pl_switch1_",i,"_XX")]]
             } else {
-              df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]] <- df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]] + 
+              df[[paste0("U_Gg_pl_",i,"_var_XX")]] <- df[[paste0("U_Gg_pl_",i,"_var_XX")]] - 
                   df[[paste0("part2_pl_switch0_",i,"_XX")]]
             }
           }
 
-          df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]] <- 
-              as.numeric(df[[paste0("U_Gg_pl_",i,"_temp_var_XX")]])
-
-          df[, paste0("U_Gg_pl_",i,"_var_XX"):= sum(get(paste0("U_Gg_pl_", i,"_temp_var_XX")), na.rm = TRUE), by = group_XX]
         }
 
         ###### 7. Computing adjustements for the normalized and trends_lin options for placebos (similar to part 4, not commented) 

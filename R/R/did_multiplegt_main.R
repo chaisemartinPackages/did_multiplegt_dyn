@@ -187,7 +187,7 @@ suppressWarnings({
       het_effects <- unlist(predict_het[2])
       ## Checks if only time-invariant variables are specified in predict_het
       for (v in pred_het) {
-        df[, sd_het := sd(get(v), na.rm = TRUE), by = group]
+        df[, sd_het := fifelse(is.na(sd(get(v), na.rm = TRUE)),0,sd(get(v), na.rm = TRUE)), by = group]
         if (mean(df$sd_het) == 0) {
           predict_het_good <- c(predict_het_good, v)
         } else {
@@ -294,7 +294,7 @@ suppressWarnings({
       df <- subset(df, !(df$ever_strict_increase_XX == 1 & df$ever_strict_decrease_XX == 1))
   }
   #### Counting number of groups
-  G_XX <- max(df$group_XX, na.rm = TRUE)
+  # G_XX <- max(df$group_XX, na.rm = TRUE)
 
   #### Ever changed treatment 
   df$ever_change_d_XX <- abs(df$diff_from_sq_XX) > 0 & !is.na(df$treatment_XX) 
@@ -329,6 +329,9 @@ suppressWarnings({
   df <- subset(df, df$var_F_g_XX > 0)
   df$var_F_g_XX <- NULL
 
+  #### Counting number of groups
+  G_XX <- uniqueN(df$group_XX, na.rm = TRUE)
+
   if (nrow(df) == 0) {
       stop("No treatment effect can be estimated.\n  This is because Design Restriction 1 in de Chaisemartin & D'Haultfoeuille (2024) is not satisfied in the data, given the options requested.\n  This may be due to the fact that groups' period-one treatment is continuous, or takes a large number of values, and you have not specified the continuous option.\n  If so, you can try to specify this option.\n  If the issue persists even with this option, this means that all groups experience their first treatment change at the same date.\n  In this situation, estimators of de Chaisemartin & D'Haultfoeuille (2024) cannot be used.")
   }
@@ -349,8 +352,12 @@ suppressWarnings({
   #### If that date is before the first period when g's treatment changes, we do not know when g's treatment has changed for the first time. Then, a conservative option is to drop all of g's outcomes starting at FMD_g.
 
   if (drop_if_d_miss_before_first_switch == TRUE) {
-    df$outcome_XX <- ifelse(
-      df$min_time_d_miss_aft_ynm_XX < df$F_g_XX & df$time_XX >= df$min_time_d_miss_aft_ynm_XX, NA, df$outcome_XX)
+    df$outcome_XX <- 
+    ifelse(
+      ifelse(!is.na(df$min_time_d_miss_aft_ynm_XX),
+        df$min_time_d_miss_aft_ynm_XX < df$F_g_XX & df$time_XX >= df$min_time_d_miss_aft_ynm_XX, FALSE), 
+      NA, df$outcome_XX)
+      ## RA 23/06/25 : do not filter if min_time_d_miss_aft_ynm_XX is na
   }
 
   ######## Dealing with missing treatments: most liberal option
@@ -420,6 +427,8 @@ suppressWarnings({
   df <- data.table(df)
   
   df[, d_sq_XX := mean(d_sq_XX, na.rm = TRUE), by = group_XX]
+  df[, d_sq_int_XX := mean(d_sq_int_XX, na.rm = TRUE), by = group_XX]
+  df[, F_g_XX := mean(F_g_XX, na.rm = TRUE), by = group_XX]
 
   #### Defining N_gt, the weight of each (g,t) cell
   df$N_gt_XX <- 1
@@ -1119,7 +1128,7 @@ suppressWarnings({
         if (get(paste0("N0_",i,"_XX")) != 0) {
           df[[paste0("U_Gg",i,"_minus_XX")]] <- - df[[paste0("U_Gg",i,"_XX")]]
           df[[paste0("count",i,"_minus_XX")]] <- df[[paste0("count",i,"_core_XX")]]
-          df[[paste0("U_Gg_var_",i,"_out_XX")]] <- df[[paste0("U_Gg",i,"_var_XX")]]
+          df[[paste0("U_Gg_var_",i,"_out_XX")]] <- - df[[paste0("U_Gg",i,"_var_XX")]] ## tks
           assign(paste0("N0_",i,"_XX_new"), get(paste0("N0_",i,"_XX")))
           const[[paste0("N0_",i,"_XX_new")]] <- get(paste0("N0_",i,"_XX_new"))
 
@@ -1151,7 +1160,7 @@ suppressWarnings({
           if (get(paste0("N0_placebo_",i,"_XX")) != 0) {
             df[[paste0("U_Gg_pl_",i,"_minus_XX")]] <- - df[[paste0("U_Gg_placebo_",i,"_XX")]]
             df[[paste0("count",i,"_pl_minus_XX")]] <- df[[paste0("count",i,"_pl_core_XX")]]
-            df[[paste0("U_Gg_var_pl_",i,"_out_XX")]] <- df[[paste0("U_Gg_pl_",i,"_var_XX")]]
+            df[[paste0("U_Gg_var_pl_",i,"_out_XX")]] <- - df[[paste0("U_Gg_pl_",i,"_var_XX")]] ## tks
             assign(paste0("N0_placebo_",i,"_XX_new"), get(paste0("N0_placebo_",i,"_XX")))
             const[[paste0("N0_placebo_",i,"_XX_new")]] <- get(paste0("N0_placebo_",i,"_XX_new"))
 
@@ -1167,7 +1176,7 @@ suppressWarnings({
         if (sum_N0_l_XX != 0) {
           df$U_Gg_minus_XX <- - df$U_Gg_XX
           df$U_Gg_den_minus_XX <- df$U_Gg_den_XX
-          df$U_Gg_var_minus_XX <- df$U_Gg_var_XX
+          df$U_Gg_var_minus_XX <- - df$U_Gg_var_XX ## tks
         }
       }
     }
