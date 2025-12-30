@@ -23,6 +23,7 @@
 **** (proposed) fix to demeaning when E_hat_denom == 1
 **** more_granular_demeaning
 **** Added Clement's second fix to placebo
+**** Replaced _r_ub and _r_lb with explicit CI computation
 
 ** Felix:
 **** Delete if d_sq_int_XX==`l' condition when summing placebo variances 
@@ -3043,8 +3044,8 @@ capture drop trends_nonparam_temp_XX
 forvalues j=1/`:word count `predict_het_good''{
 scalar beta_het_`j'_eff`i'_hat_XX=_b["`: word `j' of `predict_het_good''"]
 scalar se_het_`j'_eff`i'_hat_XX=_se["`: word `j' of `predict_het_good''"]
-scalar lb_het_`j'_eff`i'_hat_XX=_r_lb["`: word `j' of `predict_het_good''"]
-scalar ub_het_`j'_eff`i'_hat_XX=_r_ub["`: word `j' of `predict_het_good''"]
+scalar lb_het_`j'_eff`i'_hat_XX=_b["`: word `j' of `predict_het_good''"]+invt(e(N)-e(df_m)-1,0.025)*_se["`: word `j' of `predict_het_good''"]
+scalar ub_het_`j'_eff`i'_hat_XX=_b["`: word `j' of `predict_het_good''"]+invt(e(N)-e(df_m)-1,0.975)*_se["`: word `j' of `predict_het_good''"]
 scalar t_het_`j'_eff`i'_hat_XX=scalar(beta_het_`j'_eff`i'_hat_XX)/scalar(se_het_`j'_eff`i'_hat_XX)
 }
 scalar N_het_`i'_hat_XX=e(N)
@@ -3113,6 +3114,7 @@ di as text "{it:Test of joint nullity of the estimates : p-value =} " p_het_`i'_
 // Note: we need to specify "all", correct that in the help file and fix the issue when we specify a numlist
 
 if `=l_placebo_XX'>0{
+local all_effects_XX_dyn "`all_effects_XX'"
 qui{		
 if "`het_effects'"=="all"{
 local all_effects_XX ""	
@@ -3176,8 +3178,8 @@ capture drop trends_nonparam_temp_XX
 forvalues j=1/`:word count `predict_het_good''{
 scalar beta_het_`j'_pl`i'_hat_XX=_b["`: word `j' of `predict_het_good''"]
 scalar se_het_`j'_pl`i'_hat_XX=_se["`: word `j' of `predict_het_good''"]
-scalar lb_het_`j'_pl`i'_hat_XX=_r_lb["`: word `j' of `predict_het_good''"]
-scalar ub_het_`j'_pl`i'_hat_XX=_r_ub["`: word `j' of `predict_het_good''"]
+scalar lb_het_`j'_pl`i'_hat_XX=_b["`: word `j' of `predict_het_good''"]+invt(e(N)-e(df_m)-1,0.025)*_se["`: word `j' of `predict_het_good''"]
+scalar ub_het_`j'_pl`i'_hat_XX=_b["`: word `j' of `predict_het_good''"]+invt(e(N)-e(df_m)-1,0.975)*_se["`: word `j' of `predict_het_good''"]
 scalar t_het_`j'_pl`i'_hat_XX=scalar(beta_het_`j'_pl`i'_hat_XX)/scalar(se_het_`j'_pl`i'_hat_XX)
 }
 scalar N_het_pl_`i'_hat_XX=e(N)
@@ -3435,9 +3437,19 @@ ereturn matrix estimates=didmgt_b2
 ereturn matrix variances=compatibility_variances
 
 if "`predict_het'"!=""{
-foreach i in `all_effects_XX'{
-ereturn matrix effect_het_`i'_XX=effect_het_`i'_XX
-}	
+if `=l_placebo_XX' == 0 {
+	foreach i in `all_effects_XX'{
+	ereturn matrix effect_het_`i'_XX=effect_het_`i'_XX
+	}	
+} 
+else {
+	foreach i in `all_effects_XX_dyn'{
+	ereturn matrix effect_het_`i'_XX=effect_het_`i'_XX
+	}	
+	foreach i in `all_effects_XX_pl'{
+	ereturn matrix effect_het_pl_`i'_XX=effect_het_pl_`i'_XX
+	}	
+}
 }
 
 ///// Option that shows a table with weights attached to each normalized effect
