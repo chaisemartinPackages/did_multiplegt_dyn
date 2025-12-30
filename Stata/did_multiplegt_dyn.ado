@@ -24,6 +24,7 @@
 **** more_granular_demeaning
 **** Added Clement's second fix to placebo
 **** Replaced _r_ub and _r_lb with explicit CI computation
+**** Added sup test from sotable
 
 ** Felix:
 **** Delete if d_sq_int_XX==`l' condition when summing placebo variances 
@@ -1833,6 +1834,13 @@ if "`trends_lin'"!=""{
 	matrix mat_res_XX[l_XX+1,7]=0
 }
 
+// Generate string local for sotable
+local str_effects "Effect_1"
+if l_XX > 1 {
+	forv j = 2/`=l_XX' {
+		local str_effects "`str_effects' Effect_`j'"
+	}
+}
 	
 ///// Computing the placebo estimators (same steps as for the DID_\ell, not commented)
 
@@ -1919,6 +1927,15 @@ if "`weight'"!=""{
 }
 
 }
+
+// Generate string local for sotable
+local str_placebo "Placebo_1"
+if l_placebo_XX > 1 {
+	forv j = 2/`=l_placebo_XX' {
+		local str_placebo "`str_placebo' Placebo_`j'"
+	}
+}
+
 }
 
 //// Extract estimates vector (without avg_effect) for honestdid
@@ -3403,6 +3420,8 @@ capture ereturn scalar N_effect_`i' = N_effect_`i'_XX
 capture ereturn scalar N_switchers_effect_`i' = N_switchers_effect_`i'_XX
 capture ereturn scalar se_effect_`i'=scalar(se_`i'_XX)
 }
+ereturn local effects `"`str_effects'"'
+
 // Modif Felix 12.05.25
 if (l_XX>1&all_Ns_not_zero==l_XX&all_delta_not_zero==l_XX&"`normalized'"!="")|(l_XX>1&all_Ns_not_zero==l_XX&"`normalized'"==""){
 capture ereturn scalar p_jointeffects=scalar(p_jointeffects)
@@ -3413,6 +3432,7 @@ capture ereturn scalar p_equality_effects=scalar(p_equality_effects)
 }
 
 if l_placebo_XX!=0{
+ereturn local placebo `"`str_placebo'"'
 forvalue i=1/`=l_placebo_XX'{
 capture ereturn scalar Placebo_`i' = scalar(DID_placebo_`i'_XX)
 capture ereturn scalar N_placebo_`i' = N_placebo_`i'_XX
