@@ -9,7 +9,7 @@
 ** Subsections may contain unnumbered subsubsections, tagged with "//".
 ** Subsubsections may be further divided into paragraphs, tagged with "*".
 ** Comments are also tagged with "*".
-** This version : July 2nd, 2025
+** This version : December 31st, 2025
 
 ** This version includes Diego's changes:
 **** Fixes to variance estimation with controls() (tks)
