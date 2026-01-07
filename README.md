@@ -356,6 +356,20 @@ Yes. The command already outputs the average total treatment effect, that is, th
     treatment change.  Finally, you can just compute un-normalized event-study estimators with
     $\tilde{Y}$ as the outcome.
 
+> :question: *Instead of using an F-test to jointly test that all placebos or all effects
+    are zero, I would like to use a sup t-test. Is this possible?*
+
+ Yes, did_multiplegt_dyn is compatible with the sotable package. Here's how
+    to produce sup t-tests on all placebos and effects in post estimation:
+
+        net get did_multiplegt_dyn
+        use favara_imbs_did_multiplegt_dyn.dta, clear
+        did_multiplegt_dyn Dl_vloans_b county year inter_bra, effects(8)
+            placebo(3) cluster(state_n) graph_off
+        sotable, pnames(`=e(placebo)') normal
+        sotable, pnames(`=e(effects)') normal
+
+
 ## References
 
 de Chaisemartin, C, D'Haultfoeuille, X (2024).  [Difference-in-Differences Estimators of
