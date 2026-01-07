@@ -822,6 +822,23 @@ estimators with Y' as the outcome.
 Yes, it can, see Section 1.7 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details.
 {p_end}
 
+{p 4 4}
+{it:Instead of using an F-test to jointly test that all placebos or all effects are zero, I would like to use a sup t-test. Is this possible?}
+{p_end}
+
+{p 4 4}
+Yes, {cmd:did_multiplegt_dyn} is compatible with
+the {cmd:sotable} package. Here's how to produce 
+sup t-tests on all placebos and effects
+in post estimation:
+{p_end}
+
+{phang2}{stata net get did_multiplegt_dyn}{p_end}
+{phang2}{stata use favara_imbs_did_multiplegt_dyn.dta, clear}{p_end}
+{phang2}{stata did_multiplegt_dyn Dl_vloans_b county year inter_bra, effects(8) placebo(3) cluster(state_n) graph_off}{p_end}
+{phang2}{stata sotable, pnames(`=e(placebo)') normal}{p_end}
+{phang2}{stata sotable, pnames(`=e(effects)') normal}{p_end}
+
 {title:References}
 
 {p 4 8}
