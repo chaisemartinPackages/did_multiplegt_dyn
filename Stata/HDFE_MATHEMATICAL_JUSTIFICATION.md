@@ -34,25 +34,29 @@ The first difference contains $\beta_{h(g)}$, which varies across categories. If
 
 ## 3. The `hdfe()` Solution: Absorbing Category-Specific Trends
 
-### Step 1: Compute Category Means from First Differences
+The `hdfe()` option follows the **exact same approach** as `controls()` to ensure numerical equivalence.
 
-For each category $h$, compute the mean of first-differenced outcomes:
+### Step 1: Run Weighted Regression Among Pre-Switch Observations
 
-$$\bar{\Delta Y}_h = \frac{1}{N_h} \sum_{g: h(g)=h} \sum_t \Delta Y_{g,t}$$
+For each baseline treatment level $d$, run the regression:
 
-This mean captures the category-specific trend coefficient $\beta_h$ (plus any category-specific mean of the time effect differences).
+$$\Delta Y_{g,t} = \sum_{s} \gamma_s \cdot \mathbf{1}[t=s] + \sum_{h} \theta_h \cdot \mathbf{1}[h(g)=h] + \epsilon_{g,t}$$
 
-### Step 2: Residualize First Differences
+**Matching `controls()` exactly:**
+- Sample: Pre-switch observations only ($t < F_g$)
+- Weights: $N_{g,t}$ (cell weights)
+- Includes: Time fixed effects ($\gamma_s$)
+- Absorbs: HDFE category effects ($\theta_h$)
 
-Replace the first-differenced outcome with residuals:
+The absorbed coefficients $\hat{\theta}_h$ represent the category-specific means of first differences, controlling for time effects.
 
-$$\widetilde{\Delta Y}_{g,t} = \Delta Y_{g,t} - \bar{\Delta Y}_{h(g)}$$
+### Step 2: Extract HDFE Coefficients
 
-This removes:
+The absorbed FE coefficients are computed as:
 
-$$\widetilde{\Delta Y}_{g,t} = (\gamma_t - \gamma_{t-1} - \overline{\gamma_t - \gamma_{t-1}}) + \tau \cdot \Delta D_{g,t} + (\Delta \varepsilon_{g,t} - \bar{\Delta \varepsilon}_h)$$
+$$\hat{\theta}_h = \frac{\sum_{g: h(g)=h, t<F_g} N_{g,t} \cdot (\Delta Y_{g,t} - \hat{\gamma}_t)}{\sum_{g: h(g)=h, t<F_g} N_{g,t}}$$
 
-The category-specific trend $\beta_{h(g)}$ is absorbed!
+This is the weighted mean of time-demeaned first differences for each category.
 
 ### Step 3: Adjust Outcome Levels for Long Differences
 
@@ -62,12 +66,12 @@ $$\Delta^{(\ell)} Y_{g,t} = Y_{g,t} - Y_{g,t-\ell}$$
 
 To ensure these also have category-specific trends removed, we adjust the outcome levels:
 
-$$\widetilde{Y}_{g,t} = Y_{g,t} - \bar{\Delta Y}_{h(g)} \cdot t$$
+$$\widetilde{Y}_{g,t} = Y_{g,t} - \hat{\theta}_{h(g)} \cdot t$$
 
 Then:
 
-$$\widetilde{Y}_{g,t} - \widetilde{Y}_{g,t-\ell} = (Y_{g,t} - \bar{\Delta Y}_h \cdot t) - (Y_{g,t-\ell} - \bar{\Delta Y}_h \cdot (t-\ell))$$
-$$= Y_{g,t} - Y_{g,t-\ell} - \bar{\Delta Y}_h \cdot \ell$$
+$$\widetilde{Y}_{g,t} - \widetilde{Y}_{g,t-\ell} = (Y_{g,t} - \hat{\theta}_h \cdot t) - (Y_{g,t-\ell} - \hat{\theta}_h \cdot (t-\ell))$$
+$$= Y_{g,t} - Y_{g,t-\ell} - \hat{\theta}_h \cdot \ell$$
 
 This removes the category-specific trend contribution $\beta_h \cdot \ell$ from the $\ell$-period difference.
 
@@ -116,14 +120,20 @@ For the `hdfe()` option to produce unbiased estimates:
 
 From our test with True ATT = 3.0:
 
-| Method | Effect_1 | Difference from True |
-|--------|----------|---------------------|
-| Baseline | 3.264 | +0.264 |
-| controls(ind×t) | 3.242 | +0.242 |
-| **hdfe(industry)** | **3.228** | **+0.228** |
-| trends_nonparam | 3.237 | +0.237 |
+| Method | Effect_1 | Effect_2 | Effect_3 | Placebo_1 | Placebo_2 |
+|--------|----------|----------|----------|-----------|-----------|
+| Baseline | 3.264 | 3.124 | 3.348 | 0.103 | 0.289 |
+| **controls(ind×t)** | **3.241929** | **3.125341** | **3.027178** | **0.128168** | **0.265299** |
+| **hdfe(industry)** | **3.241929** | **3.125341** | **3.027179** | **0.128168** | **0.265299** |
+| trends_nonparam | 3.237 | 3.031 | 3.039 | 0.115 | 0.284 |
 
-The close agreement between `hdfe()` and `controls()` validates the mathematical equivalence.
+### Numerical Equivalence Confirmed:
+- **Effect_1**: `controls()` = `hdfe()` = 3.241929 ✓
+- **Effect_2**: `controls()` = `hdfe()` = 3.125341 ✓
+- **Effect_3**: Difference of 0.000001 (rounding) ✓
+- **Placebos**: Identical to 6 decimal places ✓
+
+The **exact numerical agreement** between `hdfe()` and `controls()` validates the mathematical equivalence.
 
 ## 8. References
 
