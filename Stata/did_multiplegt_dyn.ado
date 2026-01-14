@@ -925,6 +925,9 @@ gen diff_y_XX = d.outcome_XX
 g diff_d_XX = d.treatment_XX
 
 ////////// 2bis. High-dimensional fixed effects residualization when hdfe() option is specified.
+///// IMPORTANT: We residualize diff_y_XX (first-differenced outcome) by absorbing hdfe FE
+///// This removes category-specific intercepts from the first differences
+///// which correspond to category-specific TRENDS in the outcome levels
 
 if "`hdfe'"!=""{
 
@@ -958,87 +961,109 @@ else {
 	gegen hdfe_group_XX = group(`hdfe')
 }
 
-///// Residualize diff_y_XX using reghdfe, absorbing hdfe_group fixed effects
-///// The hdfe_group FE are time-invariant categorical variables (e.g., industry, region)
-///// reghdfe efficiently handles high-dimensional FE that would be computationally
-///// expensive with standard Stata commands
+///// Store original first-differenced outcome for comparison
+sum diff_y_XX
+local orig_sd_XX = r(sd)
 
-capture drop diff_y_hdfe_resid_XX
-gen diff_y_hdfe_resid_XX = .
+///// CRITICAL: Compute hdfe_group means from ORIGINAL first differences BEFORE residualization
+///// These means represent the hdfe-specific trends that need to be removed from outcome_XX
+capture drop hdfe_mean_orig_XX
+bys hdfe_group_XX: gegen hdfe_mean_orig_XX = mean(diff_y_XX) if diff_y_XX!=.
 
-levelsof d_sq_int_XX, local(levels_d_sq_hdfe_XX)
+///// Count observations and hdfe groups
+count if diff_y_XX!=.
+local n_obs_hdfe_XX = r(N)
 
-foreach l of local levels_d_sq_hdfe_XX {
+capture drop temp_hdfe_tag_XX
+gegen temp_hdfe_tag_XX = tag(hdfe_group_XX) if diff_y_XX!=.
+count if temp_hdfe_tag_XX == 1
+local n_hdfe_groups_XX = r(N)
+capture drop temp_hdfe_tag_XX
 
-	///// Run reghdfe on control (g,t)s for this baseline treatment level
-	///// Absorb hdfe_group fixed effects and time fixed effects
-	///// This allows for hdfe_group-specific intercepts in the parallel trends
+noi di ""
+noi di "Applying HDFE for variables: `hdfe'"
+noi di "Total observations: `n_obs_hdfe_XX', HDFE groups: `n_hdfe_groups_XX'"
 
-	local rc_hdfe_XX = 0
+///// Only proceed if we have enough observations
+if `n_obs_hdfe_XX' > `n_hdfe_groups_XX' + 10 {
 
-	capture {
-		// Run reghdfe among never-switchers (F_g > time_XX) with this baseline treatment
-		// Absorb hdfe_group FE (constant across time within hdfe categories) and time FE
-		reghdfe diff_y_XX if d_sq_int_XX==`l'&ever_change_d_XX==0&diff_y_XX!=. [aw=N_gt_XX], absorb(i.hdfe_group_XX i.time_XX) residuals(temp_resid_hdfe_XX) noconst
+	///// Residualize diff_y_XX by absorbing hdfe_group FE
+	///// This removes category-specific means from the first differences
+	///// which corresponds to controlling for category-specific linear trends
+	local hdfe_success_XX = 0
 
-		// Store residuals for this baseline treatment level
-		replace diff_y_hdfe_resid_XX = temp_resid_hdfe_XX if d_sq_int_XX==`l'&ever_change_d_XX==0&diff_y_XX!=.
-		drop temp_resid_hdfe_XX
+	capture noisily {
+		capture drop temp_resid_hdfe_XX
+		///// Absorb hdfe_group FE from first-differenced outcome
+		reghdfe diff_y_XX if diff_y_XX!=., absorb(hdfe_group_XX) resid(temp_resid_hdfe_XX)
 	}
 
-	if _rc != 0 {
-		local rc_hdfe_XX = 1
-	}
-
-	if `rc_hdfe_XX' == 1 {
-		// If reghdfe fails for this level, use original diff_y_XX
-		// This can happen if there are too few observations
-		replace diff_y_hdfe_resid_XX = diff_y_XX if d_sq_int_XX==`l'&ever_change_d_XX==0&diff_y_XX!=.
-		noi di "Warning: HDFE residualization could not be performed for baseline treatment level `l'. Using original outcome."
-	}
-}
-
-///// Now residualize the full sample (including switchers) using reghdfe
-///// This ensures both switchers and controls have the same FE absorbed
-
-foreach l of local levels_d_sq_hdfe_XX {
-
-	local rc_hdfe_full_XX = 0
-
-	capture {
-		// Run reghdfe on full sample for this baseline treatment
-		// Absorb hdfe_group FE and time FE
-		reghdfe diff_y_XX if d_sq_int_XX==`l'&diff_y_XX!=. [aw=N_gt_XX], absorb(i.hdfe_group_XX i.time_XX) residuals(temp_resid_full_XX) noconst
-
-		// Replace with residualized version for all observations with this baseline treatment
-		replace diff_y_hdfe_resid_XX = temp_resid_full_XX if d_sq_int_XX==`l'&diff_y_XX!=.
-
-		// Clean up
+	if _rc == 0 {
+		///// Success with reghdfe
+		replace diff_y_XX = temp_resid_hdfe_XX if diff_y_XX!=. & temp_resid_hdfe_XX!=.
+		capture drop temp_resid_hdfe_XX
 		capture drop __hdfe*
-		drop temp_resid_full_XX
+		local hdfe_success_XX = 1
+		noi di "HDFE applied successfully via reghdfe (absorbing from first differences)"
+	}
+	else {
+		///// Try areg as fallback
+		capture noisily {
+			capture drop temp_resid_areg_XX
+			areg diff_y_XX if diff_y_XX!=., absorb(hdfe_group_XX)
+			predict temp_resid_areg_XX if diff_y_XX!=., resid
+		}
+
+		if _rc == 0 {
+			replace diff_y_XX = temp_resid_areg_XX if diff_y_XX!=. & temp_resid_areg_XX!=.
+			capture drop temp_resid_areg_XX
+			local hdfe_success_XX = 1
+			noi di "HDFE applied successfully via areg (absorbing from first differences)"
+		}
+		else {
+			noi di "Warning: HDFE could not be applied. Using original outcome."
+		}
 	}
 
-	if _rc != 0 {
-		local rc_hdfe_full_XX = 1
+	///// Report change in first-differenced outcome variation
+	if `hdfe_success_XX' == 1 {
+		sum diff_y_XX
+		local new_sd_XX = r(sd)
+		noi di "Original diff_Y SD: " %8.4f `orig_sd_XX' " | Residualized diff_Y SD: " %8.4f `new_sd_XX'
 	}
 
-	if `rc_hdfe_full_XX' == 1 {
-		// If reghdfe fails, keep original values where missing
-		replace diff_y_hdfe_resid_XX = diff_y_XX if d_sq_int_XX==`l'&diff_y_XX!=.&diff_y_hdfe_resid_XX==.
-	}
+	///// CRITICAL: Adjust outcome_XX so that long differences in the core program
+	///// (diff_y_`i'_XX = outcome_XX - L`i'.outcome_XX) use properly adjusted values
+	/////
+	///// If the original first difference has mean m by hdfe_group, this represents
+	///// an hdfe-specific linear trend of slope m. To remove this trend from the outcome:
+	///// outcome_adj(t) = outcome(t) - m * t
+	///// Then: outcome_adj(t) - outcome_adj(t-k) = [outcome(t) - m*t] - [outcome(t-k) - m*(t-k)]
+	/////                                         = outcome(t) - outcome(t-k) - m*k
+	///// This subtracts the hdfe-specific trend contribution from any k-period difference.
+
+	capture drop hdfe_trend_adj_XX
+	gen hdfe_trend_adj_XX = hdfe_mean_orig_XX * time_XX if hdfe_mean_orig_XX!=.
+
+	///// Adjust outcome_XX by removing hdfe-specific trends
+	replace outcome_XX = outcome_XX - hdfe_trend_adj_XX if hdfe_trend_adj_XX!=.
+
+	capture drop hdfe_trend_adj_XX
+	capture drop hdfe_mean_orig_XX
+
+	noi di "Outcome adjusted for HDFE-specific trends (slope = hdfe mean of first differences)"
+}
+else {
+	noi di "Warning: Insufficient observations for HDFE (N=`n_obs_hdfe_XX', groups=`n_hdfe_groups_XX')"
+	capture drop hdfe_mean_orig_XX
 }
 
-///// Replace diff_y_XX with residualized version
-replace diff_y_XX = diff_y_hdfe_resid_XX if diff_y_hdfe_resid_XX != .
+noi di ""
 
-///// Clean up temporary variables
-capture drop diff_y_hdfe_resid_XX
-capture drop diff_y_hdfe_pred_XX
+///// Clean up
 capture drop hdfe_group_XX
-
-noi di ""
-noi di "High-dimensional fixed effects absorbed using reghdfe for variables: `hdfe'"
-noi di ""
+capture drop __hdfe*
+capture drop temp_*_XX
 
 } // end of if "`hdfe'"!="" condition
 
