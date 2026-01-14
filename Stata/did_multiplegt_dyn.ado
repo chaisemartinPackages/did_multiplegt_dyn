@@ -50,7 +50,7 @@ capture program drop did_multiplegt_dyn
 
 program did_multiplegt_dyn, eclass
 	version 12.0
-	syntax varlist(min=4 max=4 numeric) [if] [in] [, effects(integer 1) placebo(integer 0) switchers(string) only_never_switchers controls(varlist numeric) trends_nonparam(varlist numeric) weight(varlist numeric max=1) dont_drop_larger_lower NORMALIZED cluster(varlist numeric max=1) graphoptions(string) save_results(string) graph_off same_switchers same_switchers_pl effects_equal(string)  drop_if_d_miss_before_first_switch trends_lin ci_level(integer 95) by(varlist numeric max=1) predict_het(string) predict_het_hc2bm design(string) date_first_switch(string)  NORMALIZED_weights CONTinuous(integer 0) save_sample less_conservative_se more_granular_demeaning by_path(string) bootstrap(string) _no_updates]
+	syntax varlist(min=4 max=4 numeric) [if] [in] [, effects(integer 1) placebo(integer 0) switchers(string) only_never_switchers controls(varlist numeric) trends_nonparam(varlist numeric) weight(varlist numeric max=1) dont_drop_larger_lower NORMALIZED cluster(varlist numeric max=1) graphoptions(string) save_results(string) graph_off same_switchers same_switchers_pl effects_equal(string)  drop_if_d_miss_before_first_switch trends_lin ci_level(integer 95) by(varlist numeric max=1) predict_het(string) predict_het_hc2bm design(string) date_first_switch(string)  NORMALIZED_weights CONTinuous(integer 0) save_sample less_conservative_se more_granular_demeaning by_path(string) bootstrap(string) hdfe(varlist) _no_updates]
 	
 ////////// 0. Auto-updates
 if "`_no_updates'" == "" {
@@ -68,9 +68,25 @@ if _rc{
 	di as error "You have not installed the gtools package which is used within the did_multiplegt_dyn command."
 	di `"{stata "ssc install gtools": Click here to install gtools}"'
 	di as input _continue ""
-	
+
 	exit
-}	
+}
+
+///// Check if reghdfe is installed when hdfe option is specified
+if "`hdfe'"!=""{
+	qui cap which reghdfe
+	if _rc{
+		di ""
+		di as error "You have not installed the reghdfe package which is required for the hdfe() option."
+		di `"{stata "ssc install reghdfe": Click here to install reghdfe}"'
+		di as input _continue ""
+
+		exit
+	}
+
+	// Check that hdfe variables are time-invariant within groups
+	// This will be verified after data preparation
+}
 
 // Save controls in a specific local if trends_lin by() continuous() and continuous are specified at the same time
 if "`trends_lin'"!=""&"`by'"!=""&`continuous'!=0{
@@ -203,6 +219,23 @@ if `continuous'>0&"`design'"!=""{
 
 if "`more_granular_demeaning'" != "" {
 	local less_conservative_se "less_conservative_se"
+}
+
+///// Add a warning that hdfe() and trends_nonparam() should not be specified simultaneously
+if "`hdfe'"!=""&"`trends_nonparam'"!=""{
+	di ""
+	di as error "The hdfe() and trends_nonparam() options cannot be specified at the same time!"
+	di as error "Both options serve to control for group-specific trends. Use hdfe() for high-dimensional fixed effects"
+	di as error "that are constant over time within groups, and trends_nonparam() for lower-dimensional group categories."
+	di as input _continue ""
+
+	exit
+}
+
+///// Store hdfe variables for later use
+if "`hdfe'"!=""{
+	local hdfe_vars_XX "`hdfe'"
+	local num_hdfe_vars_XX : word count `hdfe'
 }
 
 ////////// 2. Data preparation steps	
@@ -890,6 +923,124 @@ capture drop diff_y_XX
 capture drop diff_d_XX
 gen diff_y_XX = d.outcome_XX
 g diff_d_XX = d.treatment_XX
+
+////////// 2bis. High-dimensional fixed effects residualization when hdfe() option is specified.
+
+if "`hdfe'"!=""{
+
+///// Verify that hdfe variables are time-invariant within groups
+local hdfe_time_variant_XX = 0
+foreach var of varlist `hdfe'{
+	capture drop hdfe_check_XX
+	bys group_XX: gegen hdfe_check_XX = sd(`var')
+	sum hdfe_check_XX
+	if r(max) > 0 {
+		local hdfe_time_variant_XX = 1
+		local hdfe_time_variant_var_XX "`var'"
+	}
+	drop hdfe_check_XX
+}
+
+if `hdfe_time_variant_XX' == 1 {
+	di as error ""
+	di as error "The variable `hdfe_time_variant_var_XX' in hdfe() is not time-invariant within groups."
+	di as error "The hdfe() option requires variables that are constant over time for each group (e.g., industry, region)."
+	di as input _continue ""
+	exit
+}
+
+///// Create combined hdfe group variable for high-dimensional FE
+capture drop hdfe_group_XX
+if `: word count `hdfe'' == 1 {
+	gen hdfe_group_XX = `hdfe'
+}
+else {
+	gegen hdfe_group_XX = group(`hdfe')
+}
+
+///// Residualize diff_y_XX using reghdfe, absorbing hdfe_group fixed effects
+///// The hdfe_group FE are time-invariant categorical variables (e.g., industry, region)
+///// reghdfe efficiently handles high-dimensional FE that would be computationally
+///// expensive with standard Stata commands
+
+capture drop diff_y_hdfe_resid_XX
+gen diff_y_hdfe_resid_XX = .
+
+levelsof d_sq_int_XX, local(levels_d_sq_hdfe_XX)
+
+foreach l of local levels_d_sq_hdfe_XX {
+
+	///// Run reghdfe on control (g,t)s for this baseline treatment level
+	///// Absorb hdfe_group fixed effects and time fixed effects
+	///// This allows for hdfe_group-specific intercepts in the parallel trends
+
+	local rc_hdfe_XX = 0
+
+	capture {
+		// Run reghdfe among never-switchers (F_g > time_XX) with this baseline treatment
+		// Absorb hdfe_group FE (constant across time within hdfe categories) and time FE
+		reghdfe diff_y_XX if d_sq_int_XX==`l'&ever_change_d_XX==0&diff_y_XX!=. [aw=N_gt_XX], absorb(i.hdfe_group_XX i.time_XX) residuals(temp_resid_hdfe_XX) noconst
+
+		// Store residuals for this baseline treatment level
+		replace diff_y_hdfe_resid_XX = temp_resid_hdfe_XX if d_sq_int_XX==`l'&ever_change_d_XX==0&diff_y_XX!=.
+		drop temp_resid_hdfe_XX
+	}
+
+	if _rc != 0 {
+		local rc_hdfe_XX = 1
+	}
+
+	if `rc_hdfe_XX' == 1 {
+		// If reghdfe fails for this level, use original diff_y_XX
+		// This can happen if there are too few observations
+		replace diff_y_hdfe_resid_XX = diff_y_XX if d_sq_int_XX==`l'&ever_change_d_XX==0&diff_y_XX!=.
+		noi di "Warning: HDFE residualization could not be performed for baseline treatment level `l'. Using original outcome."
+	}
+}
+
+///// Now residualize the full sample (including switchers) using reghdfe
+///// This ensures both switchers and controls have the same FE absorbed
+
+foreach l of local levels_d_sq_hdfe_XX {
+
+	local rc_hdfe_full_XX = 0
+
+	capture {
+		// Run reghdfe on full sample for this baseline treatment
+		// Absorb hdfe_group FE and time FE
+		reghdfe diff_y_XX if d_sq_int_XX==`l'&diff_y_XX!=. [aw=N_gt_XX], absorb(i.hdfe_group_XX i.time_XX) residuals(temp_resid_full_XX) noconst
+
+		// Replace with residualized version for all observations with this baseline treatment
+		replace diff_y_hdfe_resid_XX = temp_resid_full_XX if d_sq_int_XX==`l'&diff_y_XX!=.
+
+		// Clean up
+		capture drop __hdfe*
+		drop temp_resid_full_XX
+	}
+
+	if _rc != 0 {
+		local rc_hdfe_full_XX = 1
+	}
+
+	if `rc_hdfe_full_XX' == 1 {
+		// If reghdfe fails, keep original values where missing
+		replace diff_y_hdfe_resid_XX = diff_y_XX if d_sq_int_XX==`l'&diff_y_XX!=.&diff_y_hdfe_resid_XX==.
+	}
+}
+
+///// Replace diff_y_XX with residualized version
+replace diff_y_XX = diff_y_hdfe_resid_XX if diff_y_hdfe_resid_XX != .
+
+///// Clean up temporary variables
+capture drop diff_y_hdfe_resid_XX
+capture drop diff_y_hdfe_pred_XX
+capture drop hdfe_group_XX
+
+noi di ""
+noi di "High-dimensional fixed effects absorbed using reghdfe for variables: `hdfe'"
+noi di ""
+
+} // end of if "`hdfe'"!="" condition
 
 ////////// 3. Necessary pre-estimation steps when the controls option is specified.	
 

@@ -30,6 +30,7 @@ affect the current outcome.
 {cmd:placebo(}{it:#}{cmd:)}
 {cmd:controls(}{it:varlist}{cmd:)}
 {cmd:trends_nonparam(}{it:varlist}{cmd:)}
+{cmd:hdfe(}{it:varlist}{cmd:)}
 {cmd:trends_lin}
 {cmd:continuous(}{it:#}{cmd:)}
 {cmd:weight(}{it:varname}{cmd:)}
@@ -167,12 +168,13 @@ treatment, the option {cmd:continuous} needs to be used.
 {p_end}
 
 {p 4 8}
-{cmd:Relaxing parallel trends assumptions} - This command allows for many relaxations of 
-the parallel-trends assumption: see the {cmd:controls} option for estimators allowing for  
-time-varying covariates, see the {cmd:trends_lin} option for estimators allowing for 
-group-specific linear trends, and see the {cmd:trends_nonparam} option for estimators 
-allowing to interact time fixed effects with time-invariant variables (e.g. industry*year 
-effect with firm-level panel data). 
+{cmd:Relaxing parallel trends assumptions} - This command allows for many relaxations of
+the parallel-trends assumption: see the {cmd:controls} option for estimators allowing for
+time-varying covariates, see the {cmd:trends_lin} option for estimators allowing for
+group-specific linear trends, see the {cmd:trends_nonparam} option for estimators
+allowing to interact time fixed effects with time-invariant variables (e.g. industry*year
+effect with firm-level panel data), and see the {cmd:hdfe} option for efficiently absorbing
+high-dimensional fixed effects that are constant over time within groups using {cmd:reghdfe}.
 {p_end}
 
 
@@ -288,19 +290,50 @@ effect per unit of treatment is not computed.
 {p_end}
 
 {p 4 8}
-{cmd:trends_nonparam(}{it:varlist}{cmd:)}: when this option is specified, the 
-DID estimators computed by the command only compare switchers to controls whose 
-treatment has not changed yet, with the same period-one treatment, and with the 
-same value of {it:varlist}.  Estimators with the {cmd:trends_nonparam(}{it:varlist}{cmd:)} 
-option are unbiased even if groups experience differential trends, provided 
-all groups with the same value of {it:varlist} experience parallel trends. 
-{it:varlist} can only include time-invariant variables, and the interaction 
-of those variables has to be coarser than the group variable.  For instance, 
-if one works with a county*year data set and one wants to allow for state-specific 
-trends, one should specify {cmd:trends_nonparam(}state{cmd:)}, where state is the 
-state identifier. Similarly, if one works with a firm*year data and one wants to 
-allow for industry-specific trends, one should specify {cmd:trends_nonparam(}industry{cmd:)}. 
+{cmd:trends_nonparam(}{it:varlist}{cmd:)}: when this option is specified, the
+DID estimators computed by the command only compare switchers to controls whose
+treatment has not changed yet, with the same period-one treatment, and with the
+same value of {it:varlist}.  Estimators with the {cmd:trends_nonparam(}{it:varlist}{cmd:)}
+option are unbiased even if groups experience differential trends, provided
+all groups with the same value of {it:varlist} experience parallel trends.
+{it:varlist} can only include time-invariant variables, and the interaction
+of those variables has to be coarser than the group variable.  For instance,
+if one works with a county*year data set and one wants to allow for state-specific
+trends, one should specify {cmd:trends_nonparam(}state{cmd:)}, where state is the
+state identifier. Similarly, if one works with a firm*year data and one wants to
+allow for industry-specific trends, one should specify {cmd:trends_nonparam(}industry{cmd:)}.
 See Section 1.4 of the Web Appendix of de Chaisemartin and D'Haultfoeuille (2024) for further details.
+{p_end}
+
+{p 4 8}
+{cmd:hdfe(}{it:varlist}{cmd:)}: when this option is specified, the command uses
+{cmd:reghdfe} to absorb high-dimensional fixed effects from the first-differenced
+outcome before estimation. The variables in {it:varlist} must be time-invariant
+within groups (constant over time for each unit), such as industry codes,
+geographic regions, or other categorical groupings. This option is useful when
+you have many categories that would be computationally expensive to include as
+dummy variables. The command absorbs both the hdfe category fixed effects and
+time fixed effects using {cmd:reghdfe}'s efficient algorithm.
+{p_end}
+
+{p 8 8}
+Unlike {cmd:trends_nonparam()}, which restricts comparisons to groups within the
+same category, {cmd:hdfe()} residualizes the outcome by absorbing category-specific
+intercepts. This allows for category-specific levels in the parallel trends.
+The two options cannot be specified simultaneously.
+{p_end}
+
+{p 8 8}
+For example, if working with firm*year data and wanting to control for industry
+fixed effects where firms belong to many different industries, one should specify
+{cmd:hdfe(}industry{cmd:)}. This absorbs industry-specific intercepts from the
+first-differenced outcome. Multiple variables can be specified, e.g.,
+{cmd:hdfe(}industry region{cmd:)} to absorb both industry and region fixed effects.
+{p_end}
+
+{p 8 8}
+Note: This option requires the {cmd:reghdfe} package to be installed. If not
+installed, the command will prompt you to install it via SSC.
 {p_end}
 
 {p 4 8}
