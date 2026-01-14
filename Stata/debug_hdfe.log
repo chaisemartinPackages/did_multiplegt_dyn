@@ -1,0 +1,719 @@
+
+  ___  ____  ____  ____  ____ ®
+ /__    /   ____/   /   ____/      StataNow 19.5
+___/   /   /___/   /   /___/       MP—Parallel Edition
+
+ Statistics and Data Science       Copyright 1985-2025 StataCorp LLC
+                                   StataCorp
+                                   4905 Lakeway Drive
+                                   College Station, Texas 77845 USA
+                                   800-782-8272        https://www.stata.com
+                                   979-696-4600        service@stata.com
+
+Stata license: Unlimited-user 2-core network, expiring  8 Jun 2026
+Serial number: 501909302568
+  Licensed to: Anzony QUISPE ROJAS
+               
+
+Notes:
+      1. Stata is running in batch mode.
+      2. Unicode is supported; see help unicode_advice.
+      3. More than 2 billion observations are allowed; see help obs_advice.
+      4. Maximum number of variables is set to 5,000 but can be increased;
+          see help set_maxvar.
+
+. do debug_hdfe.do 
+
+. *****************************************************************************
+> ***
+. * Debug file for hdfe() option
+. * This will help identify why HDFE is not working
+. *****************************************************************************
+> ***
+. 
+. clear all
+
+. set seed 12345
+
+. set more off
+
+. 
+. * Load local version
+. cap program drop did_multiplegt_dyn
+
+. cap program drop did_multiplegt_dyn_core_new
+
+. adopath ++ "/Users/anzony.quisperojas/Documents/GitHub/did_multiplegt_dyn/Sta
+> ta"
+  [1]              "/Users/anzony.quisperojas/Documents/GitHub/did_multiplegt_d
+> yn/Stata"
+  [2]  (BASE)      "/Applications/StataNow/ado/base/"
+  [3]  (SITE)      "/Applications/StataNow/ado/site/"
+  [4]              "."
+  [5]  (PERSONAL)  "/Users/anzony.quisperojas/Documents/Stata/ado/personal/"
+  [6]  (PLUS)      "/Users/anzony.quisperojas/Library/Application Support/Stata
+> /ado/plus/"
+  [7]  (OLDPLACE)  "~/ado/"
+
+. which did_multiplegt_dyn
+/Users/anzony.quisperojas/Documents/GitHub/did_multiplegt_dyn/Stata/did_multipl
+> egt_dyn.ado
+
+. 
+. * Check reghdfe
+. cap which reghdfe
+
+. if _rc {
+.     ssc install reghdfe, replace
+. }
+
+. 
+. *****************************************************************************
+> ***
+. * Create simple test data
+. *****************************************************************************
+> ***
+. 
+. local N_groups = 200
+
+. local T_periods = 8
+
+. local N_industries = 20
+
+. 
+. set obs `=`N_groups' * `T_periods''
+Number of observations (_N) was 0, now 1,600.
+
+. gen group = ceil(_n / `T_periods')
+
+. bysort group: gen time = _n
+
+. 
+. * Industry - time invariant within groups
+. bysort group: gen industry = ceil(runiform() * `N_industries') if _n == 1
+(1,400 missing values generated)
+
+. bysort group: replace industry = industry[1]
+(1400 real changes made)
+
+. 
+. * Treatment timing
+. bysort group: gen treat_time = ceil(runiform() * (`T_periods' + 2)) if _n == 
+> 1
+(1,400 missing values generated)
+
+. bysort group: replace treat_time = treat_time[1]
+(1400 real changes made)
+
+. replace treat_time = . if treat_time > `T_periods'
+(296 real changes made, 296 to missing)
+
+. 
+. gen D = (time >= treat_time) & treat_time != .
+
+. 
+. * Generate outcome with INDUSTRY-SPECIFIC TRENDS
+. * This is key: industry affects the TREND, not just the level
+. gen industry_trend = 0
+
+. forvalues i = 1/`N_industries' {
+  2.     * Each industry has a different trend coefficient
+.     replace industry_trend = (`i' - 10) * 0.3 if industry == `i'
+  3. }
+(104 real changes made)
+(64 real changes made)
+(96 real changes made)
+(64 real changes made)
+(80 real changes made)
+(32 real changes made)
+(32 real changes made)
+(72 real changes made)
+(192 real changes made)
+(0 real changes made)
+(48 real changes made)
+(80 real changes made)
+(72 real changes made)
+(104 real changes made)
+(40 real changes made)
+(80 real changes made)
+(64 real changes made)
+(112 real changes made)
+(64 real changes made)
+(112 real changes made)
+
+. 
+. * Group FE
+. bysort group: gen group_fe = rnormal(0, 2) if _n == 1
+(1,400 missing values generated)
+
+. bysort group: replace group_fe = group_fe[1]
+(1400 real changes made)
+
+. 
+. * True ATT
+. local true_att = 3.0
+
+. 
+. * Y = group_fe + industry_trend * time + ATT * D + noise
+. * The industry_trend * time creates differential trends by industry
+. gen Y = group_fe + industry_trend * time + `true_att' * D + rnormal(0, 1)
+
+. 
+. di ""
+
+
+. di "Data created with industry-specific trends"
+Data created with industry-specific trends
+
+. di "True ATT: `true_att'"
+True ATT: 3
+
+. di ""
+
+
+. 
+. * Check the industry trend effect
+. reg Y i.industry##c.time if D == 0
+
+      Source |       SS           df       MS      Number of obs   =       838
+-------------+----------------------------------   F(39, 798)      =    240.26
+       Model |  44380.5209        39  1137.96207   Prob > F        =    0.0000
+    Residual |  3779.55723       798  4.73628726   R-squared       =    0.9215
+-------------+----------------------------------   Adj R-squared   =    0.9177
+       Total |  48160.0781       837  57.5389225   Root MSE        =    2.1763
+
+------------------------------------------------------------------------------
+           Y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+    industry |
+          2  |   .1502065   .9282652     0.16   0.871    -1.671923    1.972336
+          3  |  -.2448565   .8393469    -0.29   0.771    -1.892445    1.402732
+          4  |  -.3930727   .9795381    -0.40   0.688    -2.315848    1.529703
+          5  |  -.3617037   .9499031    -0.38   0.703    -2.226308      1.5029
+          6  |  -1.643691   1.592023    -1.03   0.302    -4.768739    1.481357
+          7  |    .141904   1.410052     0.10   0.920    -2.625945    2.909753
+          8  |  -.2088057   .9711303    -0.22   0.830    -2.115077    1.697466
+          9  |    .096563   .7563157     0.13   0.898     -1.38804    1.581166
+         10  |   .2570724   .9521994     0.27   0.787    -1.612039    2.126184
+         11  |   .6634643   1.038309     0.64   0.523    -1.374676    2.701604
+         12  |   .3366249   .9104513     0.37   0.712    -1.450538    2.123787
+         13  |   .6600176   .9186707     0.72   0.473    -1.143279    2.463314
+         14  |   .1419877   .8534651     0.17   0.868    -1.533314    1.817289
+         15  |  -.4412018   1.367233    -0.32   0.747    -3.124999    2.242595
+         16  |   .1635748   .9318805     0.18   0.861    -1.665652    1.992801
+         17  |   .6342983    .922497     0.69   0.492    -1.176509    2.445106
+         18  |  -.4702351   .8191807    -0.57   0.566    -2.078239    1.137768
+         19  |   .6937659   .9611578     0.72   0.471     -1.19293    2.580462
+         20  |   .6539194   .8471378     0.77   0.440    -1.008962    2.316801
+             |
+        time |  -2.652753   .1441554   -18.40   0.000    -2.935722   -2.369784
+             |
+    industry#|
+      c.time |
+          2  |   .3199576   .2183676     1.47   0.143    -.1086851    .7486003
+          3  |    .487957   .1882681     2.59   0.010     .1183978    .8575163
+          4  |    1.02213    .228982     4.46   0.000     .5726513    1.471608
+          5  |   1.358003   .2475332     5.49   0.000       .87211    1.843896
+          6  |   1.742327    .556398     3.13   0.002     .6501508    2.834504
+          7  |   1.598804   .3954258     4.04   0.000     .8226062    2.375001
+          8  |   2.333991   .2558569     9.12   0.000     1.831759    2.836223
+          9  |   2.284095    .177735    12.85   0.000     1.935212    2.632978
+         10  |   2.562222   .2468174    10.38   0.000     2.077734     3.04671
+         11  |     3.2053   .2514182    12.75   0.000     2.711781    3.698819
+         12  |   2.967068   .2188757    13.56   0.000     2.537428    3.396708
+         13  |   3.416986   .2049922    16.67   0.000     3.014598    3.819374
+         14  |   3.817782   .1986991    19.21   0.000     3.427748    4.207817
+         15  |   4.600955   .4741365     9.70   0.000     3.670253    5.531657
+         16  |    4.42192   .2264775    19.52   0.000     3.977358    4.866482
+         17  |   4.645838   .2188757    21.23   0.000     4.216198    5.075478
+         18  |   4.951738   .1877875    26.37   0.000     4.583122    5.320354
+         19  |   5.338384   .2483013    21.50   0.000     4.850983    5.825785
+         20  |   5.418049   .2081741    26.03   0.000     5.009415    5.826682
+             |
+       _cons |   .1427413   .6304225     0.23   0.821    -1.094741    1.380224
+------------------------------------------------------------------------------
+
+. di "Industry trends are present in the data"
+Industry trends are present in the data
+
+. 
+. *****************************************************************************
+> ***
+. * Manual check: what does first-differenced data look like?
+. *****************************************************************************
+> ***
+. 
+. xtset group time
+
+Panel variable: group (strongly balanced)
+ Time variable: time, 1 to 8
+         Delta: 1 unit
+
+. gen diff_Y = D.Y
+(200 missing values generated)
+
+. 
+. di ""
+
+
+. di "=== CHECKING FIRST DIFFERENCES ==="
+=== CHECKING FIRST DIFFERENCES ===
+
+. di ""
+
+
+. 
+. * Check if there's variation in diff_Y across industries
+. bysort industry: sum diff_Y
+
+-------------------------------------------------------------------------------
+-> industry = 1
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         91   -2.557723    1.607877  -5.672252   1.981091
+
+-------------------------------------------------------------------------------
+-> industry = 2
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         56   -1.898069    1.832528  -6.012668   2.950347
+
+-------------------------------------------------------------------------------
+-> industry = 3
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         84   -1.832685    1.628773  -4.973349    2.91996
+
+-------------------------------------------------------------------------------
+-> industry = 4
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         56   -1.453773     1.33091   -4.01816   3.254716
+
+-------------------------------------------------------------------------------
+-> industry = 5
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         70   -1.178545    1.688766  -4.849122   3.736066
+
+-------------------------------------------------------------------------------
+-> industry = 6
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         28   -.7738205    1.512037  -3.889448    2.45485
+
+-------------------------------------------------------------------------------
+-> industry = 7
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         28    -.724744    1.425437  -3.416284   1.882236
+
+-------------------------------------------------------------------------------
+-> industry = 8
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         63   -.1636526    1.776943  -4.976248   3.273387
+
+-------------------------------------------------------------------------------
+-> industry = 9
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |        168    .0797859    1.690063  -3.426677   4.416329
+
+-------------------------------------------------------------------------------
+-> industry = 10
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         77     .370921     1.79841  -3.353601   4.877138
+
+-------------------------------------------------------------------------------
+-> industry = 11
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         42    .5788451    1.465553  -2.067538   4.208323
+
+-------------------------------------------------------------------------------
+-> industry = 12
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         70    .8229687    1.663308  -2.444785   6.270525
+
+-------------------------------------------------------------------------------
+-> industry = 13
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         63    1.000765    1.499095  -2.149854   5.476257
+
+-------------------------------------------------------------------------------
+-> industry = 14
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         91    1.464227    1.513537  -1.521114   5.195116
+
+-------------------------------------------------------------------------------
+-> industry = 15
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         35    1.915713    1.873686  -1.654094   6.021868
+
+-------------------------------------------------------------------------------
+-> industry = 16
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         70    2.100317    1.545258  -1.187457   5.633869
+
+-------------------------------------------------------------------------------
+-> industry = 17
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         56    2.485819    1.626884  -1.029576   8.172888
+
+-------------------------------------------------------------------------------
+-> industry = 18
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         98    2.767333    2.086337  -2.771117   8.498693
+
+-------------------------------------------------------------------------------
+-> industry = 19
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         56    3.013827    1.798713   .4116774   6.902863
+
+-------------------------------------------------------------------------------
+-> industry = 20
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+      diff_Y |         98    3.314262    1.755795  -.3675232   8.276268
+
+
+. reg diff_Y i.industry if D == 0
+
+      Source |       SS           df       MS      Number of obs   =       660
+-------------+----------------------------------   F(19, 640)      =     54.02
+       Model |  2080.33322        19  109.491222   Prob > F        =    0.0000
+    Residual |  1297.12898       640  2.02676403   R-squared       =    0.6159
+-------------+----------------------------------   Adj R-squared   =    0.6045
+       Total |   3377.4622       659  5.12513232   Root MSE        =    1.4236
+
+------------------------------------------------------------------------------
+      diff_Y | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+    industry |
+          2  |   .5433831   .3314753     1.64   0.102    -.1075275    1.194294
+          3  |   .6937966   .2969184     2.34   0.020     .1107446    1.276849
+          4  |   .9699369   .3604452     2.69   0.007     .2621386    1.677735
+          5  |   1.360297    .374284     3.63   0.000     .6253236     2.09527
+          6  |   2.088474   .5843852     3.57   0.000     .9409298    3.236018
+          7  |   1.789698   .4699631     3.81   0.000     .8668417    2.712554
+          8  |   2.331663   .3647449     6.39   0.000     1.615421    3.047904
+          9  |   2.488267   .2798034     8.89   0.000     1.938823     3.03771
+         10  |   2.919193    .374284     7.80   0.000      2.18422    3.654166
+         11  |    3.17029   .4056677     7.81   0.000     2.373689     3.96689
+         12  |   3.288467   .3340345     9.84   0.000     2.632531    3.944403
+         13  |   3.651337    .322392    11.33   0.000     3.018263    4.284411
+         14  |     4.1214   .3015701    13.67   0.000     3.529214    4.713587
+         15  |    4.05993    .526464     7.71   0.000     3.026125    5.093736
+         16  |   4.533763   .3457269    13.11   0.000     3.854867    5.212659
+         17  |   4.863607   .3314753    14.67   0.000     4.212696    5.514517
+         18  |   5.108064   .3028346    16.87   0.000     4.513395    5.702734
+         19  |   5.080535   .3647449    13.93   0.000     4.364294    5.796776
+         20  |   5.915636   .3130992    18.89   0.000      5.30081    6.530462
+             |
+       _cons |  -2.759161   .2279656   -12.10   0.000    -3.206811    -2.31151
+------------------------------------------------------------------------------
+
+. 
+. di ""
+
+
+. di "If industry coefficients are significant, HDFE should matter"
+If industry coefficients are significant, HDFE should matter
+
+. di ""
+
+
+. 
+. *****************************************************************************
+> ***
+. * Test 1: Baseline (no HDFE)
+. *****************************************************************************
+> ***
+. 
+. di ""
+
+
+. di "=========================================="
+==========================================
+
+. di "TEST 1: BASELINE"
+TEST 1: BASELINE
+
+. di "=========================================="
+==========================================
+
+. 
+. did_multiplegt_dyn Y group time D, effects(3) placebo(2) cluster(group) graph
+> _off
+
+
+-------------------------------------------------------------------------------
+> -
+             Estimation of treatment effects: Event-study effects
+-------------------------------------------------------------------------------
+> -
+
+             |  Estimate         SE      LB CI      UB CI          N 
+-------------+-------------------------------------------------------
+    Effect_1 |  2.995275   .2250992   2.554088   3.436461        801 
+    Effect_2 |   3.24368   .4427056   2.375993   4.111367        628 
+    Effect_3 |  3.698343   .7491162   2.230103   5.166584        475 
+
+             | Switchers 
+-------------+----------
+    Effect_1 |       141 
+    Effect_2 |       125 
+    Effect_3 |       106 
+-------------------------------------------------------------------------------
+> -
+Test of joint nullity of the effects : p-value = 0
+
+
+-------------------------------------------------------------------------------
+> -
+               Average cumulative (total) effect per treatment unit
+-------------------------------------------------------------------------------
+> -
+
+             |  Estimate         SE      LB CI      UB CI          N 
+-------------+-------------------------------------------------------
+  Av_tot_eff |  3.279081   .4309785   2.434379   4.123783       1032 
+
+             |    Switch  x Periods 
+-------------+---------------------
+  Av_tot_eff |       372            
+-------------------------------------------------------------------------------
+> -
+Average number of time periods over which a treatment's effect is accumulated =
+>  1.9059139
+
+
+-------------------------------------------------------------------------------
+> -
+          Testing the parallel trends and no anticipation assumptions
+-------------------------------------------------------------------------------
+> -
+
+             |  Estimate         SE      LB CI      UB CI          N 
+-------------+-------------------------------------------------------
+   Placebo_1 | -.2011771   .2186453  -.6297141   .2273598        623 
+   Placebo_2 | -.5026177   .5900202  -1.659036   .6538007        337 
+
+             | Switchers 
+-------------+----------
+   Placebo_1 |       120 
+   Placebo_2 |        81 
+-------------------------------------------------------------------------------
+> -
+Test of joint nullity of the placebos : p-value = .6278478
+
+
+The development of this package was funded by the European Union (ERC, REALLYCR
+> EDIBLE,GA N°101043899).
+
+. 
+. *****************************************************************************
+> ***
+. * Test 2: HDFE with industry
+. *****************************************************************************
+> ***
+. 
+. di ""
+
+
+. di "=========================================="
+==========================================
+
+. di "TEST 2: HDFE(industry)"
+TEST 2: HDFE(industry)
+
+. di "=========================================="
+==========================================
+
+. 
+. did_multiplegt_dyn Y group time D, effects(3) placebo(2) hdfe(industry) clust
+> er(group) graph_off
+
+Applying HDFE for variables: industry
+Total observations: 1246, HDFE groups: 20
+reghdfe requires uses the require package to maintain its dependencies; please 
+> install it:
+ - install from SSC
+ - install from GitHub
+
+Linear regression, absorbing indicators             Number of obs     =  1,246
+Absorbed variable: hdfe_group_XX                    No. of categories =     20
+                                                    F(0, 1226)        =      .
+                                                    Prob > F          =      .
+                                                    R-squared         = 0.5149
+                                                    Adj R-squared     = 0.5074
+                                                    Root MSE          = 1.7183
+
+------------------------------------------------------------------------------
+   diff_y_XX | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+       _cons |   .6328719   .0486785    13.00   0.000     .5373696    .7283742
+------------------------------------------------------------------------------
+F test of absorbed indicators: F(19, 1226) = 68.486           Prob > F = 0.000
+(178 missing values generated)
+HDFE applied successfully via areg (absorbing from first differences)
+Original diff_Y SD:   2.4481 | Residualized diff_Y SD:   1.7051
+Outcome adjusted for HDFE-specific trends (slope = hdfe mean of first differenc
+> es)
+
+
+
+-------------------------------------------------------------------------------
+> -
+             Estimation of treatment effects: Event-study effects
+-------------------------------------------------------------------------------
+> -
+
+             |  Estimate         SE      LB CI      UB CI          N 
+-------------+-------------------------------------------------------
+    Effect_1 |  2.847251   .1384602   2.575874   3.118628        801 
+    Effect_2 |   2.95553   .1679144   2.626424   3.284636        628 
+    Effect_3 |  2.776264   .1941157   2.395804   3.156724        475 
+
+             | Switchers 
+-------------+----------
+    Effect_1 |       141 
+    Effect_2 |       125 
+    Effect_3 |       106 
+-------------------------------------------------------------------------------
+> -
+Test of joint nullity of the effects : p-value = 0
+
+
+-------------------------------------------------------------------------------
+> -
+               Average cumulative (total) effect per treatment unit
+-------------------------------------------------------------------------------
+> -
+
+             |  Estimate         SE      LB CI      UB CI          N 
+-------------+-------------------------------------------------------
+  Av_tot_eff |  2.863408   .1410036   2.587046    3.13977       1032 
+
+             |    Switch  x Periods 
+-------------+---------------------
+  Av_tot_eff |       372            
+-------------------------------------------------------------------------------
+> -
+Average number of time periods over which a treatment's effect is accumulated =
+>  1.9059139
+
+
+-------------------------------------------------------------------------------
+> -
+          Testing the parallel trends and no anticipation assumptions
+-------------------------------------------------------------------------------
+> -
+
+             |  Estimate         SE      LB CI      UB CI          N 
+-------------+-------------------------------------------------------
+   Placebo_1 |  .0083617   .1567706  -.2989029   .3156263        623 
+   Placebo_2 |  .0520676   .2024738  -.3447737   .4489089        337 
+
+             | Switchers 
+-------------+----------
+   Placebo_1 |       120 
+   Placebo_2 |        81 
+-------------------------------------------------------------------------------
+> -
+Test of joint nullity of the placebos : p-value = .96732879
+
+
+The development of this package was funded by the European Union (ERC, REALLYCR
+> EDIBLE,GA N°101043899).
+
+. 
+. *****************************************************************************
+> ***
+. * Test 3: Manual HDFE check - what reghdfe actually does
+. *****************************************************************************
+> ***
+. 
+. di ""
+
+
+. di "=========================================="
+==========================================
+
+. di "TEST 3: MANUAL REGHDFE CHECK"
+TEST 3: MANUAL REGHDFE CHECK
+
+. di "=========================================="
+==========================================
+
+. 
+. * Recreate what the ado should be doing
+. preserve
+
+. 
+. * Create first difference
+. xtset group time
+
+Panel variable: group (strongly balanced)
+ Time variable: time, 1 to 8
+         Delta: 1 unit
+
+. cap drop diff_y_manual
+
+. gen diff_y_manual = D.Y
+(200 missing values generated)
+
+. 
+. * Check original variation
+. sum diff_y_manual
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+diff_y_man~l |      1,400    .5207544    2.438495  -6.012668   8.498693
+
+. local orig_sd = r(sd)
+
+. di "Original diff_Y SD: `orig_sd'"
+Original diff_Y SD: 2.438495135538966
+
+. 
+. * Run reghdfe to residualize
+. reghdfe diff_y_manual, absorb(i.industry i.time) residuals(resid_hdfe)
+reghdfe requires uses the require package to maintain its dependencies; please 
+> install it:
+ - install from SSC
+ - install from GitHub
+r(9);
+
+end of do-file
+r(9);

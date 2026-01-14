@@ -1,0 +1,103 @@
+
+  ___  ____  ____  ____  ____ ®
+ /__    /   ____/   /   ____/      StataNow 19.5
+___/   /   /___/   /   /___/       MP—Parallel Edition
+
+ Statistics and Data Science       Copyright 1985-2025 StataCorp LLC
+                                   StataCorp
+                                   4905 Lakeway Drive
+                                   College Station, Texas 77845 USA
+                                   800-782-8272        https://www.stata.com
+                                   979-696-4600        service@stata.com
+
+Stata license: Unlimited-user 2-core network, expiring  8 Jun 2026
+Serial number: 501909302568
+  Licensed to: Anzony QUISPE ROJAS
+               
+
+Notes:
+      1. Stata is running in batch mode.
+      2. Unicode is supported; see help unicode_advice.
+      3. More than 2 billion observations are allowed; see help obs_advice.
+      4. Maximum number of variables is set to 5,000 but can be increased; see help set_maxvar.
+
+. do check_results.do 
+
+. * Check Monte Carlo results
+. use "monte_carlo_results.dta", clear
+
+. describe
+
+Contains data from monte_carlo_results.dta
+ Observations:           500                  
+    Variables:            11                  14 Jan 2026 19:52
+------------------------------------------------------------------------------------------------------------------------------------------
+Variable      Storage   Display    Value
+    name         type    format    label      Variable label
+------------------------------------------------------------------------------------------------------------------------------------------
+diff_eff1       float   %9.0g                 Difference in Effect_1 (HDFE - Controls)
+diff_eff2       float   %9.0g                 Difference in Effect_2 (HDFE - Controls)
+diff_eff3       float   %9.0g                 Difference in Effect_3 (HDFE - Controls)
+diff_plac1      float   %9.0g                 Difference in Placebo_1 (HDFE - Controls)
+diff_plac2      float   %9.0g                 Difference in Placebo_2 (HDFE - Controls)
+diff_se_eff1    float   %9.0g                 Difference in SE_Effect_1 (HDFE - Controls)
+diff_se_eff2    float   %9.0g                 Difference in SE_Effect_2 (HDFE - Controls)
+diff_se_eff3    float   %9.0g                 Difference in SE_Effect_3 (HDFE - Controls)
+diff_se_plac1   float   %9.0g                 Difference in SE_Placebo_1 (HDFE - Controls)
+diff_se_plac2   float   %9.0g                 Difference in SE_Placebo_2 (HDFE - Controls)
+sim_id          float   %9.0g                 
+------------------------------------------------------------------------------------------------------------------------------------------
+Sorted by: 
+
+. sum diff_eff1 diff_eff2 diff_eff3 diff_plac1 diff_plac2
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+   diff_eff1 |          0
+   diff_eff2 |          0
+   diff_eff3 |          0
+  diff_plac1 |          0
+  diff_plac2 |          0
+
+. sum diff_se_eff1 diff_se_eff2 diff_se_eff3 diff_se_plac1 diff_se_plac2
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+diff_se_eff1 |        500   -.0011779    .0013354  -.0088862   .0023375
+diff_se_eff2 |        500   -.0040298    .0040615  -.0337232   .0030294
+diff_se_eff3 |        500   -.0089104    .0090913  -.0822597   .0056149
+diff_se_pl~1 |        500    .0004881    .0012575  -.0031624   .0108628
+diff_se_pl~2 |        500   -.0002505    .0036037  -.0308347   .0116132
+
+. list diff_eff1 diff_se_eff1 in 1/20
+
+     +----------------------+
+     | diff_e~1   diff_s~f1 |
+     |----------------------|
+  1. |        .    -.000441 |
+  2. |        .   -.0008392 |
+  3. |        .   -.0014124 |
+  4. |        .   -.0008524 |
+  5. |        .   -.0021902 |
+     |----------------------|
+  6. |        .   -.0002892 |
+  7. |        .   -.0018943 |
+  8. |        .   -.0017206 |
+  9. |        .   -.0023107 |
+ 10. |        .   -.0008386 |
+     |----------------------|
+ 11. |        .   -.0016949 |
+ 12. |        .   -1.40e-07 |
+ 13. |        .   -.0004604 |
+ 14. |        .   -.0036333 |
+ 15. |        .   -.0017681 |
+     |----------------------|
+ 16. |        .    .0001497 |
+ 17. |        .   -.0007189 |
+ 18. |        .   -.0011017 |
+ 19. |        .    -.000249 |
+ 20. |        .   -.0009106 |
+     +----------------------+
+
+. 
+end of do-file

@@ -1,0 +1,219 @@
+
+  ___  ____  ____  ____  ____ ®
+ /__    /   ____/   /   ____/      StataNow 19.5
+___/   /   /___/   /   /___/       MP—Parallel Edition
+
+ Statistics and Data Science       Copyright 1985-2025 StataCorp LLC
+                                   StataCorp
+                                   4905 Lakeway Drive
+                                   College Station, Texas 77845 USA
+                                   800-782-8272        https://www.stata.com
+                                   979-696-4600        service@stata.com
+
+Stata license: Unlimited-user 2-core network, expiring  8 Jun 2026
+Serial number: 501909302568
+  Licensed to: Anzony QUISPE ROJAS
+               
+
+Notes:
+      1. Stata is running in batch mode.
+      2. Unicode is supported; see help unicode_advice.
+      3. More than 2 billion observations are allowed; see help obs_advice.
+      4. Maximum number of variables is set to 5,000 but can be increased; see help set_maxvar.
+
+. do test_ereturn.do 
+
+. * Test what e() values are returned by did_multiplegt_dyn
+. clear all
+
+. set seed 12345
+
+. 
+. * Load local version
+. adopath ++ "/Users/anzony.quisperojas/Documents/GitHub/did_multiplegt_dyn/Stata"
+  [1]              "/Users/anzony.quisperojas/Documents/GitHub/did_multiplegt_dyn/Stata"
+  [2]  (BASE)      "/Applications/StataNow/ado/base/"
+  [3]  (SITE)      "/Applications/StataNow/ado/site/"
+  [4]              "."
+  [5]  (PERSONAL)  "/Users/anzony.quisperojas/Documents/Stata/ado/personal/"
+  [6]  (PLUS)      "/Users/anzony.quisperojas/Library/Application Support/Stata/ado/plus/"
+  [7]  (OLDPLACE)  "~/ado/"
+
+. 
+. * Create simple test data
+. set obs 500
+Number of observations (_N) was 0, now 500.
+
+. gen group = ceil(_n / 10)
+
+. bysort group: gen time = _n
+
+. bysort group: gen industry = ceil(runiform() * 5) if _n == 1
+(450 missing values generated)
+
+. bysort group: replace industry = industry[1]
+(450 real changes made)
+
+. bysort group: gen treat_time = ceil(runiform() * 12) if _n == 1
+(450 missing values generated)
+
+. bysort group: replace treat_time = treat_time[1]
+(450 real changes made)
+
+. replace treat_time = . if treat_time > 10
+(130 real changes made, 130 to missing)
+
+. gen D = (time >= treat_time) & treat_time != .
+
+. gen Y = rnormal(0, 1) + 3 * D
+
+. 
+. * Run command
+. did_multiplegt_dyn Y group time D, effects(2) placebo(1) hdfe(industry) cluster(group) graph_off
+
+Applying HDFE for variables: industry
+(sum of wgt is 225)
+note: 10.time_XX omitted because of collinearity.
+
+Linear regression, absorbing indicators            Number of obs     =     225
+Absorbed variable: hdfe_group_XX                   No. of categories =       5
+                                                   F(8, 212)         =    0.47
+                                                   Prob > F          =  0.8733
+                                                   R-squared         =  0.0220
+                                                   Adj R-squared     = -0.0334
+                                                   Root MSE          =  1.5334
+
+------------------------------------------------------------------------------
+   diff_y_XX | Coefficient  Std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+     time_XX |
+          2  |  -.1735357   .4874296    -0.36   0.722    -1.134365    .7872937
+          3  |   .1215283   .4966229     0.24   0.807    -.8574231     1.10048
+          4  |   .0396848   .4984936     0.08   0.937    -.9429542    1.022324
+          5  |   .0158917   .5183794     0.03   0.976    -1.005947     1.03773
+          6  |   .1703829   .5417998     0.31   0.753    -.8976221    1.238388
+          7  |   .4631988   .5531415     0.84   0.403    -.6271631    1.553561
+          8  |  -.2826342   .5589742    -0.51   0.614    -1.384494    .8192252
+          9  |   .3228731   .5908027     0.55   0.585    -.8417274    1.487474
+         10  |          0  (omitted)
+             |
+       _cons |  -.0879806   .4258656    -0.21   0.837    -.9274541    .7514928
+------------------------------------------------------------------------------
+F test of absorbed indicators: F(4, 212) = 0.228              Prob > F = 0.922
+(235 missing values generated)
+HDFE applied for baseline treatment level 1 (N=225, groups=5)
+
+Original diff_Y SD:   1.6939 | Adjusted diff_Y SD:   1.6953
+Outcome adjusted for HDFE-specific trends
+
+
+
+--------------------------------------------------------------------------------
+             Estimation of treatment effects: Event-study effects
+--------------------------------------------------------------------------------
+
+             |  Estimate         SE      LB CI      UB CI          N  Switchers 
+-------------+-----------------------------------------------------------------
+    Effect_1 |  2.826807   .3446498   2.151305   3.502308        258         33 
+    Effect_2 |  2.840985   .3891881    2.07819    3.60378        215         32 
+--------------------------------------------------------------------------------
+Test of joint nullity of the effects : p-value = 4.441e-16
+
+
+--------------------------------------------------------------------------------
+               Average cumulative (total) effect per treatment unit
+--------------------------------------------------------------------------------
+
+             |  Estimate         SE      LB CI      UB CI          N     Switch  x Periods 
+-------------+----------------------------------------------------------------------------
+  Av_tot_eff |  2.833787   .3422279   2.163032   3.504541        290         65            
+--------------------------------------------------------------------------------
+Average number of time periods over which a treatment's effect is accumulated = 1.4923077
+
+
+--------------------------------------------------------------------------------
+          Testing the parallel trends and no anticipation assumptions
+--------------------------------------------------------------------------------
+
+             |  Estimate         SE      LB CI      UB CI          N  Switchers 
+-------------+-----------------------------------------------------------------
+   Placebo_1 |  .0185709   .2902295  -.5502684   .5874102        212         29 
+--------------------------------------------------------------------------------
+
+
+The development of this package was funded by the European Union (ERC, REALLYCREDIBLE,GA N°101043899).
+
+. 
+. * Check what e() returns
+. di "=== E() SCALARS ==="
+=== E() SCALARS ===
+
+. ereturn list
+
+scalars:
+           e(Effect_1) =  2.82680655432784
+         e(N_effect_1) =  258
+  e(N_switchers_effec
+    t_1)               =  33
+        e(se_effect_1) =  .3446497916863508
+           e(Effect_2) =  2.840984879324779
+         e(N_effect_2) =  215
+  e(N_switchers_effec
+    t_2)               =  32
+        e(se_effect_2) =  .3891881184033019
+     e(p_jointeffects) =  4.44089209850e-16
+          e(Placebo_1) =  .018570916403247
+        e(N_placebo_1) =  212
+  e(N_switchers_place
+    bo_1)              =  29
+       e(se_placebo_1) =  .2902294602191179
+      e(Av_tot_effect) =  2.833786661939129
+  e(N_avg_total_effec
+    t)                 =  290
+  e(N_switchers_effec
+    t_average)         =  65
+  e(se_avg_total_effe
+    ct)                =  .3422279386438291
+
+macros:
+                e(cmd) : "did_multiplegt_dyn"
+            e(placebo) : "Placebo_1"
+            e(effects) : "Effect_1 Effect_2"
+         e(properties) : "b V"
+
+matrices:
+                  e(b) :  1 x 4
+                  e(V) :  4 x 4
+          e(variances) :  5 x 1
+          e(estimates) :  5 x 1
+
+. 
+. di ""
+
+
+. di "=== SPECIFIC VALUES ==="
+=== SPECIFIC VALUES ===
+
+. di "e(effect_1) = " e(effect_1)
+e(effect_1) = .
+
+. di "e(se_effect_1) = " e(se_effect_1)
+e(se_effect_1) = .34464979
+
+. di "e(N_effect_1) = " e(N_effect_1)
+e(N_effect_1) = 258
+
+. 
+. * Check if effects are in a matrix
+. di ""
+
+
+. di "=== MATRICES ==="
+=== MATRICES ===
+
+. cap matrix list e(results)
+
+. cap matrix list e(effects)
+
+. 
+end of do-file

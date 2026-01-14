@@ -1,0 +1,984 @@
+
+  ___  ____  ____  ____  ____ ®
+ /__    /   ____/   /   ____/      StataNow 19.5
+___/   /   /___/   /   /___/       MP—Parallel Edition
+
+ Statistics and Data Science       Copyright 1985-2025 StataCorp LLC
+                                   StataCorp
+                                   4905 Lakeway Drive
+                                   College Station, Texas 77845 USA
+                                   800-782-8272        https://www.stata.com
+                                   979-696-4600        service@stata.com
+
+Stata license: Unlimited-user 2-core network, expiring  8 Jun 2026
+Serial number: 501909302568
+  Licensed to: Anzony QUISPE ROJAS
+               
+
+Notes:
+      1. Stata is running in batch mode.
+      2. Unicode is supported; see help unicode_advice.
+      3. More than 2 billion observations are allowed; see help obs_advice.
+      4. Maximum number of variables is set to 5,000 but can be increased;
+          see help set_maxvar.
+
+. do /Users/anzony.quisperojas/Documents/GitHub/did_multiplegt_dyn/Stata/test_h
+> dfe.do 
+
+. *****************************************************************************
+> ***
+. * Test file for hdfe() option in did_multiplegt_dyn
+. * This file creates synthetic data with fixed effects and compares:
+. * 1. Original approach: FE as dummies interacted with time in controls()
+. * 2. New approach: hdfe() option using reghdfe
+. *****************************************************************************
+> ***
+. 
+. clear all
+
+. set seed 12345
+
+. set more off
+
+. 
+. * Check if reghdfe is installed
+. cap which reghdfe
+
+. if _rc {
+.     ssc install reghdfe, replace
+checking reghdfe consistency and verifying not already installed...
+installing into /Users/anzony.quisperojas/Library/Application Support/Stata/ado
+> /plus/...
+installation complete.
+. }
+
+. 
+. * Check if ftools is installed (required by reghdfe)
+. cap which ftools
+
+. if _rc {
+.     ssc install ftools, replace
+checking ftools consistency and verifying not already installed...
+installing into /Users/anzony.quisperojas/Library/Application Support/Stata/ado
+> /plus/...
+installation complete.
+. }
+
+. 
+. *****************************************************************************
+> ***
+. * 1. Generate Synthetic Panel Data with Fixed Effects
+. *****************************************************************************
+> ***
+. 
+. * Parameters
+. local N_groups = 500        // Number of groups (e.g., firms)
+
+. local T_periods = 10        // Number of time periods
+
+. local N_industries = 50     // Number of industries (high-dimensional FE)
+
+. local N_regions = 20        // Number of regions
+
+. 
+. * Create panel structure
+. set obs `=`N_groups' * `T_periods''
+Number of observations (_N) was 0, now 5,000.
+
+. gen group = ceil(_n / `T_periods')
+
+. bysort group: gen time = _n
+
+. 
+. * Assign time-invariant characteristics to groups
+. * Industry and region are constant within groups (time-invariant)
+. bysort group: gen industry = ceil(runiform() * `N_industries') if _n == 1
+(4,500 missing values generated)
+
+. bysort group: replace industry = industry[1]
+(4500 real changes made)
+
+. 
+. bysort group: gen region = ceil(runiform() * `N_regions') if _n == 1
+(4,500 missing values generated)
+
+. bysort group: replace region = region[1]
+(4500 real changes made)
+
+. 
+. * Generate treatment timing (staggered adoption)
+. * Some groups never treated, others treated at different times
+. bysort group: gen treat_time = . if _n == 1
+(5,000 missing values generated)
+
+. bysort group: replace treat_time = ceil(runiform() * (`T_periods' + 3)) if _n
+>  == 1
+(500 real changes made)
+
+. bysort group: replace treat_time = treat_time[1]
+(4500 real changes made)
+
+. * Groups with treat_time > T_periods are never-treated
+. replace treat_time = . if treat_time > `T_periods'
+(1,100 real changes made, 1,100 to missing)
+
+. 
+. * Create treatment indicator
+. gen D = (time >= treat_time) & treat_time != .
+
+. 
+. * Generate fixed effects (these are what we want to absorb)
+. * Industry fixed effects (time-invariant within industry)
+. gen industry_fe = 0
+
+. forvalues i = 1/`N_industries' {
+  2.     replace industry_fe = rnormal(0, 2) if industry == `i' & group == grou
+> p[1]
+  3. }
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(10 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+
+. bysort industry: replace industry_fe = industry_fe[1]
+(10 real changes made)
+
+. 
+. * Region fixed effects
+. gen region_fe = 0
+
+. forvalues r = 1/`N_regions' {
+  2.     replace region_fe = rnormal(0, 1.5) if region == `r' & group == group[
+> 1]
+  3. }
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(10 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+
+. bysort region: replace region_fe = region_fe[1]
+(10 real changes made)
+
+. 
+. * Time fixed effects
+. gen time_fe = 0
+
+. forvalues t = 1/`T_periods' {
+  2.     replace time_fe = rnormal(0, 1) if time == `t' & _n == `t'
+  3. }
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+(0 real changes made)
+
+. bysort time: replace time_fe = time_fe[1]
+(0 real changes made)
+
+. 
+. * Group fixed effects (unit-specific intercepts)
+. bysort group: gen group_fe = rnormal(0, 3) if _n == 1
+(4,500 missing values generated)
+
+. bysort group: replace group_fe = group_fe[1]
+(4500 real changes made)
+
+. 
+. * True treatment effect (constant for simplicity)
+. local true_att = 2.5
+
+. 
+. * Generate outcome with:
+. * Y = group_fe + time_fe + industry_fe + region_fe + treatment_effect + noise
+. gen Y = group_fe + time_fe + industry_fe + region_fe + `true_att' * D + rnorm
+> al(0, 1)
+
+. 
+. * Create time-varying covariate (for controls comparison)
+. gen X1 = rnormal(0, 1) + 0.5 * time
+
+. 
+. * Label variables
+. label var Y "Outcome"
+
+. label var group "Group ID"
+
+. label var time "Time period"
+
+. label var D "Treatment indicator"
+
+. label var industry "Industry code (time-invariant)"
+
+. label var region "Region code (time-invariant)"
+
+. label var treat_time "Treatment timing"
+
+. 
+. di ""
+
+
+. di "=========================================="
+==========================================
+
+. di "SYNTHETIC DATA SUMMARY"
+SYNTHETIC DATA SUMMARY
+
+. di "=========================================="
+==========================================
+
+. di "Number of groups: `N_groups'"
+Number of groups: 500
+
+. di "Time periods: `T_periods'"
+Time periods: 10
+
+. di "Number of industries: `N_industries'"
+Number of industries: 50
+
+. di "Number of regions: `N_regions'"
+Number of regions: 20
+
+. di "True ATT: `true_att'"
+True ATT: 2.5
+
+. di ""
+
+
+. 
+. tab D
+
+  Treatment |
+  indicator |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          0 |      2,878       57.56       57.56
+          1 |      2,122       42.44      100.00
+------------+-----------------------------------
+      Total |      5,000      100.00
+
+. sum Y D industry region
+
+    Variable |        Obs        Mean    Std. dev.       Min        Max
+-------------+---------------------------------------------------------
+           Y |      5,000    .9930655    3.349901  -11.00008   12.18992
+           D |      5,000       .4244     .494301          0          1
+    industry |      5,000       24.83    14.52884          1         50
+      region |      5,000       10.47    5.752888          1         20
+
+. 
+. *****************************************************************************
+> ***
+. * 2. Prepare dummy variables for controls() approach
+. *****************************************************************************
+> ***
+. 
+. di ""
+
+
+. di "=========================================="
+==========================================
+
+. di "CREATING INDUSTRY x TIME DUMMIES"
+CREATING INDUSTRY x TIME DUMMIES
+
+. di "=========================================="
+==========================================
+
+. 
+. * Create industry dummies interacted with time
+. * This is computationally expensive with many industries
+. tab industry, gen(ind_)
+
+   Industry |
+       code |
+(time-invar |
+      iant) |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |        110        2.20        2.20
+          2 |         90        1.80        4.00
+          3 |        100        2.00        6.00
+          4 |         90        1.80        7.80
+          5 |        180        3.60       11.40
+          6 |         90        1.80       13.20
+          7 |         80        1.60       14.80
+          8 |        100        2.00       16.80
+          9 |        100        2.00       18.80
+         10 |        160        3.20       22.00
+         11 |         90        1.80       23.80
+         12 |        100        2.00       25.80
+         13 |         60        1.20       27.00
+         14 |        110        2.20       29.20
+         15 |        120        2.40       31.60
+         16 |         80        1.60       33.20
+         17 |         70        1.40       34.60
+         18 |        150        3.00       37.60
+         19 |         90        1.80       39.40
+         20 |         70        1.40       40.80
+         21 |        190        3.80       44.60
+         22 |        170        3.40       48.00
+         23 |        100        2.00       50.00
+         24 |         80        1.60       51.60
+         25 |         90        1.80       53.40
+         26 |         90        1.80       55.20
+         27 |        100        2.00       57.20
+         28 |         80        1.60       58.80
+         29 |        120        2.40       61.20
+         30 |        120        2.40       63.60
+         31 |         50        1.00       64.60
+         32 |         70        1.40       66.00
+         33 |        110        2.20       68.20
+         34 |        110        2.20       70.40
+         35 |        120        2.40       72.80
+         36 |         70        1.40       74.20
+         37 |         70        1.40       75.60
+         38 |         90        1.80       77.40
+         39 |         70        1.40       78.80
+         40 |        100        2.00       80.80
+         41 |         60        1.20       82.00
+         42 |         70        1.40       83.40
+         43 |         70        1.40       84.80
+         44 |        120        2.40       87.20
+         45 |        110        2.20       89.40
+         46 |         90        1.80       91.20
+         47 |        110        2.20       93.40
+         48 |         90        1.80       95.20
+         49 |        140        2.80       98.00
+         50 |        100        2.00      100.00
+------------+-----------------------------------
+      Total |      5,000      100.00
+
+. 
+. * Interact with time (as linear trend)
+. forvalues i = 1/`N_industries' {
+  2.     gen ind_time_`i' = ind_`i' * time
+  3. }
+
+. 
+. * Create region dummies interacted with time
+. tab region, gen(reg_)
+
+Region code |
+(time-invar |
+      iant) |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |        270        5.40        5.40
+          2 |        240        4.80       10.20
+          3 |        250        5.00       15.20
+          4 |        230        4.60       19.80
+          5 |        290        5.80       25.60
+          6 |        280        5.60       31.20
+          7 |        240        4.80       36.00
+          8 |        180        3.60       39.60
+          9 |        280        5.60       45.20
+         10 |        240        4.80       50.00
+         11 |        200        4.00       54.00
+         12 |        190        3.80       57.80
+         13 |        270        5.40       63.20
+         14 |        340        6.80       70.00
+         15 |        280        5.60       75.60
+         16 |        240        4.80       80.40
+         17 |        330        6.60       87.00
+         18 |        210        4.20       91.20
+         19 |        220        4.40       95.60
+         20 |        220        4.40      100.00
+------------+-----------------------------------
+      Total |      5,000      100.00
+
+. 
+. forvalues r = 1/`N_regions' {
+  2.     gen reg_time_`r' = reg_`r' * time
+  3. }
+
+. 
+. di "Created `N_industries' industry x time interactions"
+Created 50 industry x time interactions
+
+. di "Created `N_regions' region x time interactions"
+Created 20 region x time interactions
+
+. 
+. *****************************************************************************
+> ***
+. * 3. Save the dataset
+. *****************************************************************************
+> ***
+. 
+. save "/Users/anzony.quisperojas/Documents/GitHub/did_multiplegt_dyn/Stata/tes
+> t_data_hdfe.dta", replace
+(file
+    /Users/anzony.quisperojas/Documents/GitHub/did_multiplegt_dyn/Stata/test_
+    > data_hdfe.dta not found)
+file
+    /Users/anzony.quisperojas/Documents/GitHub/did_multiplegt_dyn/Stata/test_
+    > data_hdfe.dta saved
+
+. 
+. *****************************************************************************
+> ***
+. * 4. Test ORIGINAL approach: controls() with FE dummies
+. *****************************************************************************
+> ***
+. 
+. di ""
+
+
+. di "=========================================="
+==========================================
+
+. di "TEST 1: ORIGINAL APPROACH"
+TEST 1: ORIGINAL APPROACH
+
+. di "Using controls() with industry x time dummies"
+Using controls() with industry x time dummies
+
+. di "=========================================="
+==========================================
+
+. 
+. * Build the controls varlist (industry x time interactions)
+. local controls_list ""
+
+. forvalues i = 1/`N_industries' {
+  2.     local controls_list "`controls_list' ind_time_`i'"
+  3. }
+
+. 
+. * Note: Including all industry dummies would be very slow
+. * We'll use a subset for demonstration
+. local controls_subset ""
+
+. forvalues i = 1/20 {
+  2.     local controls_subset "`controls_subset' ind_time_`i'"
+  3. }
+
+. 
+. di ""
+
+
+. di "Running did_multiplegt_dyn with controls() approach..."
+Running did_multiplegt_dyn with controls() approach...
+
+. di "(Using subset of 20 industry x time interactions for speed)"
+(Using subset of 20 industry x time interactions for speed)
+
+. di ""
+
+
+. 
+. timer clear 1
+
+. timer on 1
+
+. 
+. cap noi did_multiplegt_dyn Y group time D, effects(3) placebo(2) controls(`co
+> ntrols_subset') cluster(group) graph_off
+
+
+-------------------------------------------------------------------------------
+> -
+             Estimation of treatment effects: Event-study effects
+-------------------------------------------------------------------------------
+> -
+
+             |  Estimate         SE      LB CI      UB CI          N 
+-------------+-------------------------------------------------------
+    Effect_1 |  2.539966    .082659   2.377957   2.701974       2768 
+    Effect_2 |  2.573544    .085858   2.405265   2.741822       2313 
+    Effect_3 |  2.443992    .102801   2.242505   2.645478       1888 
+
+             | Switchers 
+-------------+----------
+    Effect_1 |       350 
+    Effect_2 |       311 
+    Effect_3 |       274 
+-------------------------------------------------------------------------------
+> -
+Test of joint nullity of the effects : p-value = 0
+
+
+-------------------------------------------------------------------------------
+> -
+               Average cumulative (total) effect per treatment unit
+-------------------------------------------------------------------------------
+> -
+
+             |  Estimate         SE      LB CI      UB CI          N 
+-------------+-------------------------------------------------------
+  Av_tot_eff |  2.523009   .0746279   2.376741   2.669277       3353 
+
+             |    Switch  x Periods 
+-------------+---------------------
+  Av_tot_eff |       935            
+-------------------------------------------------------------------------------
+> -
+Average number of time periods over which a treatment's effect is accumulated =
+>  1.9187166
+
+
+-------------------------------------------------------------------------------
+> -
+          Testing the parallel trends and no anticipation assumptions
+-------------------------------------------------------------------------------
+> -
+
+             |  Estimate         SE      LB CI      UB CI          N 
+-------------+-------------------------------------------------------
+   Placebo_1 |  .0676394   .0807368  -.0906019   .2258807       2308 
+   Placebo_2 | -.0463213     .09758  -.2375746   .1449319       1500 
+
+             | Switchers 
+-------------+----------
+   Placebo_1 |       306 
+   Placebo_2 |       239 
+-------------------------------------------------------------------------------
+> -
+Test of joint nullity of the placebos : p-value = .54566961
+
+
+The development of this package was funded by the European Union (ERC, REALLYCR
+> EDIBLE,GA N°101043899).
+
+. 
+. timer off 1
+
+. timer list 1
+   1:      3.12 /        1 =       3.1240
+
+. 
+. * Store results
+. if _rc == 0 {
+.     scalar att_controls = e(effect_1)
+.     scalar se_controls = e(se_effect_1)
+.     scalar placebo1_controls = e(placebo_1)
+.     scalar placebo2_controls = e(placebo_2)
+. 
+.     di ""
+
+.     di "RESULTS WITH CONTROLS() APPROACH:"
+RESULTS WITH CONTROLS() APPROACH:
+.     di "Effect 1 (ATT): " %9.4f att_controls " (SE: " %9.4f se_controls ")"
+Effect 1 (ATT):         . (SE:    0.0827)
+.     if placebo1_controls != . di "Placebo 1: " %9.4f placebo1_controls
+.     if placebo2_controls != . di "Placebo 2: " %9.4f placebo2_controls
+. }
+
+. else {
+.     di as error "Original approach failed with error code: " _rc
+.     scalar att_controls = .
+.     scalar se_controls = .
+.     scalar placebo1_controls = .
+.     scalar placebo2_controls = .
+. }
+
+. 
+. *****************************************************************************
+> ***
+. * 5. Test NEW approach: hdfe() option
+. *****************************************************************************
+> ***
+. 
+. di ""
+
+
+. di "=========================================="
+==========================================
+
+. di "TEST 2: NEW APPROACH"
+TEST 2: NEW APPROACH
+
+. di "Using hdfe() with industry and region"
+Using hdfe() with industry and region
+
+. di "=========================================="
+==========================================
+
+. 
+. di ""
+
+
+. di "Running did_multiplegt_dyn with hdfe() approach..."
+Running did_multiplegt_dyn with hdfe() approach...
+
+. di ""
+
+
+. 
+. timer clear 2
+
+. timer on 2
+
+. 
+. cap noi did_multiplegt_dyn Y group time D, effects(3) placebo(2) hdfe(industr
+> y) cluster(group) graph_off
+option hdfe() not allowed
+
+. 
+. timer off 2
+
+. timer list 2
+   2:      0.00 /        1 =       0.0000
+
+. 
+. * Store results
+. if _rc == 0 {
+.     scalar att_hdfe = e(effect_1)
+.     scalar se_hdfe = e(se_effect_1)
+.     scalar placebo1_hdfe = e(placebo_1)
+.     scalar placebo2_hdfe = e(placebo_2)
+. 
+.     di ""
+.     di "RESULTS WITH HDFE() APPROACH:"
+.     di "Effect 1 (ATT): " %9.4f att_hdfe " (SE: " %9.4f se_hdfe ")"
+.     if placebo1_hdfe != . di "Placebo 1: " %9.4f placebo1_hdfe
+.     if placebo2_hdfe != . di "Placebo 2: " %9.4f placebo2_hdfe
+. }
+
+. else {
+.     di as error "HDFE approach failed with error code: " _rc
+HDFE approach failed with error code: 198
+.     scalar att_hdfe = .
+.     scalar se_hdfe = .
+.     scalar placebo1_hdfe = .
+.     scalar placebo2_hdfe = .
+. }
+
+. 
+. *****************************************************************************
+> ***
+. * 6. Test with both industry and region in hdfe()
+. *****************************************************************************
+> ***
+. 
+. di ""
+
+
+. di "=========================================="
+==========================================
+
+. di "TEST 3: HDFE with multiple variables"
+TEST 3: HDFE with multiple variables
+
+. di "Using hdfe(industry region)"
+Using hdfe(industry region)
+
+. di "=========================================="
+==========================================
+
+. 
+. timer clear 3
+
+. timer on 3
+
+. 
+. cap noi did_multiplegt_dyn Y group time D, effects(3) placebo(2) hdfe(industr
+> y region) cluster(group) graph_off
+option hdfe() not allowed
+
+. 
+. timer off 3
+
+. timer list 3
+   3:      0.00 /        1 =       0.0000
+
+. 
+. * Store results
+. if _rc == 0 {
+.     scalar att_hdfe2 = e(effect_1)
+.     scalar se_hdfe2 = e(se_effect_1)
+.     scalar placebo1_hdfe2 = e(placebo_1)
+.     scalar placebo2_hdfe2 = e(placebo_2)
+. 
+.     di ""
+.     di "RESULTS WITH HDFE(industry region) APPROACH:"
+.     di "Effect 1 (ATT): " %9.4f att_hdfe2 " (SE: " %9.4f se_hdfe2 ")"
+.     if placebo1_hdfe2 != . di "Placebo 1: " %9.4f placebo1_hdfe2
+.     if placebo2_hdfe2 != . di "Placebo 2: " %9.4f placebo2_hdfe2
+. }
+
+. else {
+.     di as error "HDFE approach with multiple vars failed with error code: " _
+> rc
+HDFE approach with multiple vars failed with error code: 198
+.     scalar att_hdfe2 = .
+.     scalar se_hdfe2 = .
+. }
+
+. 
+. *****************************************************************************
+> ***
+. * 7. Baseline comparison (no controls, no hdfe)
+. *****************************************************************************
+> ***
+. 
+. di ""
+
+
+. di "=========================================="
+==========================================
+
+. di "TEST 4: BASELINE (no controls, no hdfe)"
+TEST 4: BASELINE (no controls, no hdfe)
+
+. di "=========================================="
+==========================================
+
+. 
+. timer clear 4
+
+. timer on 4
+
+. 
+. cap noi did_multiplegt_dyn Y group time D, effects(3) placebo(2) cluster(grou
+> p) graph_off
+
+
+-------------------------------------------------------------------------------
+> -
+             Estimation of treatment effects: Event-study effects
+-------------------------------------------------------------------------------
+> -
+
+             |  Estimate         SE      LB CI      UB CI          N 
+-------------+-------------------------------------------------------
+    Effect_1 |  2.531353   .0819844   2.370667    2.69204       2768 
+    Effect_2 |  2.552059   .0837743   2.387864   2.716254       2313 
+    Effect_3 |  2.403033   .0969697   2.212976    2.59309       1888 
+
+             | Switchers 
+-------------+----------
+    Effect_1 |       350 
+    Effect_2 |       311 
+    Effect_3 |       274 
+-------------------------------------------------------------------------------
+> -
+Test of joint nullity of the effects : p-value = 0
+
+
+-------------------------------------------------------------------------------
+> -
+               Average cumulative (total) effect per treatment unit
+-------------------------------------------------------------------------------
+> -
+
+             |  Estimate         SE      LB CI      UB CI          N 
+-------------+-------------------------------------------------------
+  Av_tot_eff |  2.500636    .071794   2.359923    2.64135       3353 
+
+             |    Switch  x Periods 
+-------------+---------------------
+  Av_tot_eff |       935            
+-------------------------------------------------------------------------------
+> -
+Average number of time periods over which a treatment's effect is accumulated =
+>  1.9187166
+
+
+-------------------------------------------------------------------------------
+> -
+          Testing the parallel trends and no anticipation assumptions
+-------------------------------------------------------------------------------
+> -
+
+             |  Estimate         SE      LB CI      UB CI          N 
+-------------+-------------------------------------------------------
+   Placebo_1 |  .0743222   .0811303  -.0846904   .2333348       2308 
+   Placebo_2 | -.0234486   .0990029  -.2174908   .1705936       1500 
+
+             | Switchers 
+-------------+----------
+   Placebo_1 |       306 
+   Placebo_2 |       239 
+-------------------------------------------------------------------------------
+> -
+Test of joint nullity of the placebos : p-value = .57983819
+
+
+The development of this package was funded by the European Union (ERC, REALLYCR
+> EDIBLE,GA N°101043899).
+
+. 
+. timer off 4
+
+. timer list 4
+   4:      0.40 /        1 =       0.4000
+
+. 
+. * Store results
+. if _rc == 0 {
+.     scalar att_baseline = e(effect_1)
+.     scalar se_baseline = e(se_effect_1)
+.     scalar placebo1_baseline = e(placebo_1)
+.     scalar placebo2_baseline = e(placebo_2)
+. 
+.     di ""
+
+.     di "RESULTS BASELINE (no adjustments):"
+RESULTS BASELINE (no adjustments):
+.     di "Effect 1 (ATT): " %9.4f att_baseline " (SE: " %9.4f se_baseline ")"
+Effect 1 (ATT):         . (SE:    0.0820)
+.     if placebo1_baseline != . di "Placebo 1: " %9.4f placebo1_baseline
+.     if placebo2_baseline != . di "Placebo 2: " %9.4f placebo2_baseline
+. }
+
+. 
+. *****************************************************************************
+> ***
+. * 8. Summary Comparison
+. *****************************************************************************
+> ***
+. 
+. di ""
+
+
+. di "=========================================="
+==========================================
+
+. di "SUMMARY COMPARISON"
+SUMMARY COMPARISON
+
+. di "=========================================="
+==========================================
+
+. di ""
+
+
+. di "True ATT: `true_att'"
+True ATT: 2.5
+
+. di ""
+
+
+. di _col(1) "Method" _col(25) "ATT" _col(35) "SE" _col(45) "Placebo 1" _col(60
+> ) "Placebo 2"
+Method                  ATT       SE        Placebo 1      Placebo 2
+
+. di "-----------------------------------------------------------------------"
+-----------------------------------------------------------------------
+
+. 
+. if att_baseline != . {
+.     di _col(1) "Baseline" _col(22) %9.4f att_baseline _col(32) %9.4f se_basel
+> ine _col(45) %9.4f placebo1_baseline _col(60) %9.4f placebo2_baseline
+. }
+
+. 
+. if att_controls != . {
+.     di _col(1) "Controls (subset)" _col(22) %9.4f att_controls _col(32) %9.4f
+>  se_controls _col(45) %9.4f placebo1_controls _col(60) %9.4f placebo2_control
+> s
+. }
+
+. 
+. if att_hdfe != . {
+.     di _col(1) "HDFE (industry)" _col(22) %9.4f att_hdfe _col(32) %9.4f se_hd
+> fe _col(45) %9.4f placebo1_hdfe _col(60) %9.4f placebo2_hdfe
+. }
+
+. 
+. if att_hdfe2 != . {
+.     di _col(1) "HDFE (ind+reg)" _col(22) %9.4f att_hdfe2 _col(32) %9.4f se_hd
+> fe2 _col(45) %9.4f placebo1_hdfe2 _col(60) %9.4f placebo2_hdfe2
+. }
+
+. 
+. di "-----------------------------------------------------------------------"
+-----------------------------------------------------------------------
+
+. di ""
+
+
+. di "Timing comparison:"
+Timing comparison:
+
+. timer list
+   1:      3.12 /        1 =       3.1240
+   2:      0.00 /        1 =       0.0000
+   3:      0.00 /        1 =       0.0000
+   4:      0.40 /        1 =       0.4000
+
+. 
+. di ""
+
+
+. di "=========================================="
+==========================================
+
+. di "TEST COMPLETED"
+TEST COMPLETED
+
+. di "=========================================="
+==========================================
+
+. 
+. * Clean up
+. cap erase "/Users/anzony.quisperojas/Documents/GitHub/did_multiplegt_dyn/Stat
+> a/test_data_hdfe.dta"
+
+. 
+end of do-file
