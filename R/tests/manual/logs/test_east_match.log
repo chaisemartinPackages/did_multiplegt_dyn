@@ -1,0 +1,97 @@
+Warning messages:
+1: In rgl.init(initValue, onlyNULL) : no conforming visual
+2: 'rgl.init' failed, will use the null device.
+See '?rgl.useNULL' for ways to avoid this warning. 
+R version:        R version 4.5.2 (2025-10-31)
+DIDmultiplegtDYN: 2.3.4
+polars:           1.9.0.9000
+
+Downloading east_et_al_2023 ...
+Sample dir: /var/folders/gb/56xms55d53n734tnp7xq55bh0000gq/T//RtmpDhDkDC/boot_samples_3af861d7d79
+
+=== NEW path (subprocess + weights) =====================================
+NOTE: 50 observations removed because of NA values (LHS: 50, RHS: 50).
+
+Bootstrap, 30 reps (seed = 12345):
+.....5.....10.....15.....20.....25.....30
+NEW elapsed: 1071.9s
+
+=== LEGACY path (row replication, replaying CSVs) =======================
+NOTE: 50 observations removed because of NA values (LHS: 50, RHS: 50).
+
+Bootstrap, 30 reps (seed = 12345):
+.....5.....10.....15.....20.....25.....30
+LEGACY elapsed: 927.1s
+
+=== COMPARISON ==========================================================
+[OK] Effects: max abs diff = 5.551e-17
+[OK] ATE: max abs diff = 3.886e-16
+[OK] Placebos: max abs diff = 2.776e-17
+
+NEW Effects:
+               Estimate         SE      LB CI        UB CI   N Switchers
+Effect_1     -0.0947772 0.06047566 -0.2133073  0.023752908 234        28
+Effect_2     -0.1357354 0.07262854 -0.2780847  0.006613956 209        28
+Effect_3     -0.2164912 0.08089673 -0.3750459 -0.057936500 187        28
+Effect_4     -0.2399434 0.10815031 -0.4519141 -0.027972647 176        28
+Effect_5     -0.2865485 0.16741375 -0.6146734  0.041576430 138        21
+                  N.w Switchers.w
+Effect_1     17895714     1774650
+Effect_2     16559188     1756460
+Effect_3     15360486     1755764
+Effect_4     14705169     1768408
+Effect_5     11517655     1119166
+
+LEGACY Effects:
+               Estimate         SE      LB CI        UB CI   N Switchers
+Effect_1     -0.0947772 0.06047566 -0.2133073  0.023752908 234        28
+Effect_2     -0.1357354 0.07262854 -0.2780847  0.006613956 209        28
+Effect_3     -0.2164912 0.08089673 -0.3750459 -0.057936500 187        28
+Effect_4     -0.2399434 0.10815031 -0.4519141 -0.027972647 176        28
+Effect_5     -0.2865485 0.16741375 -0.6146734  0.041576430 138        21
+                  N.w Switchers.w
+Effect_1     17895714     1774650
+Effect_2     16559188     1756460
+Effect_3     15360486     1755764
+Effect_4     14705169     1768408
+Effect_5     11517655     1119166
+
+NEW ATE:
+              Estimate       SE     LB CI      UB CI   N Switchers      N.w
+Av_tot_eff   -2.674365 1.146512 -4.921486 -0.4272427 405       133 30260564
+             Switchers.w
+Av_tot_eff       8174448
+
+LEGACY ATE:
+              Estimate       SE     LB CI      UB CI   N Switchers      N.w
+Av_tot_eff   -2.674365 1.146512 -4.921486 -0.4272427 405       133 30260564
+             Switchers.w
+Av_tot_eff       8174448
+
+NEW Placebos:
+                 Estimate         SE       LB CI      UB CI   N Switchers
+Placebo_1    -0.033362213 0.03297707 -0.09799608 0.03127165 234        28
+Placebo_2    -0.016246388 0.02928893 -0.07365164 0.04115887 209        28
+Placebo_3     0.012524828 0.04304745 -0.07184663 0.09689629 187        28
+Placebo_4    -0.006457057 0.03985278 -0.08456706 0.07165295 176        28
+Placebo_5    -0.060837422 0.05129614 -0.16137602 0.03970117 106        18
+                  N.w Switchers.w
+Placebo_1    17895714     1774650
+Placebo_2    16559188     1756460
+Placebo_3    15360486     1755764
+Placebo_4    14705169     1768408
+Placebo_5     8718569      824485
+
+LEGACY Placebos:
+                 Estimate         SE       LB CI      UB CI   N Switchers
+Placebo_1    -0.033362213 0.03297707 -0.09799608 0.03127165 234        28
+Placebo_2    -0.016246388 0.02928893 -0.07365164 0.04115887 209        28
+Placebo_3     0.012524828 0.04304745 -0.07184663 0.09689629 187        28
+Placebo_4    -0.006457057 0.03985278 -0.08456706 0.07165295 176        28
+Placebo_5    -0.060837422 0.05129614 -0.16137602 0.03970117 106        18
+                  N.w Switchers.w
+Placebo_1    17895714     1774650
+Placebo_2    16559188     1756460
+Placebo_3    15360486     1755764
+Placebo_4    14705169     1768408
+Placebo_5     8718569      824485
