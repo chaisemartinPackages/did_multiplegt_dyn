@@ -1,0 +1,4 @@
+"spec","status","quantity","diff","t_new","t_old"
+"stata_switchers_in","OK","Effects",0,14.9452438354492,10.2819912433624
+"stata_switchers_in","OK","ATE",0,14.9452438354492,10.2819912433624
+"stata_switchers_in","OK","Placebos",0,14.9452438354492,10.2819912433624

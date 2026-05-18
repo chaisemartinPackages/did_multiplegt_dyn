@@ -1,0 +1,21 @@
+
+=== stata_continuous ===
+Warning messages:
+1: In rgl.init(initValue, onlyNULL) : RGL: unable to open X11 display
+2: 'rgl.init' failed, will use the null device.
+See '?rgl.useNULL' for ways to avoid this warning. 
+NOTE: 3,587 observations removed because of NA values (LHS: 3,587, RHS: 3,587, Weights: 2,193).
+  [error] subprocess -> new.rds (2.2s)
+    err: in feols(form, data = data_reg, weights = data_reg$w...: 
+After removing NAs, not a single explanatory variable is different from 0.
+Warning messages:
+1: In rgl.init(initValue, onlyNULL) : RGL: unable to open X11 display
+2: 'rgl.init' failed, will use the null device.
+See '?rgl.useNULL' for ways to avoid this warning. 
+NOTE: 3,587 observations removed because of NA values (LHS: 3,587, RHS: 3,587, Weights: 2,193).
+  [error] row_replication -> old.rds (2.2s)
+    err: in feols(form, data = data_reg, weights = data_reg$w...: 
+After removing NAs, not a single explanatory variable is different from 0.
+  Both paths errored. messages MATCH (consistent failure -> OK)
+  [OK] error: max abs diff = 0.000e+00
+  (NEW=2.2s LEGACY=2.2s)

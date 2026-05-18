@@ -1,0 +1,26 @@
+
+=== favara_imbs_weight ===
+Warning messages:
+1: In rgl.init(initValue, onlyNULL) : RGL: unable to open X11 display
+2: 'rgl.init' failed, will use the null device.
+See '?rgl.useNULL' for ways to avoid this warning. 
+did_multiplegt_dyn computes by default analytical standard errors - in most cases, there is no need to use the bootstrap option.
+Bootstrapping is a much slower alternative and we recommend it only in combination with the continuous option.
+
+Bootstrap, 4 reps (seed = 1234):
+....
+  [ok] subprocess -> new.rds (8.3s)
+Warning messages:
+1: In rgl.init(initValue, onlyNULL) : RGL: unable to open X11 display
+2: 'rgl.init' failed, will use the null device.
+See '?rgl.useNULL' for ways to avoid this warning. 
+did_multiplegt_dyn computes by default analytical standard errors - in most cases, there is no need to use the bootstrap option.
+Bootstrapping is a much slower alternative and we recommend it only in combination with the continuous option.
+
+Bootstrap, 4 reps (seed = 1234):
+....
+  [ok] row_replication -> old.rds (5.6s)
+  [OK] Effects: max abs diff = 1.421e-14
+  [OK] ATE: max abs diff = 1.041e-17
+  [OK] Placebos: max abs diff = 1.421e-14
+  (NEW=8.3s LEGACY=5.6s)

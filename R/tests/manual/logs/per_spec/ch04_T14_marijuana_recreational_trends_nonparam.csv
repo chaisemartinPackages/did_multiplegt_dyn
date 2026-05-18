@@ -1,0 +1,4 @@
+"spec","status","quantity","diff","t_new","t_old"
+"ch04_T14_marijuana_recreational_trends_nonparam","OK","Effects",0,9.22109603881836,6.2766797542572
+"ch04_T14_marijuana_recreational_trends_nonparam","OK","ATE",0,9.22109603881836,6.2766797542572
+"ch04_T14_marijuana_recreational_trends_nonparam","OK","Placebos",0,9.22109603881836,6.2766797542572

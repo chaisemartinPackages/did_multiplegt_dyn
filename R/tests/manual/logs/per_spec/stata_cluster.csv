@@ -1,0 +1,4 @@
+"spec","status","quantity","diff","t_new","t_old"
+"stata_cluster","OK","Effects",0,14.9908812046051,10.3197040557861
+"stata_cluster","OK","ATE",0,14.9908812046051,10.3197040557861
+"stata_cluster","OK","Placebos",0,14.9908812046051,10.3197040557861

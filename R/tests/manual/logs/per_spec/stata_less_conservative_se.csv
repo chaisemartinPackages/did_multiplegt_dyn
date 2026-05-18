@@ -1,0 +1,4 @@
+"spec","status","quantity","diff","t_new","t_old"
+"stata_less_conservative_se","OK","Effects",0,17.4972343444824,12.0950994491577
+"stata_less_conservative_se","OK","ATE",0,17.4972343444824,12.0950994491577
+"stata_less_conservative_se","OK","Placebos",0,17.4972343444824,12.0950994491577

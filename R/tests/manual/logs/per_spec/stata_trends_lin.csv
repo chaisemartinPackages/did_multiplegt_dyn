@@ -1,0 +1,4 @@
+"spec","status","quantity","diff","t_new","t_old"
+"stata_trends_lin","OK","Effects",0,47.1777226924896,38.7222411632538
+"stata_trends_lin","OK","ATE",0,47.1777226924896,38.7222411632538
+"stata_trends_lin","OK","Placebos",0,47.1777226924896,38.7222411632538

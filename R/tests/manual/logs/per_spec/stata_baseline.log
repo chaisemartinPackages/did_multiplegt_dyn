@@ -1,0 +1,26 @@
+
+=== stata_baseline ===
+Warning messages:
+1: In rgl.init(initValue, onlyNULL) : RGL: unable to open X11 display
+2: 'rgl.init' failed, will use the null device.
+See '?rgl.useNULL' for ways to avoid this warning. 
+did_multiplegt_dyn computes by default analytical standard errors - in most cases, there is no need to use the bootstrap option.
+Bootstrapping is a much slower alternative and we recommend it only in combination with the continuous option.
+
+Bootstrap, 4 reps (seed = 1234):
+....
+  [ok] subprocess -> new.rds (12.6s)
+Warning messages:
+1: In rgl.init(initValue, onlyNULL) : RGL: unable to open X11 display
+2: 'rgl.init' failed, will use the null device.
+See '?rgl.useNULL' for ways to avoid this warning. 
+did_multiplegt_dyn computes by default analytical standard errors - in most cases, there is no need to use the bootstrap option.
+Bootstrapping is a much slower alternative and we recommend it only in combination with the continuous option.
+
+Bootstrap, 4 reps (seed = 1234):
+....
+  [ok] row_replication -> old.rds (7.9s)
+  [OK] Effects: max abs diff = 0.000e+00
+  [OK] ATE: max abs diff = 0.000e+00
+  [OK] Placebos: max abs diff = 0.000e+00
+  (NEW=12.6s LEGACY=7.9s)

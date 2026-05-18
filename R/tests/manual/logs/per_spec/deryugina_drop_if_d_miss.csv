@@ -1,0 +1,4 @@
+"spec","status","quantity","diff","t_new","t_old"
+"deryugina_drop_if_d_miss","OK","Effects",0,11.8393356800079,7.72900342941284
+"deryugina_drop_if_d_miss","OK","ATE",0,11.8393356800079,7.72900342941284
+"deryugina_drop_if_d_miss","OK","Placebos",0,11.8393356800079,7.72900342941284

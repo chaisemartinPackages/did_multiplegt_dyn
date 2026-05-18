@@ -1,0 +1,4 @@
+"spec","status","quantity","diff","t_new","t_old"
+"ch01_T2_deryugina_basic","OK","Effects",0,13.547042131424,8.97804236412048
+"ch01_T2_deryugina_basic","OK","ATE",0,13.547042131424,8.97804236412048
+"ch01_T2_deryugina_basic","OK","Placebos",0,13.547042131424,8.97804236412048

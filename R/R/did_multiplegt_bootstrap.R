@@ -158,12 +158,35 @@ did_multiplegt_bootstrap <- function(
     # is set, the draw is read back from the CSV that the previous run
     # produced -- this is what lets us prove the new path matches the old
     # path on the same draws.
+    #
+    # NOTE on by-stratification: did_multiplegt_dyn calls this helper once
+    # per by-stratum. Each call has its OWN unit_ids (different counties
+    # belong to each stratum). We therefore stamp the CSV filenames with a
+    # tag derived from unit_ids so two strata never collide. Both the
+    # writer and the reader derive the same tag from the same unit_ids, so
+    # a load-samples run finds the same files the write run produced.
     # ------------------------------------------------------------------
     boot_weight_col <- "boot_weight_XX"
+    stratum_tag <- local({
+        # Use rlang::hash if available, else a simple, deterministic
+        # fingerprint of (length, sum, min, max). Truncate to 10 chars.
+        if (requireNamespace("rlang", quietly = TRUE)) {
+            substr(rlang::hash(unit_ids), 1, 10)
+        } else {
+            sprintf("n%d_%s_%s_%s",
+                    length(unit_ids),
+                    format(sum(as.numeric(unit_ids)), scientific = FALSE),
+                    format(min(unit_ids)),
+                    format(max(unit_ids)))
+        }
+    })
+    sample_csv_path <- function(j) {
+        file.path(sample_dir, sprintf("rep_%05d_%s.csv", j, stratum_tag))
+    }
 
     draw_multiplicities <- function(j) {
         if (sample_load && !is.null(sample_dir)) {
-            f <- file.path(sample_dir, sprintf("rep_%05d.csv", j))
+            f <- sample_csv_path(j)
             if (!file.exists(f)) {
                 stop("DID_BOOTSTRAP_LOAD_SAMPLES is on but ", f, " is missing.")
             }
@@ -182,7 +205,7 @@ did_multiplegt_bootstrap <- function(
         nz <- counts > 0
         utils::write.csv(
             data.frame(unit_id = unit_ids[nz], count = counts[nz]),
-            file.path(sample_dir, sprintf("rep_%05d.csv", j)),
+            sample_csv_path(j),
             row.names = FALSE
         )
     }
@@ -214,34 +237,56 @@ did_multiplegt_bootstrap <- function(
     )
 
     # Worker for the new (subprocess + weights) path.
+    #
+    # callr launches a fresh R via fork()+exec(). Under memory pressure or
+    # transient scheduler hiccups this can fail with errors like "could not
+    # start R, exited with non-zero status, has crashed or was killed",
+    # especially after many successful iterations have left the parent's
+    # address space large. We retry up to MAX_TRIES, gc()'ing the parent
+    # between attempts to release committed pages.
+    .MAX_SUBPROC_TRIES <- 3L
     run_subprocess <- function(df_boot) {
-        if (use_callr) {
-            callr::r(
-                function(df_boot, kwargs) {
-                    # polars must be ATTACHED (not just required), because
-                    # internal helpers like pl_over_cols look up `pl` via
-                    # lexical scoping which falls through to the search path.
-                    suppressPackageStartupMessages({
-                        library(polars)
-                        library(DIDmultiplegtDYN)
-                    })
-                    do.call(
-                        getFromNamespace("did_multiplegt_main_smaller",
-                                         "DIDmultiplegtDYN"),
-                        c(list(df = df_boot), kwargs)
-                    )
-                },
-                args = list(df_boot = df_boot, kwargs = smaller_kwargs),
-                show = FALSE,
-                spinner = FALSE
-            )
-        } else {
+        if (!use_callr) {
             # Fallback: same engine, same process. Useful when callr is
             # not available, but does NOT free the polars buffers between
             # iterations.
-            do.call(did_multiplegt_main_smaller,
-                    c(list(df = df_boot), smaller_kwargs))
+            return(do.call(did_multiplegt_main_smaller,
+                           c(list(df = df_boot), smaller_kwargs)))
         }
+        last_err <- NULL
+        for (attempt in seq_len(.MAX_SUBPROC_TRIES)) {
+            res <- tryCatch(
+                callr::r(
+                    function(df_boot, kwargs) {
+                        # polars must be ATTACHED (not just required), because
+                        # internal helpers like pl_over_cols look up `pl` via
+                        # lexical scoping which falls through to the search path.
+                        suppressPackageStartupMessages({
+                            library(polars)
+                            library(DIDmultiplegtDYN)
+                        })
+                        do.call(
+                            getFromNamespace("did_multiplegt_main_smaller",
+                                             "DIDmultiplegtDYN"),
+                            c(list(df = df_boot), kwargs)
+                        )
+                    },
+                    args = list(df_boot = df_boot, kwargs = smaller_kwargs),
+                    show = FALSE,
+                    spinner = FALSE
+                ),
+                error = function(e) e
+            )
+            if (!inherits(res, "error")) return(res)
+            last_err <- res
+            # Free what we can in the parent before retrying so fork() has
+            # room. Small back-off so a transient resource crunch can clear.
+            gc(verbose = FALSE)
+            Sys.sleep(0.5 * attempt)
+        }
+        stop("did_multiplegt_bootstrap: subprocess failed after ",
+             .MAX_SUBPROC_TRIES, " attempts: ",
+             conditionMessage(last_err))
     }
 
     # ------------------------------------------------------------------
@@ -282,6 +327,12 @@ did_multiplegt_bootstrap <- function(
             }
 
             rm(df_boot, count_lookup, res)
+            # Release R-side allocations of the merged df_boot etc. so the
+            # parent doesn't keep growing across iterations. The polars
+            # buffers held by parent are unrelated (they live in Rust); the
+            # gc() here is about keeping fork() room available for the
+            # next iteration's subprocess.
+            invisible(gc(verbose = FALSE))
 
         } else {
             # ---- Legacy row-replication path ----

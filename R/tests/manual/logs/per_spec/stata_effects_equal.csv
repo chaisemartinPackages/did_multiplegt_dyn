@@ -1,0 +1,4 @@
+"spec","status","quantity","diff","t_new","t_old"
+"stata_effects_equal","OK","Effects",0,15.8917486667633,10.7078926563263
+"stata_effects_equal","OK","ATE",0,15.8917486667633,10.7078926563263
+"stata_effects_equal","OK","Placebos",0,15.8917486667633,10.7078926563263

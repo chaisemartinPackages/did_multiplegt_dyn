@@ -1,0 +1,24 @@
+
+=== ch02_T6_east_normalized ===
+Warning messages:
+1: In rgl.init(initValue, onlyNULL) : RGL: unable to open X11 display
+2: 'rgl.init' failed, will use the null device.
+See '?rgl.useNULL' for ways to avoid this warning. 
+NOTE: 50 observations removed because of NA values (LHS: 50, RHS: 50).
+
+Bootstrap, 4 reps (seed = 1234):
+....
+  [ok] subprocess -> new.rds (54.8s)
+Warning messages:
+1: In rgl.init(initValue, onlyNULL) : RGL: unable to open X11 display
+2: 'rgl.init' failed, will use the null device.
+See '?rgl.useNULL' for ways to avoid this warning. 
+NOTE: 50 observations removed because of NA values (LHS: 50, RHS: 50).
+
+Bootstrap, 4 reps (seed = 1234):
+....
+  [ok] row_replication -> old.rds (49.0s)
+  [OK] Effects: max abs diff = 2.220e-16
+  [OK] ATE: max abs diff = 8.882e-16
+  [OK] Placebos: max abs diff = 3.331e-16
+  (NEW=54.8s LEGACY=49.0s)

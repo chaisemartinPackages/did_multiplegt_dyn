@@ -1,0 +1,4 @@
+"spec","status","quantity","diff","t_new","t_old"
+"stata_trends_nonparam","OK","Effects",0,15.3020241260529,10.6144886016846
+"stata_trends_nonparam","OK","ATE",0,15.3020241260529,10.6144886016846
+"stata_trends_nonparam","OK","Placebos",0,15.3020241260529,10.6144886016846

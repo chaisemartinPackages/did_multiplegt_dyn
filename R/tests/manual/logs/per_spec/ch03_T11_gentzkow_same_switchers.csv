@@ -1,0 +1,4 @@
+"spec","status","quantity","diff","t_new","t_old"
+"ch03_T11_gentzkow_same_switchers","OK","Effects",0,10.3205885887146,7.81574630737305
+"ch03_T11_gentzkow_same_switchers","OK","ATE",0,10.3205885887146,7.81574630737305
+"ch03_T11_gentzkow_same_switchers","OK","Placebos",0,10.3205885887146,7.81574630737305
