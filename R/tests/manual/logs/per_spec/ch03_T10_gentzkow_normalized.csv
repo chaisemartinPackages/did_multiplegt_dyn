@@ -1,4 +1,0 @@
-"spec","status","quantity","diff","t_new","t_old"
-"ch03_T10_gentzkow_normalized","OK","Effects",0,24.7944087982178,21.5105066299438
-"ch03_T10_gentzkow_normalized","OK","ATE",0,24.7944087982178,21.5105066299438
-"ch03_T10_gentzkow_normalized","OK","Placebos",0,24.7944087982178,21.5105066299438

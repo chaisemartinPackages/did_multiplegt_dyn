@@ -1,4 +1,0 @@
-"spec","status","quantity","diff","t_new","t_old"
-"ch02_T6_east_normalized","OK","Effects",2.22044604925031e-16,54.7689800262451,48.9972698688507
-"ch02_T6_east_normalized","OK","ATE",8.88178419700125e-16,54.7689800262451,48.9972698688507
-"ch02_T6_east_normalized","OK","Placebos",3.33066907387547e-16,54.7689800262451,48.9972698688507

@@ -1,4 +1,0 @@
-"spec","status","quantity","diff","t_new","t_old"
-"stata_normalized","OK","Effects",0,15.6274046897888,11.0810053348541
-"stata_normalized","OK","ATE",0,15.6274046897888,11.0810053348541
-"stata_normalized","OK","Placebos",0,15.6274046897888,11.0810053348541

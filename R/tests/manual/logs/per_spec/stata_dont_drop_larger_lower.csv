@@ -1,4 +1,0 @@
-"spec","status","quantity","diff","t_new","t_old"
-"stata_dont_drop_larger_lower","OK","Effects",0,15.1712875366211,10.9390149116516
-"stata_dont_drop_larger_lower","OK","ATE",0,15.1712875366211,10.9390149116516
-"stata_dont_drop_larger_lower","OK","Placebos",0,15.1712875366211,10.9390149116516

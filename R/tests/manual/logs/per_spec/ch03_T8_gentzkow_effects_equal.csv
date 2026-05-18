@@ -1,4 +1,0 @@
-"spec","status","quantity","diff","t_new","t_old"
-"ch03_T8_gentzkow_effects_equal","OK","Effects",0,24.4263098239899,19.3434762954712
-"ch03_T8_gentzkow_effects_equal","OK","ATE",0,24.4263098239899,19.3434762954712
-"ch03_T8_gentzkow_effects_equal","OK","Placebos",0,24.4263098239899,19.3434762954712

@@ -1,4 +1,0 @@
-"spec","status","quantity","diff","t_new","t_old"
-"ch02_T5_east_continuous_weight","OK","Effects",1.11022302462516e-16,56.109174489975,50.6352593898773
-"ch02_T5_east_continuous_weight","OK","ATE",8.88178419700125e-16,56.109174489975,50.6352593898773
-"ch02_T5_east_continuous_weight","OK","Placebos",5.55111512312578e-17,56.109174489975,50.6352593898773

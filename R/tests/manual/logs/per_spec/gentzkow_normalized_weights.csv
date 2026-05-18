@@ -1,4 +1,0 @@
-"spec","status","quantity","diff","t_new","t_old"
-"gentzkow_normalized_weights","OK","Effects",0,17.4274981021881,13.8564128875732
-"gentzkow_normalized_weights","OK","ATE",0,17.4274981021881,13.8564128875732
-"gentzkow_normalized_weights","OK","Placebos",0,17.4274981021881,13.8564128875732

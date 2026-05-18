@@ -1,4 +1,0 @@
-"spec","status","quantity","diff","t_new","t_old"
-"stata_ci_level_90","OK","Effects",0,15.9762153625488,10.3662774562836
-"stata_ci_level_90","OK","ATE",0,15.9762153625488,10.3662774562836
-"stata_ci_level_90","OK","Placebos",0,15.9762153625488,10.3662774562836
