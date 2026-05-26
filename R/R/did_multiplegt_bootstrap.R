@@ -262,8 +262,12 @@ did_multiplegt_bootstrap <- function(
                         # internal helpers like pl_over_cols look up `pl` via
                         # lexical scoping which falls through to the search path.
                         suppressPackageStartupMessages({
-                            library(polars)
-                            library(DIDmultiplegtDYN)
+                            for (pkg in c("polars", "DIDmultiplegtDYN")) {
+                                if (!paste0("package:", pkg) %in% search()) {
+                                    loadNamespace(pkg)
+                                    attachNamespace(pkg)
+                                }
+                            }
                         })
                         do.call(
                             getFromNamespace("did_multiplegt_main_smaller",
