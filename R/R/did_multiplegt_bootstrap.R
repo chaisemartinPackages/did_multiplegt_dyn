@@ -156,8 +156,9 @@ did_multiplegt_bootstrap <- function(
             )
         }
 
-        # Collect and assemble results
-        all_results <- list()
+        # Collect and assemble results (preallocated to avoid O(n^2) c())
+        all_results <- vector("list", bootstrap)
+        pos <- 0L
         for (k in seq_along(tasks)) {
             chunk_res <- tasks[[k]][]
             if (mirai::is_error_value(chunk_res)) {
@@ -165,7 +166,11 @@ did_multiplegt_bootstrap <- function(
                     error = function(e) as.character(chunk_res))
                 stop("Bootstrap worker failed: ", paste(msg, collapse = " "))
             }
-            all_results <- c(all_results, chunk_res)
+            n_chunk <- length(chunk_res)
+            if (n_chunk > 0L) {
+                all_results[(pos + 1L):(pos + n_chunk)] <- chunk_res
+                pos <- pos + n_chunk
+            }
         }
 
         for (j in seq_along(all_results)) {
@@ -230,7 +235,11 @@ did_multiplegt_bootstrap <- function(
     ci_level <- ci_level / 100
 
     # SD and CI computation for effects
-    effect_sds <- apply(bresults_effects, 2L, stats::sd, na.rm = TRUE)
+    effect_sds <- vapply(
+        seq_len(ncol(bresults_effects)),
+        function(k) stats::sd(bresults_effects[, k], na.rm = TRUE),
+        numeric(1)
+    )
     n_eff <- nrow(base$Effects)
     base$Effects[1:n_eff, 2L] <- effect_sds[1:n_eff]
 
@@ -252,7 +261,11 @@ did_multiplegt_bootstrap <- function(
 
     # SD and CI computation for placebos
     if (!is.null(bresults_placebo)) {
-        placebo_sds <- apply(bresults_placebo, 2L, stats::sd, na.rm = TRUE)
+        placebo_sds <- vapply(
+            seq_len(ncol(bresults_placebo)),
+            function(k) stats::sd(bresults_placebo[, k], na.rm = TRUE),
+            numeric(1)
+        )
         n_pl <- nrow(base$Placebos)
         base$Placebos[1:n_pl, 2] <- placebo_sds[1:n_pl]
 

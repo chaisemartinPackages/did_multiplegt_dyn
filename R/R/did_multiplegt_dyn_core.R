@@ -259,6 +259,18 @@ did_multiplegt_dyn_core <- function(
     }
   }
 
+  # Storage for control-adjustment M scalars (one numeric per (j, l, i)).
+  # Replaces broadcasting a scalar to all 3M df rows; consumed within same iteration
+  # via sweep+rowSums for bit-exact equivalence to the prior `M_mat * in_brackets_mat`.
+  M_store <- new.env(parent = emptyenv())
+
+  # Storage for per-group control sums (in_sum), keyed by l. Each entry is a data.table
+  # with columns (group_XX, in_sum_temp_1_l_XX, ..., in_sum_temp_K_l_XX): one row per group.
+  # Replaces broadcasting G distinct values to all N df rows for each of K=count_controls
+  # columns. Consumed in the effect-i loop AND in compute_placebo_effects_dt (passed as arg);
+  # overwritten each i iteration since names are not keyed by i.
+  in_sum_store <- new.env(parent = emptyenv())
+
   ####### 2. Data preparation - Loop over effects
   for (i in 1:l_u_a_XX) {
     cn <- col_names[[i]]
@@ -440,11 +452,12 @@ did_multiplegt_dyn_core <- function(
           }
         }
 
-        # Compute all M scalars
+        # Compute all M scalars and store in M_store (avoid broadcasting to N rows).
+        # Consumer rebuilds a length-K vector keyed by these names.
         M_cols <- paste0("M", increase_XX, "_", l, "_", 1:count_controls, "_", i, "_XX")
         for (j in seq_len(count_controls)) {
           M_val <- sum(df[[m_cols[j]]], na.rm = TRUE) / G_XX
-          data.table::set(df, j = M_cols[j], value = M_val)
+          M_store[[M_cols[j]]] <- M_val
         }
 
         # Shared: E_hat_denom (same for all controls — compute once)
@@ -503,9 +516,13 @@ did_multiplegt_dyn_core <- function(
           data.table::set(df, j = in_sum_adj_col, value = in_sum_adj_vec)
         }
 
-        # Batch by-group sum for all in_sum columns at once
-        in_sum_cols <- paste0("in_sum_", 1:count_controls, "_", l, "_XX")
-        df[, (in_sum_cols) := lapply(.SD, sum, na.rm = TRUE), by = "group_XX", .SDcols = in_sum_temp_cols]
+        # Batch by-group sum for all in_sum columns; store as G-row data.table in
+        # in_sum_store keyed by l (overwritten each i iteration). Avoids broadcasting
+        # G distinct values back to all N df rows. Consumer reconstructs the N x K
+        # matrix via match() into the stored G-row table for bit-exact equivalence.
+        in_sum_dt_l <- df[, lapply(.SD, sum, na.rm = TRUE),
+                          by = "group_XX", .SDcols = in_sum_temp_cols]
+        in_sum_store[[paste0("in_sum_l_", l, "_XX")]] <- in_sum_dt_l
 
         # Residualize outcome sequentially (preserves bit-exact results)
         useful_res_val <- get(paste0("useful_res_", l, "_XX"))
@@ -518,15 +535,15 @@ did_multiplegt_dyn_core <- function(
               get(diff_y_col) - coefs_val * get(diff_X_cols[j]),
               get(diff_y_col)
             )]
-
-            in_brackets_col <- paste0("in_brackets_", l, "_", j, "_XX")
-            df[, (in_brackets_col) := 0.0]
           }
         }
       }
 
       # Clean up intermediate controls columns to prevent data.table bloat
-      # Keep: M_cols, in_sum_cols, in_brackets_cols (needed for variance adjustment)
+      # M scalars now live in M_store (env), not df.
+      # in_sum_cols now live in in_sum_store (env, G-row data.tables per l), not df.
+      # in_brackets_mat is computed transiently as a matrix in the variance loop and
+      # consumed immediately via sweep+rowSums; not stored on df.
       # Drop: m_g, m, diff_X_N, in_sum_temp, E_hat_denom, in_sum_adj
       drop_cols_ctrl <- c(
         m_g_cols, m_cols, diff_X_N_cols, in_sum_temp_cols, diff_X_cols,
@@ -788,28 +805,28 @@ did_multiplegt_dyn_core <- function(
           coefs_l <- get(paste0("coefs_sq_", l, "_XX"))[, 1]
           mask_vec <- as.numeric(df[["d_sq_int_XX"]] == l_num & df[["F_g_XX"]] >= 3)
 
-          # Extract in_sum columns into N x C matrix
-          in_sum_cols <- paste0("in_sum_", 1:count_controls, "_", l, "_XX")
-          in_sum_mat <- as.matrix(df[, ..in_sum_cols])
+          # Reconstruct N x C in_sum matrix from in_sum_store (G x C) via group lookup.
+          # Bit-exact equivalent to `as.matrix(df[, ..in_sum_cols])`: each df row maps to
+          # its group's stored sum, exactly what the by-group `:=` broadcast had produced.
+          in_sum_dt_l <- in_sum_store[[paste0("in_sum_l_", l, "_XX")]]
+          in_sum_mat_G <- as.matrix(in_sum_dt_l[, !"group_XX", with = FALSE])
+          group_lookup <- match(df[["group_XX"]], in_sum_dt_l[["group_XX"]])
+          in_sum_mat <- in_sum_mat_G[group_lookup, , drop = FALSE]
 
           # in_brackets = (in_sum * mask) %*% t(inv_Denom) - coefs (broadcast)
           in_brackets_mat <- (in_sum_mat * mask_vec) %*% t(inv_Denom_l)
           in_brackets_mat <- t(t(in_brackets_mat) - coefs_l)
 
-          # Extract M columns into N x C matrix
+          # Rebuild M vector (length C) from M_store. Previously a broadcast N x C matrix.
+          # sweep+rowSums preserves exact element-wise products and row-summation order
+          # that `M_mat * in_brackets_mat` followed by rowSums used (bit-exact).
           M_cols <- paste0("M", increase_XX, "_", l, "_", 1:count_controls, "_", i, "_XX")
-          M_mat <- as.matrix(df[, ..M_cols])
+          M_vec <- vapply(M_cols, function(k) M_store[[k]], numeric(1), USE.NAMES = FALSE)
 
           # comb = rowSums(M * in_brackets), add to part2
           part2_col <- cn$part2
           data.table::set(df, j = part2_col,
-            value = df[[part2_col]] + rowSums(M_mat * in_brackets_mat))
-
-          # Write back in_brackets columns (needed for later covariance computations)
-          for (j in 1:count_controls) {
-            in_brackets_col <- paste0("in_brackets_", l, "_", j, "_XX")
-            data.table::set(df, j = in_brackets_col, value = in_brackets_mat[, j])
-          }
+            value = df[[part2_col]] + rowSums(sweep(in_brackets_mat, 2L, M_vec, "*")))
         }
       }
 
@@ -905,7 +922,8 @@ did_multiplegt_dyn_core <- function(
       df <- compute_placebo_effects_dt(
         df, i, increase_XX, G_XX, t_min_XX, T_max_XX,
         trends_nonparam, cluster, controls, levels_d_sq_XX,
-        same_switchers_pl, normalized, continuous, controls_globals
+        same_switchers_pl, normalized, continuous, controls_globals,
+        in_sum_store = in_sum_store
       )
 
       if (normalized == TRUE) {
@@ -1183,13 +1201,23 @@ compute_DOF_gt_dt <- function(df, i, type_sect = "effect") {
 #' @param same_switchers_pl same_switchers_pl option
 #' @param normalized normalized option
 #' @param continuous continuous option
+#' @param controls_globals controls_globals (from main); contains useful_res, inv_Denom, coefs_sq
+#' @param in_sum_store environment of per-group in_sum data.tables keyed by l; written
+#'   by `did_multiplegt_dyn_core` during the effect loop, read here to reconstruct the
+#'   N x C in_sum matrix without storing it on df.
 #' @return data.table
 #' @noRd
 compute_placebo_effects_dt <- function(
     df, i, increase_XX, G_XX, t_min_XX, T_max_XX,
     trends_nonparam, cluster, controls, levels_d_sq_XX,
-    same_switchers_pl, normalized, continuous, controls_globals = NULL
+    same_switchers_pl, normalized, continuous, controls_globals = NULL,
+    in_sum_store = NULL
 ) {
+
+  # Storage for control-adjustment M_pl scalars within this call (one per (j, l)).
+  # Replaces broadcasting a scalar to all df rows; consumed later in this same
+  # function via sweep+rowSums for bit-exact equivalence to `M_pl_mat * in_brackets_mat`.
+  M_store_pl <- new.env(parent = emptyenv())
 
   # Drop existing placebo columns
   pl_cols_to_drop <- c(
@@ -1358,20 +1386,13 @@ compute_placebo_effects_dt <- function(
         }
       }
 
-      # Compute all M_pl scalars
+      # Compute all M_pl scalars and store in M_store_pl (avoid broadcasting to N rows).
+      # Consumer rebuilds a length-K vector keyed by these names.
       for (j in seq_len(count_controls)) {
         M_pl_val_j <- sum(df[[m_pl_cols[j]]], na.rm = TRUE) / G_XX
-        data.table::set(df, j = M_pl_cols[j], value = M_pl_val_j)
+        M_store_pl[[M_pl_cols[j]]] <- M_pl_val_j
       }
 
-      # Initialize in_brackets_pl columns
-      if (useful_res_name %chin% names(controls_globals) &&
-          controls_globals[[useful_res_name]] > 1L) {
-        for (j in seq_len(count_controls)) {
-          in_brackets_pl_col <- paste0("in_brackets_pl_", l, "_", j, "_XX")
-          data.table::set(df, j = in_brackets_pl_col, value = 0.0)
-        }
-      }
     }
   }
 
@@ -1533,11 +1554,16 @@ compute_placebo_effects_dt <- function(
         inv_Denom_l <- controls_globals[[inv_denom_name]]
         mask_vec <- as.numeric(df[["d_sq_int_XX"]] == l_num & df[["F_g_XX"]] >= 3L)
 
-        # Extract in_sum columns into N x C matrix
-        in_sum_cols <- paste0("in_sum_", 1:count_controls, "_", l, "_XX")
-        in_sum_avail <- in_sum_cols %chin% names(df)
-        if (!all(in_sum_avail)) next
-        in_sum_mat <- as.matrix(df[, ..in_sum_cols])
+        # Reconstruct N x C in_sum matrix from in_sum_store (G x C) via group lookup.
+        # Uses the LAST effect iteration's values (in_sum_store is overwritten each i in
+        # did_multiplegt_dyn_core; the placebo function reads after the effect loop ends).
+        # Bit-exact equivalent to the prior `as.matrix(df[, ..in_sum_cols])`.
+        in_sum_key <- paste0("in_sum_l_", l, "_XX")
+        if (is.null(in_sum_store) || !exists(in_sum_key, envir = in_sum_store, inherits = FALSE)) next
+        in_sum_dt_l <- in_sum_store[[in_sum_key]]
+        in_sum_mat_G <- as.matrix(in_sum_dt_l[, !"group_XX", with = FALSE])
+        group_lookup <- match(df[["group_XX"]], in_sum_dt_l[["group_XX"]])
+        in_sum_mat <- in_sum_mat_G[group_lookup, , drop = FALSE]
 
         # in_brackets = (in_sum * mask) %*% t(inv_Denom) - coefs (broadcast)
         in_brackets_mat <- (in_sum_mat * mask_vec) %*% t(inv_Denom_l)
@@ -1546,23 +1572,17 @@ compute_placebo_effects_dt <- function(
           in_brackets_mat <- t(t(in_brackets_mat) - coefs_l)
         }
 
-        # Extract M_pl columns into N x C matrix
+        # Rebuild M_pl vector (length C) from M_store_pl. Previously a broadcast N x C matrix.
+        # sweep+rowSums preserves exact element-wise products and row-summation order
+        # that `M_pl_mat * in_brackets_mat` followed by rowSums used (bit-exact).
         M_pl_cols <- paste0("M_pl", increase_XX, "_", l, "_", 1:count_controls, "_", i, "_XX")
-        M_pl_avail <- M_pl_cols %chin% names(df)
+        M_pl_avail <- vapply(M_pl_cols, exists, logical(1), envir = M_store_pl, inherits = FALSE)
         if (!all(M_pl_avail)) next
-        M_pl_mat <- as.matrix(df[, ..M_pl_cols])
+        M_pl_vec <- vapply(M_pl_cols, function(k) M_store_pl[[k]], numeric(1), USE.NAMES = FALSE)
 
         # comb = rowSums(M_pl * in_brackets), add to part2_pl
         data.table::set(df, j = part2_pl_col,
-          value = df[[part2_pl_col]] + rowSums(M_pl_mat * in_brackets_mat))
-
-        # Write back in_brackets_pl columns (for consistency with downstream code)
-        for (j in 1:count_controls) {
-          in_brackets_pl_col <- paste0("in_brackets_pl_", l, "_", j, "_XX")
-          if (in_brackets_pl_col %chin% names(df)) {
-            data.table::set(df, j = in_brackets_pl_col, value = in_brackets_mat[, j])
-          }
-        }
+          value = df[[part2_pl_col]] + rowSums(sweep(in_brackets_mat, 2L, M_pl_vec, "*")))
       }
 
       # Subtract part2_pl_switch from U_Gg_pl_var
