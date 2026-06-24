@@ -1,0 +1,441 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{mathtools}
+\usepackage{bm}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage[most]{tcolorbox}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{listings}
+
+\hypersetup{colorlinks=true, linkcolor=blue!50!black, urlcolor=blue!50!black,
+            unicode=true, bookmarksdepth=2}
+
+\definecolor{codebg}{HTML}{F3F4F6}
+\definecolor{accent}{HTML}{C85020}
+\definecolor{navy}{HTML}{12264E}
+
+\lstdefinestyle{stata}{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=none, breaklines=true, columns=fullflexible,
+  keepspaces=true, xleftmargin=4pt, framexleftmargin=4pt,
+  commentstyle=\color{gray!90!black}\itshape,
+  keywordstyle=\color{navy}\bfseries,
+  morekeywords={reghdfe, hdfe, gen, generate, replace, drop, capture,
+                bys, bysort, gegen, levelsof, forvalues, foreach, if,
+                local, scalar, matrix, predict, sum, total, accum, invsym, det},
+  morecomment=[l]{*},
+  morecomment=[l]{//},
+}
+\lstset{style=stata}
+
+\newcommand{\code}[1]{\texttt{\small #1}}
+\newcommand{\Adoref}[1]{\textcolor{accent}{\footnotesize\textbf{[ado L#1]}}}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\1}{\mathbb{1}}
+\newcommand{\Smpl}{\mathcal{S}}
+\newcommand{\thetad}{\widehat{\bm{\theta}}_d}
+\newcommand{\Ngt}{N_{g,t}}
+\newcommand{\dY}{\Delta Y_{g,t}}
+\newcommand{\dXk}{\Delta X_{k,g,t}}
+\newcommand{\PdW}{P^{\!W}_{\mathcal{F}_d}}
+\newcommand{\MdW}{M^{\!W}_{\mathcal{F}_d}}
+
+\title{\textbf{Adding HDFE controls to \texttt{did\_multiplegt\_dyn}} \\[2pt]
+       \large Math + \texttt{reghdfe}/\texttt{hdfe} integration for Stage 1}
+\author{Running example: \texttt{absorb(state\#year)} on top of time FEs}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{What we are adding, and why}
+
+\begin{tcolorbox}[colback=codebg, colframe=navy, boxrule=0.6pt, arc=1pt]
+Stage 1 of \texttt{did\_multiplegt\_dyn} partials \emph{only} time fixed
+effects (optionally interacted with the time-invariant
+\texttt{trends\_nonparam} stratum) out of $\dY$ and each $\dXk$.\;
+We want to also partial out an arbitrary, user-supplied
+\textbf{high-dimensional fixed-effect set}, e.g.\
+\texttt{absorb(state\#year)}, where \texttt{state} is a time-invariant
+group attribute and the interaction \texttt{state\#year} produces one
+dummy per (state, year) cell.\;
+The HDFE must be partialled out of both $\dY$ and every $\dXk$
+\emph{separately for each baseline-treatment level $d$}, because $\thetad$
+is estimated per $d$.
+\end{tcolorbox}
+
+\medskip\noindent
+\textbf{Concrete user call} we want to make valid:
+\begin{lstlisting}
+did_multiplegt_dyn Y G T D, effects(4) controls(X1 X2) ///
+                  absorb(state#year) cluster(state)
+\end{lstlisting}
+
+\noindent
+where \texttt{state} is a time-invariant variable already present at the
+\texttt{(group, time)} level (e.g.\ each county $g$ has a single \texttt{state}).
+
+\section{The augmented projector}
+
+Let $\mathcal{F}_d$ be the linear span of all dummies absorbed inside baseline
+cell $d$:
+\begin{equation}
+\mathcal{F}_d \;=\; \mathrm{span}\Bigl\{\, \1\{t = t_0\},\ \ \1\{s_g = s_0\}\cdot\1\{t=t_0\},\ \ \1\{A_{g,t} = a_0\}\;:\;t_0, s_0, a_0\,\Bigr\},
+\label{eq:Fd}
+\end{equation}
+restricted to $(g,t)\in\Smpl_d$. Here $A_{g,t}$ ranges over the user's
+\texttt{absorb()} terms (\texttt{state}, \texttt{state\#year}, \dots).
+With \texttt{absorb(state\#year)} concretely:
+\[
+\mathcal{F}_d \;=\; \mathrm{span}\Bigl\{\,\1\{t=t_0\},\ \ \1\{s_g=s_0\}\cdot\1\{t=t_0\},\ \ \1\{\mathrm{state}_g = a_0\}\cdot \1\{t=t_0\}\,\Bigr\}.
+\]
+Notice that \texttt{state\#year} subsumes the pure time FE -- that is fine, the
+projector handles the collinearity. The point is: the \emph{conditional mean}
+that we subtract from $\dXk$ and from $\dY$ now varies by $(d, \mathrm{state}_g, t, s_g)$
+instead of just $(d, t, s_g)$.
+
+\medskip\noindent
+Let $\bm{W}_d = \mathrm{diag}(\Ngt)$ on $\Smpl_d$. Define the weighted
+projector onto $\mathcal{F}_d$ and its annihilator:
+\begin{equation}
+\PdW \;=\; \bm{Z}_d\,(\bm{Z}_d^{\top}\bm{W}_d\bm{Z}_d)^{+}\,\bm{Z}_d^{\top}\bm{W}_d,
+\qquad
+\MdW \;=\; \bm{I} - \PdW,
+\label{eq:proj}
+\end{equation}
+where $\bm{Z}_d$ stacks the dummies in \eqref{eq:Fd} and $(\cdot)^{+}$ is the
+Moore--Penrose inverse (to be safe against collinearity among absorb terms).
+
+\section{The math, side by side with the old Stage 1}
+
+The whole Stage 1 derivation goes through unchanged with one replacement:
+$\PdW$ subtracts cell means over the richer partition. Below, the
+\emph{new} formulas; compare against the previous note.
+
+\subsection*{Step A1 -- Residualize $\dXk$ and $\dY$ on $\mathcal{F}_d$}
+
+For each baseline $d$ and each $k$:
+\begin{align}
+\widetilde{\Delta X}^{(\mathrm{HDFE})}_{k,g,t} &\;=\; \sqrt{\Ngt}\,\bigl[\MdW \,\Delta X_k\bigr]_{g,t}, \label{eq:resXnew}\\
+\widetilde{\Delta Y}^{(\mathrm{HDFE})}_{g,t} &\;=\; \sqrt{\Ngt}\,\bigl[\MdW \,\Delta Y\bigr]_{g,t}. \label{eq:resYnew}
+\end{align}
+When $\mathcal{F}_d$ is just the time FE (current code), $\PdW$ reduces to a
+weighted within-$t$ mean inside baseline $d$, which is exactly equation
+\eqref{eq:dXbar} in the previous note. With \texttt{absorb(state\#year)},
+$\PdW$ subtracts the weighted within-(state, year, $d$) mean.
+
+\subsection*{Step A2 -- Per-control score for the variance}
+\begin{equation}
+\mathrm{prod\_X}_{k,g,t}^{(\mathrm{HDFE})} \;=\; \sqrt{\Ngt}\cdot\widetilde{\Delta X}^{(\mathrm{HDFE})}_{k,g,t}
+\;=\; \Ngt\cdot \bigl[\MdW \,\Delta X_k\bigr]_{g,t}.
+\label{eq:prodXnew}
+\end{equation}
+
+\subsection*{Step A3 -- $\thetad$ via the augmented projection}
+
+Stack $\widetilde{\Delta X}^{(\mathrm{HDFE})}_{g,t}\in\R^{K}$. Then
+\begin{equation}
+\boxed{\;
+\thetad^{(\mathrm{HDFE})} \;=\;
+\Bigl(\!\textstyle\sum_{(g,t)\in\Smpl_d}\!\widetilde{\Delta X}^{(\mathrm{HDFE})}_{g,t}\,\widetilde{\Delta X}^{(\mathrm{HDFE})\top}_{g,t}\Bigr)^{\!-1}\!
+\textstyle\sum_{(g,t)\in\Smpl_d}\widetilde{\Delta X}^{(\mathrm{HDFE})}_{g,t}\,\widetilde{\Delta Y}^{(\mathrm{HDFE})}_{g,t}.
+\;}
+\label{eq:thetanew}
+\end{equation}
+By Frisch--Waugh--Lovell this equals
+\begin{equation}
+\thetad^{(\mathrm{HDFE})} \;=\;
+\arg\min_{\bm{\theta},\,\bm{\alpha}}\;
+\sum_{(g,t)\in\Smpl_d} \Ngt\,\bigl(\dY - \dX^{\!\top}\bm{\theta} - \bm{Z}^{\top}_{d,g,t}\bm{\alpha}\bigr)^{2},
+\label{eq:fwlnew}
+\end{equation}
+i.e.\ the weighted OLS of $\dY$ on $\dX$ absorbing the full FE set
+$\mathcal{F}_d$. This is exactly what \texttt{reghdfe} computes.
+
+\subsection*{Step A4 -- Inverse-denominator matrix}
+\begin{equation}
+\mathrm{Den}_d^{-1,\,(\mathrm{HDFE})} \;=\;
+\Bigl(\!\textstyle\sum_{(g,t)\in\Smpl_d}\!\widetilde{\Delta X}^{(\mathrm{HDFE})}_{g,t}\widetilde{\Delta X}^{(\mathrm{HDFE})\top}_{g,t}\Bigr)^{\!-1}\!\cdot N_d^{\mathrm{tot}}\cdot G.
+\label{eq:DenInvNew}
+\end{equation}
+The scalar $N_d^{\mathrm{tot}}$ and $G$ are unchanged.
+
+\subsection*{Step A5 -- The fitted FE-only mean of $\dY$}
+\begin{equation}
+\widehat{E}_{g,t}^{(d,\,\mathrm{HDFE})} \;=\; \bigl[\PdW\,\Delta Y\bigr]_{g,t}
+\;=\; \widehat{\E}\!\left[\,\dY\,\Big|\,\bm{Z}_{d,g,t},\ (g,t)\in\Smpl_d\right].
+\label{eq:Ehatnew}
+\end{equation}
+Built once per $d$. Used at L4664 and L5210 to demean $\dY$ inside the score
+$\mathrm{in\_sum}_{k,d}$. With multi-dim absorb, this is no longer a
+single \texttt{gegen} -- it's the prediction from a \texttt{reghdfe} of $\dY$
+on the absorb set alone.
+
+\subsection*{Step A6 -- DoF and singularity bookkeeping}
+
+Let $r_d = \mathrm{rank}(\bm{Z}_d^{\top}\bm{W}_d\bm{Z}_d) = \texttt{e(df\_a)}$
+from \texttt{reghdfe}. The singularity guard \Adoref{1042} extends to
+\begin{equation}
+\#\Smpl_d \;>\; r_d + K, \qquad
+\bigl|\det\!\bigl(\widetilde{X}^{\top}\widetilde{X}\bigr)\bigr| > 10^{-16},
+\label{eq:dofnew}
+\end{equation}
+and the warning at L1086 should additionally name the absorb dimension that
+is starving the regression.
+
+\section{Why \texttt{reghdfe} (or \texttt{hdfe}) replaces the per-control loop}
+
+In the current code, three computations are done by hand inside a
+\code{foreach var of varlist `controls'} loop:
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+\item the weighted cell mean of $\dXk$ \Adoref{931--934};
+\item the residual $\widetilde{\Delta X}_{k}$ \Adoref{941};
+\item the weighted regression of $\dY$ on $\dXk$ + time FEs \Adoref{984--991}
+to produce $\widehat{E}^{(d)}_{g,t}$.
+\end{enumerate}
+The first two are a one-way demean -- cheap to do by hand. With HDFE, the
+projector $\PdW$ is multi-dimensional and cannot be computed with a single
+\code{bys ... : gegen}. \texttt{hdfe} (and \texttt{reghdfe} under the hood)
+runs the iterative alternating-projections algorithm of
+Guimarães--Portugal that converges to $\PdW$, with one call demeaning all
+target variables at once. This is the single conceptual swap.
+
+\medskip\noindent
+\textbf{Two options for the call}, both valid:
+
+\begin{itemize}[leftmargin=*, itemsep=4pt]
+\item[\textbf{(O1)}] \textbf{\code{hdfe} as a demean utility.}\;
+Demean $\dY$ and all $\dXk$ in one call, then do \emph{exactly} the current
+\code{matrix accum} dance to recover $\thetad$, $\mathrm{Den}_d^{-1}$,
+$\widehat{E}^{(d)}_{g,t}$. Minimum disruption to the rest of the code.
+\item[\textbf{(O2)}] \textbf{\code{reghdfe} as the regression.}\;
+Read $\thetad$ from \code{e(b)}; read $r_d$ from \code{e(df\_a)};
+\code{predict} fits to recover $\widehat{E}^{(d)}_{g,t}$. Skip
+\code{matrix accum}. Simpler but two passes through the data (one for
+$\thetad$, one for $\widehat{E}^{(d)}$).
+\end{itemize}
+
+\noindent
+I recommend \textbf{(O1)} for the patch: it changes only the demean step
+(L931--941) and leaves the per-$d$ matrix-accum block (L1018--1052) -- which
+is the variance-critical part -- byte-for-byte the same. We never have to
+trust \texttt{reghdfe}'s SE or DoF correction; we keep our own.
+
+\section{Annotated Stata patch (option O1)}
+
+The block below replaces the body of the
+\code{foreach var of varlist `controls'} demeaning loop in
+\texttt{did\_multiplegt\_dyn.ado} around L919--961, plus the FE-only
+prediction at L984--999. New code is highlighted in comments.
+
+\begin{lstlisting}
+* ---- New: parse absorb() ---------------------------------------------------
+* Add to the syntax line at L53:
+*     absorb(string)
+* and at the top of the controls block do:
+
+local has_absorb = ("`absorb'" != "")
+if `has_absorb' {
+    qui cap which hdfe
+    if _rc {
+        di as error "absorb() requires hdfe. Run: ssc install hdfe, replace"
+        exit 198
+    }
+}
+
+* The full FE set (per baseline d): time + trends_nonparam#time + absorb.
+* trends_nonparam is interacted with time to match current semantics.
+local fe_set "time_XX"
+if "`trends_nonparam'" != "" local fe_set "`fe_set' i.trends_nonparam_temp_XX#i.time_XX"
+if `has_absorb' local fe_set "`fe_set' `absorb'"
+
+* ---- Replaces L919--961: demean DY and each DX_k by F_d, per baseline ------
+local mycontrols_XX ""
+local count_controls = 0
+foreach var of varlist `controls' {
+    local ++count_controls
+    capture drop resid_X`count_controls'_time_FE_XX
+    capture drop prod_X`count_controls'_Ngt_XX
+    local mycontrols_XX "`mycontrols_XX' resid_X`count_controls'_time_FE_XX"
+}
+capture drop diff_y_wXX
+capture drop diff_y_resid_XX
+
+levelsof d_sq_int_XX, local(levels_d_sq_XX)
+if "`trends_nonparam'" != "" {
+    capture drop trends_nonparam_temp_XX
+    gegen trends_nonparam_temp_XX = group(`trends_nonparam')
+}
+
+foreach l of local levels_d_sq_XX {
+
+    * Variables to demean in this baseline cell d = `l'.
+    local dvars "diff_y_XX"
+    forvalues k = 1/`count_controls' {
+        local dvars "`dvars' diff_X`k'_XX"
+    }
+
+    * Sample: not-yet-switcher control sample, all FDs non-missing.
+    tempvar smp
+    gen byte `smp' = (ever_change_d_XX == 0 ///
+                    & diff_y_XX != .       ///
+                    & fd_X_all_non_missing_XX == 1 ///
+                    & d_sq_int_XX == `l'   ///
+                    & time_XX < F_g_XX)
+
+    * One call: demean every target variable by the full FE set, in place.
+    * hdfe writes the demeaned values into resXX_diff_y_XX, resXX_diff_X1_XX, ...
+    qui hdfe `dvars' [aw=N_gt_XX] if `smp', ///
+        absorb(`fe_set') generate(resXX_)
+
+    * Pack residuals into the variables the rest of the code expects.
+    * Multiply by sqrt(N_gt) to match the existing weighted-OLS-on-scaled
+    * variables convention (so matrix accum below gives X'WX directly).
+    forvalues k = 1/`count_controls' {
+        replace resid_X`k'_time_FE_XX = sqrt(N_gt_XX) * resXX_diff_X`k'_XX ///
+            if d_sq_int_XX == `l' & `smp' == 1
+        replace resid_X`k'_time_FE_XX = 0 if missing(resid_X`k'_time_FE_XX) ///
+            & d_sq_int_XX == `l'
+        replace prod_X`k'_Ngt_XX = sqrt(N_gt_XX) * resid_X`k'_time_FE_XX ///
+            if d_sq_int_XX == `l'
+        replace prod_X`k'_Ngt_XX = 0 if missing(prod_X`k'_Ngt_XX) ///
+            & d_sq_int_XX == `l'
+        drop resXX_diff_X`k'_XX
+    }
+    replace diff_y_wXX = sqrt(N_gt_XX) * diff_y_XX if d_sq_int_XX == `l'
+
+    * ---- Replaces L984--996: FE-only fitted value of DY, by reghdfe ------
+    * E_y_hat_gt_int_l_XX = P_F_d * DY, the projection of DY onto F_d alone.
+    cap drop E_y_hat_gt_int_`l'_XX
+    qui reghdfe diff_y_XX [aw=N_gt_XX] if `smp', ///
+        absorb(`fe_set') residuals(resid_DY_l_XX)
+    * Fitted value = DY - residual:
+    gen E_y_hat_gt_int_`l'_XX = diff_y_XX - resid_DY_l_XX ///
+        if d_sq_int_XX == `l' & time_XX < F_g_XX
+    drop resid_DY_l_XX
+
+    * Track absorbed-rank for the singularity guard at L1042.
+    scalar df_a_`l'_XX = e(df_a)
+
+    drop `smp'
+
+    * ---- L1018 onward (matrix accum, theta_d, inv_Denom) is UNCHANGED -----
+    * Because resid_X*_time_FE_XX and diff_y_wXX are now built off the
+    * HDFE projection, the OLS-on-residuals trick still recovers theta_d.
+}
+\end{lstlisting}
+
+\noindent
+A few short remarks on the patch:
+
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item The block \emph{below} L1018 -- which builds $\bm{M}_d$, $\bm{q}_d$,
+        $\thetad$, $\mathrm{Den}_d^{-1}$ via \texttt{matrix accum} -- is left
+        unchanged. By FWL, plugging in $\MdW$-residualized inputs gives the
+        right $\thetad$ for the augmented projection \eqref{eq:thetanew}.
+  \item Stages 2, 3, 4 (the long-difference residualization at L4679 and the
+        $U^{\mathrm{var},X}$ correction at L4905--4954) need \emph{no} code
+        change: they consume \code{coefs\_sq\_l\_XX},
+        \code{inv\_Denom\_l\_XX}, \code{prod\_X*\_Ngt\_XX}, and
+        \code{E\_y\_hat\_gt\_int\_l\_XX}. Each of these is now built off the
+        augmented projector, so the variance correction automatically picks
+        up the larger FE set.
+  \item The placebo path at L5145--L5184 also needs no change for the same
+        reason: it just calls \code{coefs\_sq\_l\_XX} at L5177.
+  \item Add \code{absorb()} to the inner-call locals at L1337, L2030,
+        L2033 so the bootstrap and \code{by\_path} branches replay it.
+  \item Add \code{absorb} to \code{predict\_het} incompatibility check at
+        L457--464 (since it implies controls are present).
+\end{itemize}
+
+\section{Sample alignment, weights, missing values}
+
+A few things to double-check when implementing:
+
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+  \item \textbf{Sample.} \texttt{hdfe} restricts to \texttt{if} and
+        observations with non-missing weights. We pass
+        \code{`smp' == 1} which already includes
+        \code{fd\_X\_all\_non\_missing\_XX == 1}, matching the current
+        code's behavior \Adoref{931}.
+  \item \textbf{Weights.} \texttt{hdfe} accepts \code{[aw=N\_gt\_XX]}.
+        Internally it uses weighted means in each FE block; the resulting
+        residuals satisfy $\bm{W}_d^{1/2}\MdW \bm{W}_d^{1/2}$ symmetry, so
+        scaling by $\sqrt{\Ngt}$ afterwards reproduces the current
+        $\widetilde{\Delta X}_{k}$ convention exactly when
+        $\mathcal{F}_d = \mathrm{span}\{\1\{t=t_0\}\}$.
+  \item \textbf{Missingness.} Each $\dXk$ is missing in period $t=1$; the
+        flag \code{fd\_X\_all\_non\_missing\_XX} already drops these. For
+        $t \ge 2$ but $\dXk$ still missing (gaps in the panel), \texttt{hdfe}
+        drops them automatically -- the sample restriction \texttt{`smp'}
+        catches them via \code{fd\_X\_all\_non\_missing\_XX}.
+  \item \textbf{Collinearity inside \texttt{absorb()}.} If the user passes
+        \code{absorb(state\#year)} alongside our forced \code{time\_XX}, the
+        year dummies are absorbed twice; \texttt{hdfe} handles this
+        gracefully via the Moore--Penrose-style alternating projection.
+        Just be sure \code{e(df\_a)} from \texttt{reghdfe} correctly
+        reflects the absorbed rank net of collinearity, then the singularity
+        guard \eqref{eq:dofnew} fires correctly.
+  \item \textbf{Per-baseline call.} \texttt{hdfe} is called once per
+        baseline cell $d$ because $\mathcal{F}_d$ is restricted to
+        $\Smpl_d$. With many baseline levels this is the main performance
+        cost; for \code{|absorb|=0}, we keep the fast \code{gegen} path
+        unconditionally to avoid the overhead.
+\end{enumerate}
+
+\section{What the user gets at the command line}
+
+\begin{lstlisting}
+* time-invariant state attribute, e.g. each county g has a state
+* Before:  controls(X1 X2) trends_nonparam(state)
+*   -> partials state * year FEs out of DX/DY (one stratum per state).
+* After:  controls(X1 X2) absorb(state#year)
+*   -> partials state * year FEs out of DX/DY (one dummy per (state, year)).
+*      Equivalent in this simple case, but absorb() also supports
+*      multi-way: absorb(state#year industry#year), and finer cuts
+*      that trends_nonparam cannot express (e.g. county FE in FD).
+did_multiplegt_dyn Y G T D, effects(4) placebo(2) ///
+                  controls(X1 X2) absorb(state#year) cluster(state)
+\end{lstlisting}
+
+\noindent
+The estimated $\thetad$ now solves
+\[
+\min_{\bm{\theta},\,\alpha_{\text{state}\times\text{year}}^{(d)}}\;\;
+\sum_{(g,t)\in\Smpl_d} \Ngt\,\Bigl(\dY - \dX{}^{\!\top}\bm{\theta} - \alpha^{(d)}_{\mathrm{state}_g,t}\Bigr)^{\!2},
+\]
+and the long-difference of $Y$ is residualized as
+$Y_{g,t} - Y_{g,t-\ell} - (X_{g,t} - X_{g,t-\ell})^{\!\top}\thetad$ at L4679,
+exactly as today.
+
+\section{Summary of code touches}
+
+\begin{tabular}{@{}p{2.4cm}p{4.0cm}p{8.6cm}@{}}
+\toprule
+\textbf{Line} & \textbf{File region} & \textbf{Change} \\
+\midrule
+L53 & syntax & add \code{absorb(string)} \\
+L66 & dependency check & add an \code{hdfe} check mirroring the \code{gtools} one \\
+L457--464 & \code{predict\_het} guard & also forbid \code{predict\_het} with \code{absorb()} \\
+L919--961 & controls demean & replace with the \code{hdfe} call shown above \\
+L984--996 & $\widehat{E}^{(d)}$ build & replace \code{reg ... ibn.time\_XX} with \code{reghdfe ... absorb(`fe\_set')} \\
+L1042 & singularity guard & adjust for \code{e(df\_a)} from \code{reghdfe} \\
+L1086 & error message & name the absorb dimension that triggered it \\
+L1337, L2030, L2033 & inner-call locals & add \code{absorb(`absorb')} \\
+L4582+ / L5145+ & long-diff for effects / placebos & \emph{no change} -- consume the already-augmented $\thetad$ \\
+\bottomrule
+\end{tabular}
+
+\medskip\noindent
+End of patch. The math is a one-line replacement of the projector; the code
+is one \code{hdfe} call (plus one \code{reghdfe} for $\widehat{E}^{(d)}$) per
+baseline-treatment cell.
+
+\end{document}

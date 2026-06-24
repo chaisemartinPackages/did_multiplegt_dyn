@@ -1,0 +1,534 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{mathtools}
+\usepackage{bm}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage[most]{tcolorbox}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{listings}
+
+\hypersetup{colorlinks=true, linkcolor=blue!50!black, urlcolor=blue!50!black,
+            unicode=true, bookmarksdepth=2}
+
+\definecolor{codebg}{HTML}{F3F4F6}
+\definecolor{accent}{HTML}{C85020}
+\definecolor{navy}{HTML}{12264E}
+\definecolor{ok}{HTML}{1F7A4C}
+
+\lstdefinestyle{stata}{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=none, breaklines=true, columns=fullflexible,
+  keepspaces=true, xleftmargin=4pt, framexleftmargin=4pt,
+  commentstyle=\color{gray!90!black}\itshape,
+  keywordstyle=\color{navy}\bfseries,
+  morekeywords={reghdfe, hdfe, gen, generate, replace, drop, capture,
+                bys, bysort, gegen, levelsof, forvalues, foreach, if,
+                local, scalar, matrix, predict, sum, total, accum, invsym,
+                det, import, use, save, tempfile, syntax, varlist},
+  morecomment=[l]{*},
+  morecomment=[l]{//},
+}
+\lstset{style=stata}
+
+\newcommand{\code}[1]{\texttt{\small #1}}
+\newcommand{\Adoref}[1]{\textcolor{accent}{\footnotesize\textbf{[ado L#1]}}}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\1}{\mathbb{1}}
+\newcommand{\Smpl}{\mathcal{S}}
+\newcommand{\thetad}{\widehat{\bm{\theta}}_d}
+\newcommand{\Ngt}{N_{g,t}}
+\newcommand{\Pdca}{P^{\!W}_{\mathcal{F}_d}}
+\newcommand{\Mdca}{M^{\!W}_{\mathcal{F}_d}}
+
+\title{\textbf{Cluster-by-time HDFE in \texttt{did\_multiplegt\_dyn}} \\[2pt]
+       \large Adding a focused option for FEs that are constant across groups within a time period}
+\author{Worked example on \texttt{data\_test.csv}: \texttt{ac\_uq\_id\#monthyear}\\
+        \small grid-cell panel where each grid (\texttt{unique\_small\_grid\_id}) belongs to a single \texttt{ac\_uq\_id}}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section{The structure we want to absorb}
+
+\begin{tcolorbox}[colback=codebg, colframe=navy, boxrule=0.6pt, arc=1pt]
+\textbf{Dataset (\code{data\_test.csv}).}
+Panel at the (group, time) level:
+\begin{itemize}[leftmargin=*, itemsep=0pt]
+\item \code{unique\_small\_grid\_id} \,---\, group id $g$,
+\item \code{monthyear} \,---\, time id $t$,
+\item \code{ac\_uq\_id} \,---\, a coarser group attribute that maps each
+      \code{unique\_small\_grid\_id} to a single value for all $t$
+      (\emph{time-invariant at the group level}).
+\end{itemize}
+\textbf{Goal.} Absorb \code{ac\_uq\_id\#monthyear} fixed effects \,---\, i.e.\
+let each (cluster, time) cell have its own intercept \,---\, alongside the
+time FE that \texttt{did\_multiplegt\_dyn} already partials out.
+\end{tcolorbox}
+
+\noindent
+The defining feature of this FE: \emph{the absorbing variable is constant
+over groups inside the cluster and over the time periods we want to allow it
+to vary.} Formally,
+\begin{equation}
+a_g \;\equiv\; \mathrm{ac\_uq\_id}_g \in \{1,\dots,A\}\quad\text{is time-invariant,}\quad\text{and}\quad
+a_g\times t \in \{1,\dots,A\}\times\{1,\dots,T\}
+\label{eq:struct}
+\end{equation}
+takes one value per group at every $t$. This is the same structural
+property that \texttt{trends\_nonparam} already exploits with one variable;
+the proposed option generalizes it to multiple such variables and routes the
+demeaning through \texttt{reghdfe}/\texttt{hdfe}.
+
+\section{Why this case deserves its own option}
+
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+\item \textbf{The variance derivation in dCdH (2024)} is built for the
+projection of $\Delta Y$ and $\Delta X_k$ onto time FEs (optionally
+$\times$ a single time-invariant stratum). Cluster$\times$time FEs of the
+form $a_g\times t$ are a \emph{linear extension} of that subspace and the
+companion-paper algebra goes through verbatim.
+\item \textbf{The companion paper's Section 1.4} already discusses
+\texttt{trends\_nonparam}. We are not opening a new derivation \,---\,
+we are saying ``allow multiple such strata, and use \texttt{reghdfe} as the
+implementation back-end.''
+\item \textbf{Performance:} a one-way demean by $(a_g, t, d)$ is the same
+\code{bys ... : gegen} pattern already in the code at L931--934. Two-way
+\,---\, e.g.\ \code{absorb(state\#year industry\#year)} \,---\, is what
+forces us to call \texttt{reghdfe}.
+\item \textbf{Restricted scope keeps validation simple.} The option does
+\emph{not} accept slope FEs, time-varying categoricals, or unit FEs at a
+finer level than the group. Only ``time-invariant group attribute $\times$
+time.''
+\end{enumerate}
+
+\section{Proposed syntax}
+
+\begin{lstlisting}
+did_multiplegt_dyn Y G T D, effects(L) [other options] ///
+                  cluster_time_fe(varlist)
+\end{lstlisting}
+
+\noindent
+Semantics:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+\item Each variable $a^{(1)}, \dots, a^{(P)}$ in the \code{varlist} must be
+      time-invariant at the group level (checked at runtime).
+\item For each $a^{(p)}$, the option adds the FE set
+      $\{\1\{a^{(p)}_g = a_0\}\cdot \1\{t = t_0\}\}_{a_0, t_0}$ to the
+      projector used to residualize $\Delta Y$ and each $\Delta X_k$,
+      \emph{separately per baseline level} $d$.
+\item Time FE and (optionally) \code{trends\_nonparam} stay where they are;
+      the new option just appends more dummies to $\mathcal{F}_d$.
+\item If the user passes a variable that is not time-invariant at the group
+      level, the command exits with a descriptive error.
+\end{itemize}
+
+\medskip\noindent\textbf{Concrete call on \code{data\_test.csv}}:
+\begin{lstlisting}
+import delimited using "data_test.csv", clear
+did_multiplegt_dyn Y unique_small_grid_id monthyear D, ///
+    effects(4) placebo(2) controls(X1 X2)             ///
+    cluster_time_fe(ac_uq_id)                         ///
+    cluster(ac_uq_id)
+\end{lstlisting}
+
+% ============================================================================
+\section[Stage 1 -- The one stage that actually changes]{Stage 1 \,---\, The one stage that actually changes}
+
+Recall Stage 1 partials a projector $\Pdca$ out of $\Delta Y$ and each
+$\Delta X_k$, then runs OLS on the residuals to recover $\thetad$.
+\textbf{All we change is the projector.}
+
+\subsection*{Augmented FE space}
+
+Let $a^{(p)}_g$ be the $p$-th \code{cluster\_time\_fe} variable. The
+projector's FE space becomes:
+\begin{equation}
+\mathcal{F}_d \;=\; \mathrm{span}\Bigl\{\,
+\underbrace{\1\{t=t_0\}}_{\text{time FE}},\
+\underbrace{\1\{s_g = s_0\}\cdot\1\{t=t_0\}}_{\text{(optional) trends\_nonparam}},\
+\underbrace{\1\{a^{(p)}_g = a_0\}\cdot \1\{t=t_0\}}_{\text{cluster\_time\_fe, $p=1,\dots,P$}}\,\Bigr\},
+\label{eq:Fd}
+\end{equation}
+restricted to the control sample $\Smpl_d$
+(not-yet-switchers with baseline $D_{g,1}=d$ and all $\Delta X_k$
+non-missing). The weighted projector and its annihilator,
+\[
+\Pdca \;=\; \bm{Z}_d (\bm{Z}_d^{\top}\bm{W}_d \bm{Z}_d)^{+}\,\bm{Z}_d^{\top}\bm{W}_d,
+\qquad
+\Mdca \;=\; \bm{I} - \Pdca,
+\]
+project onto $\mathcal{F}_d$ in the weighted inner product
+$\bm{W}_d = \mathrm{diag}(\Ngt)$.
+
+\subsection*{Where the old Stage 1 lines change}
+
+\begin{tcolorbox}[colback=codebg, colframe=ok, boxrule=0.6pt, arc=1pt]
+\textbf{The math is identical to the existing Stage 1.} Replace every
+appearance of ``demean by time FE within $\Smpl_d$'' with ``demean by
+$\mathcal{F}_d$ within $\Smpl_d$.''
+\end{tcolorbox}
+
+\medskip\noindent
+Concretely, the four substitutions:
+
+\medskip
+\noindent\textbf{(1) Residualized FD of each control \Adoref{941}.}
+\begin{equation}
+\widetilde{\Delta X}^{(\mathrm{new})}_{k,g,t} \;=\; \sqrt{\Ngt}\,\bigl[\Mdca\,\Delta X_k\bigr]_{g,t}
+\quad\text{instead of}\quad
+\widetilde{\Delta X}^{(\mathrm{old})}_{k,g,t} \;=\; \sqrt{\Ngt}\,\bigl(\Delta X_k - \overline{\Delta X}_k(d,t,s)\bigr).
+\label{eq:resXnew}
+\end{equation}
+
+\medskip
+\noindent\textbf{(2) Outcome FD residual \Adoref{955}.}
+\begin{equation}
+\widetilde{\Delta Y}^{(\mathrm{new})}_{g,t} \;=\; \sqrt{\Ngt}\,\bigl[\Mdca\,\Delta Y\bigr]_{g,t}
+\quad\text{instead of}\quad
+\widetilde{\Delta Y}^{(\mathrm{old})}_{g,t} \;=\; \sqrt{\Ngt}\,\Delta Y_{g,t}.
+\label{eq:resYnew}
+\end{equation}
+(The old code did not partial time FE out of $\Delta Y$ here because
+\texttt{matrix accum} computed $X^{\top}Y$ on raw $\Delta Y$ and the FE
+absorption happened implicitly via the residualized $X$. With multi-way
+absorb, FWL requires both sides to be demeaned by the same projector.)
+
+\medskip
+\noindent\textbf{(3) Per-control score \Adoref{958}.}
+\begin{equation}
+\mathrm{prod\_X}_{k,g,t}^{(\mathrm{new})} \;=\; \Ngt\cdot \bigl[\Mdca\,\Delta X_k\bigr]_{g,t},
+\label{eq:prodXnew}
+\end{equation}
+mechanically replacing the same product against the old residual.
+
+\medskip
+\noindent\textbf{(4) Fitted FE-only mean of $\Delta Y$ \Adoref{984--996}.}
+\begin{equation}
+\widehat{E}^{(d,\mathrm{new})}_{g,t} \;=\; \bigl[\Pdca\,\Delta Y\bigr]_{g,t}
+\quad\text{(via \texttt{reghdfe predict} \,---\, see code patch below).}
+\label{eq:Ehatnew}
+\end{equation}
+
+\medskip\noindent
+\textbf{What does NOT change in Stage 1.} After we compute the four
+quantities above with the new projector:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item \code{matrix accum overall\_XX = diff\_y\_wXX `mycontrols\_XX'}
+        \Adoref{1018} works as before.
+  \item $\thetad = \bm{M}_d^{-1}\bm{q}_d$ \Adoref{1034}: same formula.
+  \item $\mathrm{Den}_d^{-1} = \bm{M}_d^{-1}\cdot N_d^{\mathrm{tot}}\cdot G$
+        \Adoref{1052}: same formula.
+  \item Singular-cell guard \Adoref{1042--1090}: same logic; just check
+        $\mathrm{rank}(\bm{Z}_d) = \texttt{e(df\_a)}$ from \texttt{reghdfe}.
+\end{itemize}
+
+% ============================================================================
+\section[Stages 2 and 3 -- No math change, just plug in the new theta]{Stages 2 and 3 \,---\, No math change, just plug in the new $\thetad$}
+
+\begin{tcolorbox}[colback=codebg, colframe=ok, boxrule=0.6pt, arc=1pt]
+\textbf{Zero code changes downstream.} Stages 2 and 3 consume
+\code{coefs\_sq\_`d'\_XX}, \code{inv\_Denom\_`d'\_XX},
+\code{prod\_X*\_Ngt\_XX}, and \code{E\_y\_hat\_gt\_int\_`d'\_XX}.\;
+Each is rebuilt from the augmented projector \eqref{eq:Fd}, so the
+downstream blocks at L4582--4689 (effects) and L5145--5184 (placebos), and
+the variance correction at L4905--4954, automatically use the new HDFE
+structure. No line in those blocks needs to be touched.
+\end{tcolorbox}
+
+\noindent
+For reference, the only points where the Stage-1 outputs are read:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+\item L4679 \,---\, $\Delta Y^{(\ell)} \mathrel{-}{=} \thetad[k]\cdot \Delta X^{(\ell)}_k$.
+\item L5177 \,---\, same line for the placebo long-difference.
+\item L4647, L4664 \,---\, $(\Delta Y - \widehat{E}^{(d)}_{g,t})$ inside the score.
+\item L4929 \,---\, $[\mathrm{Den}_d^{-1}\cdot \mathrm{in\_sum}_d]_{j,k}$.
+\item L4938 \,---\, subtract $\thetad[j]$ from the influence-function block.
+\item L4912--4946 \,---\, $\mathrm{prod\_X}_{k,g,t}$ multiplied inside $\mathrm{in\_sum}$.
+\end{itemize}
+Every consumer is satisfied as long as the Stage-1 outputs reflect the
+augmented projection.
+
+% ============================================================================
+\section{Stata patch using \texttt{reghdfe}/\texttt{hdfe}}
+
+Three pieces of patch: a syntax addition, the demean step that replaces
+L919--961, and the FE-only fitted value that replaces L984--996.
+
+\subsection*{Piece A \,---\, Syntax and dependency check (L53, L66)}
+
+\begin{lstlisting}
+* L53 -- add the option:
+syntax varlist(min=4 max=4 numeric) [if] [in] [, ///
+    /* ... existing options ... */              ///
+    cluster_time_fe(varlist)]
+
+* After the gtools check at L65-73, add:
+if "`cluster_time_fe'" != "" {
+    qui cap which reghdfe
+    if _rc {
+        di as error "cluster_time_fe() requires reghdfe. Run: ssc install reghdfe"
+        exit 198
+    }
+    qui cap which hdfe
+    if _rc {
+        di as error "cluster_time_fe() also requires hdfe. Run: ssc install hdfe"
+        exit 198
+    }
+
+    * Validate: each variable must be time-invariant at the group level.
+    foreach v of varlist `cluster_time_fe' {
+        tempvar sd_v
+        bys `2': egen `sd_v' = sd(`v')
+        sum `sd_v'
+        if r(max) > 0 {
+            di as error "cluster_time_fe() variable `v' is not time-invariant at the group level."
+            exit 198
+        }
+        drop `sd_v'
+    }
+}
+\end{lstlisting}
+
+\subsection*{Piece B \,---\, Replace L919--961 (demean step)}
+
+\begin{lstlisting}
+* Build the FE set that the projector M_F_d will absorb.
+local fe_set "time_XX"
+if "`trends_nonparam'" != "" {
+    capture drop trends_nonparam_temp_XX
+    gegen trends_nonparam_temp_XX = group(`trends_nonparam')
+    local fe_set "`fe_set' i.trends_nonparam_temp_XX#i.time_XX"
+}
+* The new piece: each cluster_time_fe variable, interacted with time.
+foreach v of varlist `cluster_time_fe' {
+    local fe_set "`fe_set' i.`v'#i.time_XX"
+}
+
+local mycontrols_XX ""
+local count_controls = 0
+foreach var of varlist `controls' {
+    local ++count_controls
+    capture drop resid_X`count_controls'_time_FE_XX
+    capture drop prod_X`count_controls'_Ngt_XX
+    gen resid_X`count_controls'_time_FE_XX = .
+    gen prod_X`count_controls'_Ngt_XX = .
+    local mycontrols_XX "`mycontrols_XX' resid_X`count_controls'_time_FE_XX"
+}
+capture drop diff_y_wXX
+gen diff_y_wXX = .
+
+levelsof d_sq_int_XX, local(levels_d_sq_XX)
+
+foreach l of local levels_d_sq_XX {
+
+    * Sample for baseline d = `l': not-yet-switcher controls.
+    tempvar smp
+    gen byte `smp' = (ever_change_d_XX == 0       ///
+                    & diff_y_XX != .              ///
+                    & fd_X_all_non_missing_XX==1  ///
+                    & d_sq_int_XX == `l'          ///
+                    & time_XX < F_g_XX)
+
+    * One-shot multi-FE demean of DY and every DX_k.
+    local dvars "diff_y_XX"
+    forvalues k = 1/`count_controls' {
+        local dvars "`dvars' diff_X`k'_XX"
+    }
+    qui hdfe `dvars' [aw=N_gt_XX] if `smp', ///
+        absorb(`fe_set') generate(_resXX_)
+
+    * Pack the residuals where the rest of the code expects them.
+    replace diff_y_wXX = sqrt(N_gt_XX) * _resXX_diff_y_XX ///
+        if d_sq_int_XX == `l' & `smp' == 1
+    forvalues k = 1/`count_controls' {
+        replace resid_X`k'_time_FE_XX = sqrt(N_gt_XX) * _resXX_diff_X`k'_XX ///
+            if d_sq_int_XX == `l' & `smp' == 1
+        replace resid_X`k'_time_FE_XX = 0 if missing(resid_X`k'_time_FE_XX) ///
+            & d_sq_int_XX == `l'
+        replace prod_X`k'_Ngt_XX = sqrt(N_gt_XX) * resid_X`k'_time_FE_XX ///
+            if d_sq_int_XX == `l'
+        replace prod_X`k'_Ngt_XX = 0 if missing(prod_X`k'_Ngt_XX) ///
+            & d_sq_int_XX == `l'
+    }
+    drop _resXX_* `smp'
+}
+\end{lstlisting}
+
+\subsection*{Piece C \,---\, Replace L984--996 (FE-only fitted value)}
+
+\begin{lstlisting}
+foreach l of local levels_d_sq_XX {
+
+    capture drop E_y_hat_gt_int_`l'_XX
+
+    * Build the same fitted value as before, but with the full FE set.
+    * Note: we INCLUDE the controls in the regression so E_y_hat is the
+    * full predicted value (FE part + X*theta_d), matching the existing
+    * code at L996.
+    local controlsXX ""
+    forvalues k = 1/`count_controls' {
+        local controlsXX "`controlsXX' diff_X`k'_XX"
+    }
+
+    cap reghdfe diff_y_XX `controlsXX' [aw=N_gt_XX]            ///
+        if d_sq_int_XX == `l' & time_XX < F_g_XX,              ///
+        absorb(`fe_set') noconstant residuals(_res_DY_l_XX)
+    scalar rc_XX = _rc
+
+    if rc_XX == 0 {
+        * E_y_hat = DY - residual (matches what `predict` would do)
+        gen E_y_hat_gt_int_`l'_XX = diff_y_XX - _res_DY_l_XX ///
+            if d_sq_int_XX == `l' & time_XX < F_g_XX
+        drop _res_DY_l_XX
+
+        * Track absorbed-rank for the singularity guard at L1042.
+        scalar df_a_`l'_XX = e(df_a)
+        local useful_res_`l'_XX = e(N) - e(df_a) - `count_controls'
+    }
+    else {
+        drop if d_sq_int_XX == `l'
+        noi di "Baseline Treatment Level `l' dropped because of insufficient observations."
+    }
+}
+\end{lstlisting}
+
+\subsection*{The unchanged tail (L1018--1098)}
+
+\begin{tcolorbox}[colback=codebg, colframe=ok, boxrule=0.6pt, arc=1pt]
+The rest of the existing Stage-1 block \,---\, \code{matrix accum} at
+L1018, $\thetad = \bm{M}_d^{-1}\bm{q}_d$ at L1034, the
+$\mathrm{Den}_d^{-1}$ build at L1052, the singular-cell guard at L1042--1090,
+and the dropping of cells at L1094--1096 \,---\, runs \emph{verbatim} on the
+new residuals. No code change.
+\end{tcolorbox}
+
+% ============================================================================
+\section{End-to-end example on \texttt{data\_test.csv}}
+
+\begin{lstlisting}
+* Path on the user's machine:
+*   /Users/anzony.quisperojas/Documents/GitHub/did_multiplegt_dyn/Stata/data_test.csv
+
+import delimited using "data_test.csv", clear
+
+* Confirm the cluster-time FE candidate is time-invariant per group:
+bys unique_small_grid_id: egen sd_ac = sd(ac_uq_id)
+assert sd_ac == 0 | missing(sd_ac)
+drop sd_ac
+
+* Run the patched command:
+did_multiplegt_dyn Y unique_small_grid_id monthyear D, ///
+    effects(4) placebo(2)                             ///
+    controls(X1 X2)                                   ///
+    cluster_time_fe(ac_uq_id)                         ///
+    cluster(ac_uq_id)
+\end{lstlisting}
+
+\noindent\textbf{What this estimates.} For each baseline-treatment level $d$:
+\begin{equation}
+\thetad \;=\; \arg\min_{\bm{\theta},\,\alpha^{(d)}}\;
+\sum_{(g,t)\in\Smpl_d}\Ngt\Bigl(\Delta Y_{g,t} - \sum_{k}\theta_k\,\Delta X_{k,g,t} - \alpha^{(d)}_{a_g,\,t}\Bigr)^{2},
+\label{eq:fwl}
+\end{equation}
+where $\alpha^{(d)}_{a,t}$ is an \code{ac\_uq\_id}-by-\code{monthyear} fixed
+effect, allowed to differ by baseline cell. The event-study estimators
+then use $Y_{g,t} - Y_{g,t-\ell} - (\Delta X^{(\ell)}_{g,t})^{\!\top}\thetad$
+exactly as today, and the variance correction $U^{\mathrm{var},X}$ uses the
+$\mathrm{Den}_d^{-1}$ built off this projection.
+
+% ============================================================================
+\section{Sanity check: equivalence with \texttt{trends\_nonparam}}
+
+A regression test before merging: passing a single $a^{(1)}$ via
+\code{cluster\_time\_fe(ac\_uq\_id)} should give numerically identical event
+study coefficients to the current command run with
+\code{trends\_nonparam(ac\_uq\_id)}, because the FE space \eqref{eq:Fd}
+collapses to what \texttt{trends\_nonparam} already builds at L991. Run on
+\code{data\_test.csv}:
+
+\begin{lstlisting}
+* OLD path:
+did_multiplegt_dyn Y unique_small_grid_id monthyear D, ///
+    effects(4) controls(X1 X2) trends_nonparam(ac_uq_id) ///
+    cluster(ac_uq_id)
+matrix b_old = e(b)
+matrix V_old = e(V)
+
+* NEW path:
+did_multiplegt_dyn Y unique_small_grid_id monthyear D, ///
+    effects(4) controls(X1 X2) cluster_time_fe(ac_uq_id) ///
+    cluster(ac_uq_id)
+matrix b_new = e(b)
+matrix V_new = e(V)
+
+* Compare element-wise:
+matrix diff_b = b_old - b_new
+matrix diff_V = V_old - V_new
+matrix list diff_b
+matrix list diff_V
+\end{lstlisting}
+
+\noindent
+If the equivalence test passes (max abs diff below, say, $10^{-8}$), we have
+a strong correctness signal for the single-FE case. Extending to multi-FE
+(\code{cluster\_time\_fe(ac\_uq\_id another\_cluster)}) then has no
+analytic counterpart, but the FWL argument and the per-baseline-cell
+structure carry through.
+
+% ============================================================================
+\section{Edge cases}
+
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+\item \textbf{Group nested inside cluster.} If
+      \code{unique\_small\_grid\_id} is finer than \code{ac\_uq\_id},
+      \code{ac\_uq\_id} is the cluster. If they are 1-to-1 (each group is
+      its own cluster), \code{ac\_uq\_id\#monthyear} reduces to the (g,t)
+      cell which has only one obs \,---\, the regression is rank-deficient,
+      and the singularity guard fires. The error message should hint at this.
+\item \textbf{Singleton (cluster, year) cells.} \texttt{reghdfe} drops
+      singletons by default. \code{nosingletons} is not what we want here
+      \,---\, we should keep singletons but expect them to contribute zero
+      after demeaning. Use \texttt{reghdfe}'s \code{keepsingletons} option;
+      track \code{e(num\_singletons)} for diagnostics.
+\item \textbf{Missing values in \code{cluster\_time\_fe} variables.}
+      Treat as a separate level (\code{nomissing} off in \texttt{reghdfe}),
+      or drop the observation. I recommend drop, with a one-line warning.
+\item \textbf{Interaction with \texttt{trends\_nonparam}.} The two options
+      compose: the FE set just stacks. \texttt{reghdfe} handles the
+      collinearity between $a_g\times t$ terms and a $s_g\times t$ stratum
+      that overlaps with $a_g$ via its rank-deficiency detector.
+\item \textbf{Bootstrap and \texttt{by\_path()}.} Propagate
+      \code{cluster\_time\_fe(`cluster\_time\_fe')} into the inner-call
+      locals at L1337, L2030, L2033 \,---\, same as the existing options.
+\end{enumerate}
+
+% ============================================================================
+\section{Summary}
+
+\begin{tcolorbox}[colback=codebg, colframe=navy, boxrule=0.6pt, arc=1pt]
+\textbf{The proposal in one paragraph.}\;
+Add an option \code{cluster\_time\_fe(varlist)} that takes time-invariant
+group attributes. Each is interacted with time and appended to the FE space
+$\mathcal{F}_d$ used to residualize $\Delta Y$ and $\Delta X_k$ inside the
+control sample for each baseline level $d$. The residualization is performed
+by \code{hdfe} (one call per baseline cell, demeaning $\Delta Y$ and every
+$\Delta X_k$ at once). The FE-only fitted value
+$\widehat{E}^{(d)}_{g,t}$ is rebuilt by \code{reghdfe ..., absorb(\dots)
+residuals()} and stored under the existing name. \emph{Nothing else changes}:
+\code{matrix accum}, $\thetad$, $\mathrm{Den}_d^{-1}$, the long-difference
+residualization at L4679, and the variance correction at L4905--4954 all
+consume the rebuilt Stage-1 objects and produce correct event-study
+estimates and variances by Frisch--Waugh--Lovell and the existing
+companion-paper derivation.
+\end{tcolorbox}
+
+\end{document}

@@ -1,0 +1,244 @@
+------------------------------------------------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  /Users/anzony.quisperojas/Documents/GitHub/did_multiplegt_dyn/Stata/prepare_test_sample.log
+  log type:  text
+ opened on:   2 Jun 2026, 14:26:45
+
+. 
+. *-------------------------------------------------------------------------------
+. * 1. Load and slice
+. *-------------------------------------------------------------------------------
+. 
+. import delimited using "`data_path'", clear varnames(1)
+(encoding automatically selected: ISO-8859-1)
+(7 vars, 14,837,592 obs)
+
+. 
+. * Build the outcome variable.
+. gen countk = count * 1000
+
+. 
+. * Sanity: required columns present.
+. confirm variable unique_small_grid_id
+
+. confirm variable monthyear
+
+. confirm variable downup_ac
+
+. confirm variable ac_uq_id
+
+. confirm variable av_wind_speed
+
+. confirm variable wind_direction
+
+. confirm variable countk
+
+. 
+. * Pick the 5 smallest ac_uq_id values.
+. quietly levelsof ac_uq_id, local(all_acs)
+
+. local first5 ""
+
+. local k = 0
+
+. foreach a of local all_acs {
+  2.     local ++k
+  3.     if `k' <= 5 local first5 "`first5' `a'"
+  4. }
+
+. display as text "Keeping ac_uq_id values:`first5'"
+Keeping ac_uq_id values: 0 1 2 3 4
+
+. 
+. gen byte _keep_ac = 0
+
+. foreach a of local first5 {
+  2.     replace _keep_ac = 1 if ac_uq_id == `a'
+  3. }
+(13,024 real changes made)
+(15,392 real changes made)
+(13,320 real changes made)
+(18,772 real changes made)
+(19,364 real changes made)
+
+. keep if _keep_ac == 1
+(14,757,720 observations deleted)
+
+. drop _keep_ac
+
+. 
+. * Keep first 12 distinct monthyear values.
+. sort monthyear
+
+. egen _month_rank = group(monthyear)
+
+. keep if _month_rank >= 1 & _month_rank <= 12
+(73,392 observations deleted)
+
+. drop _month_rank
+
+. 
+. * Drop rows missing key variables.
+. keep if !missing(countk, downup_ac, av_wind_speed, wind_direction, ac_uq_id, ///
+>                  unique_small_grid_id, monthyear)
+(0 observations deleted)
+
+. 
+. display as text _newline "Sample sizes after filtering:"
+
+Sample sizes after filtering:
+
+. quietly count
+
+. display as text "    Observations:        " r(N)
+    Observations:        6480
+
+. quietly levelsof unique_small_grid_id
+
+. display as text "    Distinct groups:     " wordcount(`"`r(levels)'"')
+    Distinct groups:     540
+
+. quietly levelsof ac_uq_id
+
+. display as text "    Distinct ac_uq_id:   " wordcount(`"`r(levels)'"')
+    Distinct ac_uq_id:   5
+
+. quietly levelsof monthyear
+
+. display as text "    Distinct months:     " wordcount(`"`r(levels)'"')
+    Distinct months:     12
+
+. 
+. *-------------------------------------------------------------------------------
+. * 2. Validation: are there switching units, and is switching-date variation
+. *    present within each baseline-treatment cell?
+. *-------------------------------------------------------------------------------
+. 
+. * Mirror the ado's definitions of baseline treatment (D_g,1) and F_g
+. * (first time period where treatment differs from baseline).
+. sort unique_small_grid_id monthyear
+
+. by unique_small_grid_id: gen byte _is_first_obs = (_n == 1)
+
+. gen double _D_baseline_tmp = downup_ac if _is_first_obs == 1
+(5,940 missing values generated)
+
+. bys unique_small_grid_id: egen double _D_baseline = mean(_D_baseline_tmp)
+
+. drop _D_baseline_tmp _is_first_obs
+
+. 
+. gen byte _diff_from_baseline = (downup_ac != _D_baseline)
+
+. bys unique_small_grid_id (monthyear): gen double _F_g_tmp = monthyear if _diff_from_baseline == 1 & _diff_from_baselin
+> e[_n-1] != 1
+(5,895 missing values generated)
+
+. bys unique_small_grid_id: egen double _F_g = min(_F_g_tmp)
+(1,260 missing values generated)
+
+. drop _diff_from_baseline _F_g_tmp
+
+. 
+. * Mark groups whose treatment ever changes (switchers).
+. gen byte _is_switcher = !missing(_F_g)
+
+. 
+. * Count switchers.
+. quietly levelsof unique_small_grid_id if _is_switcher == 1, local(_switchers_)
+
+. local n_switching_groups : word count `_switchers_'
+
+. display as text _newline "Validation:"
+
+Validation:
+
+. display as text "    Switching groups in slice: " `n_switching_groups'
+    Switching groups in slice: 435
+
+. 
+. if `n_switching_groups' < 5 {
+.     display as error "Too few switching groups in slice (< 5). Aborting prep."
+.     log close
+.     exit 198
+. }
+
+. 
+. * Within each baseline level, count distinct F_g values among switchers.
+. preserve
+
+.     keep unique_small_grid_id _D_baseline _F_g _is_switcher
+
+.     duplicates drop unique_small_grid_id, force
+
+Duplicates in terms of unique_small_grid_id
+
+(5,940 observations deleted)
+
+.     keep if _is_switcher == 1
+(105 observations deleted)
+
+.     bys _D_baseline: gegen long _n_F_g_in_d = nunique(_F_g)
+performance warning: -by- prefix may be slower than -by()-
+
+.     display as text _newline "Distinct switching dates F_g by baseline treatment:"
+
+Distinct switching dates F_g by baseline treatment:
+
+.     table _D_baseline, statistic(mean _n_F_g_in_d) statistic(count _F_g)
+
+--------------------------------------------------------
+            |         Mean   Number of nonmissing values
+            |  _n_F_g_in_d                          _F_g
+------------+-------------------------------------------
+_D_baseline |                                           
+  0         |            6                           222
+  1         |            6                           213
+  Total     |            6                           435
+--------------------------------------------------------
+
+.     quietly sum _n_F_g_in_d
+
+.     local min_n_F_g = r(min)
+
+.     display as text "    Minimum distinct F_g across baseline cells: " `min_n_F_g'
+    Minimum distinct F_g across baseline cells: 6
+
+.     if `min_n_F_g' < 2 {
+.         display as error "Some baseline cells have <2 distinct F_g values. The"
+.         display as error "did_multiplegt_dyn estimator will drop those cells."
+.         display as error "The sample is still usable, but expect fewer effective groups."
+.     }
+
+. restore
+
+. 
+. * Drop helper variables before saving so the test do-files see a clean dataset.
+. drop _D_baseline _F_g _is_switcher
+
+. 
+. *-------------------------------------------------------------------------------
+. * 3. Save
+. *-------------------------------------------------------------------------------
+. 
+. save "`save_path'", replace
+(file /Users/anzony.quisperojas/Documents/GitHub/did_multiplegt_dyn/Stata/test_sample.dta not found)
+file /Users/anzony.quisperojas/Documents/GitHub/did_multiplegt_dyn/Stata/test_sample.dta saved
+
+. display as text _newline "Saved test sample to: `save_path'"
+
+Saved test sample to: /Users/anzony.quisperojas/Documents/GitHub/did_multiplegt_dyn/Stata/test_sample.dta
+
+. display as text "Variables in saved file:"
+Variables in saved file:
+
+. describe, simple
+unique_sma~d  monthyear     ac_uq_id      downup_ac     count         av_wind_sp~d  wind_direc~n  countk
+
+. 
+. log close
+      name:  <unnamed>
+       log:  /Users/anzony.quisperojas/Documents/GitHub/did_multiplegt_dyn/Stata/prepare_test_sample.log
+  log type:  text
+ closed on:   2 Jun 2026, 14:26:57
+------------------------------------------------------------------------------------------------------------------------

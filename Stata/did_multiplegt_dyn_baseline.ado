@@ -50,7 +50,7 @@ capture program drop did_multiplegt_dyn
 
 program did_multiplegt_dyn, eclass
 	version 12.0
-	syntax varlist(min=4 max=4 numeric) [if] [in] [, effects(integer 1) placebo(integer 0) switchers(string) only_never_switchers controls(varlist numeric) trends_nonparam(varlist numeric) weight(varlist numeric max=1) dont_drop_larger_lower NORMALIZED cluster(varlist numeric max=1) graphoptions(string) save_results(string) graph_off same_switchers same_switchers_pl effects_equal(string)  drop_if_d_miss_before_first_switch trends_lin ci_level(integer 95) by(varlist numeric max=1) predict_het(string) predict_het_hc2bm design(string) date_first_switch(string)  NORMALIZED_weights CONTinuous(integer 0) save_sample less_conservative_se more_granular_demeaning by_path(string) bootstrap(string) _no_updates hdfe_controls(string) bsmanual(string)]
+	syntax varlist(min=4 max=4 numeric) [if] [in] [, effects(integer 1) placebo(integer 0) switchers(string) only_never_switchers controls(varlist numeric) trends_nonparam(varlist numeric) weight(varlist numeric max=1) dont_drop_larger_lower NORMALIZED cluster(varlist numeric max=1) graphoptions(string) save_results(string) graph_off same_switchers same_switchers_pl effects_equal(string)  drop_if_d_miss_before_first_switch trends_lin ci_level(integer 95) by(varlist numeric max=1) predict_het(string) predict_het_hc2bm design(string) date_first_switch(string)  NORMALIZED_weights CONTinuous(integer 0) save_sample less_conservative_se more_granular_demeaning by_path(string) bootstrap(string) _no_updates]
 	
 ////////// 0. Auto-updates
 if "`_no_updates'" == "" {
@@ -183,49 +183,12 @@ if `bootstrap_XX'<2{
 }
 }
 
-///// Parse bootstrap_manual(B, seed). Mutually exclusive with bootstrap().
-///// Triggers a custom cluster-bootstrap that reweights N_gt_XX per rep rather
-///// than physically duplicating cluster observations. Produces well-defined
-///// bootstrap SEs on the hdfe_controls path where the standard mechanic fails.
-local bootstrap_manual_B_XX = 0
-local bootstrap_manual_seed_XX = .
-if "`bsmanual'" != "" {
-	if "`bootstrap'" != "" {
-		di as error ""
-		di as error "bsmanual() and bootstrap() cannot be specified together."
-		di as input _continue ""
-		exit 198
-	}
-	if strpos("`bsmanual'", ",") == 0 {
-		di as error ""
-		di as error "Syntax error in bsmanual option. Expected: bsmanual(reps, seed)."
-		di as input _continue ""
-		exit 198
-	}
-	local bootstrap_manual_B_XX = strtrim(substr("`bsmanual'", 1, strpos("`bsmanual'", ",") - 1))
-	local bootstrap_manual_seed_XX = strtrim(substr("`bsmanual'", strpos("`bsmanual'", ",") + 1, .))
-	capture confirm integer number `bootstrap_manual_B_XX'
-	if _rc != 0 {
-		di as error "bootstrap_manual() first argument (reps) must be a positive integer."
-		exit 198
-	}
-	capture confirm integer number `bootstrap_manual_seed_XX'
-	if _rc != 0 {
-		di as error "bootstrap_manual() second argument (seed) must be an integer."
-		exit 198
-	}
-	if `bootstrap_manual_B_XX' < 2 {
-		di as error "bootstrap_manual() reps must be at least 2."
-		exit 198
-	}
-}
-
 ///// Add a Warning that same_switchers_pl only works when same_switchers is specified.
 if "`same_switchers_pl'"!=""&"`same_switchers'"==""{
 	di ""
 	di as error "The same_switchers_pl option only works if same_switchers is specified as well!"
 	di as input _continue ""
-
+	
 	exit
 }
 
@@ -233,17 +196,6 @@ if "`same_switchers_pl'"!=""&"`same_switchers'"==""{
 if `continuous'>0&"`design'"!=""{
 	di ""
 	di as error "The design option can not be specified together with the continuous option!"
-	di as input _continue ""
-
-	exit
-}
-
-///// hdfe_controls is incompatible with trends_lin (outcome gets first-differenced
-///// before our level fit can use it). Allow hdfe_controls without controls
-///// (FE-only residualization).
-if "`hdfe_controls'"!=""&"`trends_lin'"!=""{
-	di ""
-	di as error "The trends_lin option cannot be specified together with hdfe_controls()."
 	di as input _continue ""
 
 	exit
@@ -450,9 +402,9 @@ bys `2': gegen mean_y_XX=mean(`1')
 drop if mean_d_XX==.|mean_y_XX==.
 drop mean_d_XX mean_y_XX
 
-// save data for bootstrap (and for bootstrap_manual recursive reps)
-if `bootstrap_XX'!=0 | `bootstrap_manual_B_XX' != 0 {
-
+// save data for bootstrap
+if `bootstrap_XX'!=0{
+	
 	qui tempfile data_bootstrap_XX
 	qui save "`data_bootstrap_XX'.dta", replace
 
@@ -551,18 +503,7 @@ if "`predict_het'"=="" & "`predict_het_hc2bm'" != "" {
 ///// Creating Y G T D variables
 
 gen outcome_XX=`1'
-* Inside a bootstrap rep on the hdfe path, _bs_id_XX exists (created by the
-* outer call's idcluster() option). Combining it with the user's group var
-* gives each cloned cluster appearance distinct unit IDs, which keeps xtset
-* and reghdfe well-defined. Outside the hdfe path (or in the outer call),
-* _bs_id_XX is absent and group_XX falls back to the plain user-group ID.
-capture confirm variable _bs_id_XX
-if _rc == 0 & "`hdfe_controls'" != "" {
-    gegen group_XX = group(_bs_id_XX `2')
-}
-else {
-    gegen group_XX = group(`2')
-}
+gegen group_XX=group(`2')
 gegen time_XX=group(`3')
 gen treatment_XX=`4'
 
@@ -753,11 +694,6 @@ replace trunc_control_XX=max_time_d_nonmiss_XX+1 if F_g_XX==T_max_XX+1
 if "`predict_het_good'"!=""{
 gen outcome_non_diff_XX=outcome_XX
 }
-
-///// Unconditional level-outcome snapshot, used by the hdfe_controls path for
-///// the reghdfe fit (trends_lin overwrites outcome_XX with its first difference below).
-capture drop Y_level_XX
-gen double Y_level_XX = outcome_XX
 
 ///// If trends_lin option specified, drop units for which F_g_XX==2, and redefine 
 ///// outcome and controls in first difference.
@@ -955,11 +891,9 @@ capture drop diff_d_XX
 gen diff_y_XX = d.outcome_XX
 g diff_d_XX = d.treatment_XX
 
-////////// 3. Necessary pre-estimation steps when the controls option is specified.
+////////// 3. Necessary pre-estimation steps when the controls option is specified.	
 
-if "`controls'" !="" | "`hdfe_controls'" != ""{
-
-if "`controls'" != "" {
+if "`controls'" !=""{
 local count_controls=0
 
 capture drop fd_X_all_non_missing_XX
@@ -987,55 +921,47 @@ local mycontrols_XX ""
 local prod_controls_y ""
 
 foreach var of varlist `controls'{
-	local count_controls=`count_controls'+1
+local count_controls=`count_controls'+1
 
-	capture drop sum_weights_control_XX //So as to consider the weighted regressions.
+capture drop sum_weights_control_XX //So as to consider the weighted regressions.
 
-	// Computing  \Delta X_{.,t}: average of controls' first difference at time t, 
-	// among groups whose treatment has not changed yet.
+// Computing  \Delta X_{.,t}: average of controls' first difference at time t, 
+// among groups whose treatment has not changed yet.
 
-	bys time_XX d_sq_XX `trends_nonparam' : gegen sum_weights_control_XX = total(N_gt_XX) if ever_change_d_XX==0&diff_y_XX!=.&fd_X_all_non_missing_XX==1
-	bys time_XX d_sq_XX `trends_nonparam' : gegen avg_diff_X`count_controls'_XX = total(N_gt_XX*diff_X`count_controls'_XX) if ever_change_d_XX==0&diff_y_XX!=.&fd_X_all_non_missing_XX==1
+bys time_XX d_sq_XX `trends_nonparam' : gegen sum_weights_control_XX = total(N_gt_XX) if ever_change_d_XX==0&diff_y_XX!=.&fd_X_all_non_missing_XX==1
+bys time_XX d_sq_XX `trends_nonparam' : gegen avg_diff_X`count_controls'_XX = total(N_gt_XX*diff_X`count_controls'_XX) if ever_change_d_XX==0&diff_y_XX!=.&fd_X_all_non_missing_XX==1
 
-	bys time_XX d_sq_XX `trends_nonparam' : replace avg_diff_X`count_controls'_XX = avg_diff_X`count_controls'_XX/sum_weights_control_XX
+bys time_XX d_sq_XX `trends_nonparam' : replace avg_diff_X`count_controls'_XX = avg_diff_X`count_controls'_XX/sum_weights_control_XX
 
-	// Computing \Delta\Dot{X}_{g,t}, the difference between the first differences 
-	// of covariates and the average of their first-difference, which gives us 
-	// the residuals of a regression of covariates on time fixed effects. 
-	//Multiply by sqrt(N_gt_XX) to replicate weighted regression.
+// Computing \Delta\Dot{X}_{g,t}, the difference between the first differences 
+// of covariates and the average of their first-difference, which gives us 
+// the residuals of a regression of covariates on time fixed effects. 
+//Multiply by sqrt(N_gt_XX) to replicate weighted regression.
 
-	gen resid_X`count_controls'_time_FE_XX = sqrt(N_gt_XX)*(diff_X`count_controls'_XX - avg_diff_X`count_controls'_XX)
+gen resid_X`count_controls'_time_FE_XX = sqrt(N_gt_XX)*(diff_X`count_controls'_XX - avg_diff_X`count_controls'_XX)
 
-	replace resid_X`count_controls'_time_FE_XX=0 if resid_X`count_controls'_time_FE_XX==.
+replace resid_X`count_controls'_time_FE_XX=0 if resid_X`count_controls'_time_FE_XX==.
 
-	// Storing the obtained residuals for the computation of theta_d
-	local mycontrols_XX "`mycontrols_XX' resid_X`count_controls'_time_FE_XX"
+// Storing the obtained residuals for the computation of theta_d
+local mycontrols_XX "`mycontrols_XX' resid_X`count_controls'_time_FE_XX"
 
-	// Generating the product between \Delta\Dot{X}_{g,t} and \Delta Y_{g,t}
-	//Multiply by sqrt(N_gt_XX) to replicate weighted regression
-	capture drop prod_X`count_controls'_Ngt_XX
-	// Delete those we do not need anymore
-	capture drop prod_X`count_controls'_diff_y_temp_XX
-	capture drop prod_X`count_controls'_diff_y_XX
-	capture drop diff_y_wXX
-	gen diff_y_wXX = sqrt(N_gt_XX)*diff_y_XX
+// Generating the product between \Delta\Dot{X}_{g,t} and \Delta Y_{g,t}
+//Multiply by sqrt(N_gt_XX) to replicate weighted regression
+capture drop prod_X`count_controls'_Ngt_XX
+// Delete those we do not need anymore
+capture drop prod_X`count_controls'_diff_y_temp_XX
+capture drop prod_X`count_controls'_diff_y_XX
+capture drop diff_y_wXX
+gen diff_y_wXX = sqrt(N_gt_XX)*diff_y_XX
 
-	* Note: resid_X`count_controls'_time_FE_XX is already multiplied by sqrt(N_gt_XX)
-	gen prod_X`count_controls'_Ngt_XX=resid_X`count_controls'_time_FE_XX*sqrt(N_gt_XX)
-	replace prod_X`count_controls'_Ngt_XX=0 if prod_X`count_controls'_Ngt_XX==.
+* Note: resid_X`count_controls'_time_FE_XX is already multiplied by sqrt(N_gt_XX)
+gen prod_X`count_controls'_Ngt_XX=resid_X`count_controls'_time_FE_XX*sqrt(N_gt_XX)
+replace prod_X`count_controls'_Ngt_XX=0 if prod_X`count_controls'_Ngt_XX==. 
 
-}
-
-} // end of `if "`controls'" != ""` setup (hdfe_controls-only path skips it)
-else {
-* hdfe_controls without controls: minimal pre-residualization setup
-local count_controls=0
-capture drop fd_X_all_non_missing_XX
-gen fd_X_all_non_missing_XX=1
 }
 
 ///// Computing the Den_d matrices and their inverts,
-///// and creating locals storing the status quos for which Den_d^{-1} not defined.
+///// and creating locals storing the status quos for which Den_d^{-1} not defined. 
 
 local store_singular_XX ""
 local store_noresidualization_XX ""
@@ -1043,11 +969,9 @@ local levels_d_sq_XX_final ""
 
 levelsof d_sq_int_XX, local(levels_d_sq_XX)
 
-if "`hdfe_controls'" == "" {
-
 foreach l of local levels_d_sq_XX {
-
-capture drop E_y_hat_gt_int_`l'_XX
+	
+capture drop E_y_hat_gt_int_`l'_XX		
 
 // Running residualization regression to compute predicted values
 
@@ -1136,69 +1060,10 @@ use "`data_XX'.dta", clear
 else {
 *Modif Clément 19/6/2025
 capture drop trends_nonparam_temp_XX
-*End Modif Clément 19/6/2025
+*End Modif Clément 19/6/2025	
     drop if d_sq_int_XX == `l'
     noi di "Baseline Treatment Level `l' dropped because of insufficient observations."
 }
-
-}
-
-} // end `if "`hdfe_controls'" == ""` (matrix accum path)
-else {
-
-* hdfe_controls path: fit one level model per baseline l using reghdfe.
-* The level fit on Y_level_XX automatically absorbs group_XX (unit FE),
-* time_XX (or trends_nonparam interaction), and whatever the user passes
-* in hdfe_controls(). The long-difference of yhat_lvl is subtracted from
-* diff_y later (per i) instead of coefs_sq*diff_X.
-
-local hdfe_absorb_XX "group_XX `hdfe_controls'"
-if "`trends_nonparam'" != "" {
-    capture drop trends_nonparam_temp_XX
-    gegen trends_nonparam_temp_XX = group(`trends_nonparam')
-    local hdfe_absorb_XX "`hdfe_absorb_XX' i.time_XX#i.trends_nonparam_temp_XX"
-}
-else {
-    local hdfe_absorb_XX "`hdfe_absorb_XX' time_XX"
-}
-
-foreach l of local levels_d_sq_XX {
-
-    capture drop yhat_lvl_`l'_XX
-    capture drop E_y_hat_gt_int_`l'_XX
-    scalar store_singular_`l'_XX = 0
-
-    tab F_g_XX if d_sq_int_XX==`l'
-    scalar useful_res_`l'_XX = `r(r)'
-
-    if (scalar(useful_res_`l'_XX)>1) {
-        * fit on the not-yet-switched same-D_g,1 sample (mirrors line 1030 keep)
-        cap reghdfe Y_level_XX `controls' [aw=N_gt_XX] ///
-            if ever_change_d_XX==0 & fd_X_all_non_missing_XX==1 ///
-               & d_sq_int_XX==`l' & time_XX < F_g_XX, ///
-            absorb(`hdfe_absorb_XX')
-        if _rc != 0 {
-            scalar store_singular_`l'_XX = 1
-            local store_noresidualization_XX "`store_noresidualization_XX' `l'"
-            scalar useful_res_`l'_XX = 1
-        }
-        else {
-            * default predict: includes absorbed FE contribution. Predict on every
-            * obs so that long-diffs `yhat_lvl - L`i'.yhat_lvl` are defined past F_g.
-            predict yhat_lvl_`l'_XX
-            local levels_d_sq_XX_final "`levels_d_sq_XX_final' `l'"
-            * Placeholder so downstream `gen E_y_hat_gt_`l'_XX = E_y_hat_gt_int_`l'_XX * ...`
-            * doesn't error. Only fed into in_sum_temp (analytical SE), which is gated.
-            gen double E_y_hat_gt_int_`l'_XX = 0 if d_sq_int_XX==`l' & time_XX < F_g_XX
-        }
-    }
-    else {
-        capture drop trends_nonparam_temp_XX
-        drop if d_sq_int_XX == `l'
-        noi di "Baseline Treatment Level `l' dropped because of insufficient observations."
-    }
-}
-capture drop trends_nonparam_temp_XX
 
 }
 
@@ -1230,12 +1095,7 @@ foreach l of local store_noresidualization_XX {
 drop if d_sq_int_XX==`l'
 }
 
-* snapshot total control count so the per-(l, i) residualization application
-* can fire the hdfe diff(yhat_lvl) subtraction exactly once per l (on the
-* last control iteration when controls != "", or directly when controls == "").
-local n_controls_XX = `count_controls'
-
-} // end of the if "`controls'" !="" | "`hdfe_controls'" != "" condition
+} // end of the if "`controls'" !="" condition
 
 ////////// 4. Performing the estimation and storing the results
 
@@ -1634,7 +1494,7 @@ if L_u_XX!=.&L_u_XX!=0{
 * Perform the estimation of effects and placebos outside of the loop on 
 * number of effects if trends_lin not specified
 if "`trends_lin'"==""{
-	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`=l_XX') placebo(`=l_placebo_XX') switchers_core(in) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' `same_switchers' `same_switchers_pl' continuous(`continuous') `less_conservative_se' weight(weight_XX) cluster(`cluster') hdfe_controls(`hdfe_controls')
+	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`=l_XX') placebo(`=l_placebo_XX') switchers_core(in) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' `same_switchers' `same_switchers_pl' continuous(`continuous') `less_conservative_se' weight(weight_XX) cluster(`cluster')
 
 	// Store the number of the event-study effect for switchers-in
 		forv k = 1/`=L_u_XX_tag' {
@@ -1648,7 +1508,7 @@ forvalue i=1/`=l_XX'{
 * if trends_lin is specified
 * Note that if the option trends_lin was specified, same_switchers must also be specified.
 if "`trends_lin'"!=""{
-	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`i') switchers_core(in) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' same_switchers  trends_lin continuous(`continuous') `less_conservative_se' weight(weight_XX) cluster(`cluster') hdfe_controls(`hdfe_controls')
+	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`i') switchers_core(in) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' same_switchers  trends_lin continuous(`continuous') `less_conservative_se' weight(weight_XX) cluster(`cluster')
 
 	// Store the number of the event-study effect for switchers-in
 	replace switcher_tag_XX = `i' if distance_to_switch_`i'_XX == 1
@@ -1677,7 +1537,7 @@ if l_placebo_XX!=0{
 	forvalue i=1/`=l_placebo_XX'{
 		
 		if "`trends_lin'"!=""{
-	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`i') placebo(`i') switchers_core(in) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' same_switchers same_switchers_pl trends_lin continuous(`continuous') `less_conservative_se' weight(weight_XX) cluster(`cluster') hdfe_controls(`hdfe_controls')
+	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`i') placebo(`i') switchers_core(in) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' same_switchers same_switchers_pl trends_lin continuous(`continuous') `less_conservative_se' weight(weight_XX) cluster(`cluster')
 }
 				
 		if N1_placebo_`i'_XX!=0{
@@ -1714,7 +1574,7 @@ if ("`switchers'"==""|"`switchers'"=="out"){
 if L_a_XX!=.&L_a_XX!=0{
 	
 if "`trends_lin'"==""{	
-did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`=l_XX') placebo(`=l_placebo_XX') switchers_core(out) `only_never_switchers' controls(`controls')  trends_nonparam(`trends_nonparam') `normalized' `same_switchers' `same_switchers_pl' continuous(`continuous') `less_conservative_se' weight(weight_XX) cluster(`cluster') hdfe_controls(`hdfe_controls')
+did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`=l_XX') placebo(`=l_placebo_XX') switchers_core(out) `only_never_switchers' controls(`controls')  trends_nonparam(`trends_nonparam') `normalized' `same_switchers' `same_switchers_pl' continuous(`continuous') `less_conservative_se' weight(weight_XX) cluster(`cluster')
 
 	// Store the number of the event-study effect for switchers-out
 		forv k = 1/`=L_a_XX_tag' {
@@ -1726,7 +1586,7 @@ did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`=
 forvalue i=1/`=l_XX'{
 	
 if "`trends_lin'"!=""{	
-	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`i') switchers_core(out) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' same_switchers trends_lin continuous(`continuous') `less_conservative_se' weight(weight_XX) cluster(`cluster') hdfe_controls(`hdfe_controls')
+	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`i') switchers_core(out) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' same_switchers trends_lin continuous(`continuous') `less_conservative_se' weight(weight_XX) cluster(`cluster')
 
 	// Store the number of the event-study effect for switchers-out
 	replace switcher_tag_XX = `i' if distance_to_switch_`i'_XX == 1
@@ -1756,7 +1616,7 @@ if l_placebo_XX!=0{
 	forvalue i=1/`=l_placebo_XX'{
 		
 if "`trends_lin'"!=""{	
-	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`i') placebo(`i') switchers_core(out) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' same_switchers same_switchers_pl trends_lin continuous(`continuous') `less_conservative_se' weight(weight_XX) cluster(`cluster') hdfe_controls(`hdfe_controls')
+	did_multiplegt_dyn_core_new outcome_XX group_XX time_XX treatment_XX, effects(`i') placebo(`i') switchers_core(out) `only_never_switchers' controls(`controls') trends_nonparam(`trends_nonparam') `normalized' same_switchers same_switchers_pl trends_lin continuous(`continuous') `less_conservative_se' weight(weight_XX) cluster(`cluster')
 }
 		
 	if N0_placebo_`i'_XX!=0{
@@ -1861,16 +1721,9 @@ if N_switchers_effect_`i'_XX==0|N_effect_`i'_XX==0{
 
 // Averaging the U_Gg\ell to compute DID_\ell
  
-gegen DID_`i'_XX = total(U_Gg`i'_global_XX)
+gegen DID_`i'_XX = total(U_Gg`i'_global_XX) 
 replace  DID_`i'_XX = DID_`i'_XX/G_XX
 scalar DID_`i'_XX = DID_`i'_XX
-
-* === STRUCTURAL DEBUG (temporary) ===
-* Print DID_i_XX right after it's set in the main estimation. If this prints
-* the outer's correct full-sample value, the corruption happens between here
-* and the bsmanual block. If it prints the wrong value (e.g., a rep value),
-* then the residualization upstream is the culprit.
-noi di as text "[main DEBUG] after `scalar DID_`i'_XX = DID_`i'_XX' at line 1866: scalar(DID_`i'_XX) = " scalar(DID_`i'_XX) "  | variable DID_`i'_XX[1] = " DID_`i'_XX[1]
 
 // Computing DID_n_l"  if the option was specified
 
@@ -2100,208 +1953,10 @@ matrix didmgt_results_no_avg_XX=didmgt_results_no_avg_XX'
 
 capture matrix drop didmgt_results_no_avg1_XX didmgt_results_no_avg2_XX
 
-//// Manual cluster bootstrap (temporary option). When bootstrap_manual is set,
-//// we do our own bootstrap loop: sample clusters with replacement, reweight
-//// N_gt_XX by the per-rep cluster count, and re-run the estimation via a
-//// recursive did_multiplegt_dyn call. This reweighting approach gives
-//// well-defined bootstrap variance on the hdfe_controls path (the standard
-//// physical-duplication bootstrap is degenerate there because reghdfe + unit
-//// FE absorbs cluster-level resampling variation).
-if `bootstrap_manual_B_XX' != 0 {
-
-	* === Resolve the cluster variable for the resample ===
-	local _bm_cluster_XX ""
-	if "`cluster'" != "" {
-		local _bm_cluster_XX "`cluster'"
-	}
-	else {
-		local _bm_cluster_XX "`2'"
-	}
-
-	* === Save state we'll need to restore between reps ===
-	matrix mat_res_bs_XX = mat_res_XX
-	* didmgt_results_no_avg_XX feeds the final e(b) matrix at line ~3769;
-	* the recursive reps overwrite it, so we must snapshot it too.
-	matrix didmgt_bs_results_no_avg_XX = didmgt_results_no_avg_XX
-	qui tempfile data_pre_bootstrap_XX
-	qui save "`data_pre_bootstrap_XX'.dta", replace
-
-	* Save the outer call's key point-estimate scalars into LOCALS (which are
-	* truly scoped to this program, unlike global scalars) so the recursive
-	* reps cannot touch them. Only the scalars that feed e(Effect_i),
-	* e(Placebo_i), e(Av_tot_effect) and the result table need to survive.
-	forvalues _bm_i_XX = 1/`=l_XX' {
-		local _BSV_DID_`_bm_i_XX' = scalar(DID_`_bm_i_XX'_XX)
-		noi di as text "[bsmanual SAVE] DID_`_bm_i_XX'_XX = " scalar(DID_`_bm_i_XX'_XX) "  -> local _BSV_DID_`_bm_i_XX' = `_BSV_DID_`_bm_i_XX''"
-	}
-	if (`=l_placebo_XX' > 0) {
-		forvalues _bm_i_XX = 1/`=l_placebo_XX' {
-			local _BSV_DIDpl_`_bm_i_XX' = scalar(DID_placebo_`_bm_i_XX'_XX)
-		}
-	}
-	local _BSV_delta = scalar(delta_XX)
-	noi di as text "[bsmanual SAVE] delta_XX = " scalar(delta_XX) "  -> local _BSV_delta = `_BSV_delta'"
-
-	* === Get the cluster-resample CSV from the standalone sampler ===
-	qui tempfile _bm_csv_XX
-	local _bm_csv_path_XX "`_bm_csv_XX'.csv"
-	did_multiplegt_dyn_bootsample, cluster(`_bm_cluster_XX') reps(`bootstrap_manual_B_XX') seed(`bootstrap_manual_seed_XX') saving("`_bm_csv_path_XX'")
-
-	* === Build storage for per-rep estimates ===
-	* Each row = one parameter, each column = one rep
-	local _bm_neff_XX = l_XX
-	local _bm_npl_XX  = l_placebo_XX
-	local _bm_nparam_XX = `_bm_neff_XX' + `_bm_npl_XX' + 1
-	matrix _bm_reps_XX = J(`bootstrap_manual_B_XX', `_bm_nparam_XX', .)
-	local _bm_failed_XX = 0
-
-	* === Save the user's original weight macro for restoration ===
-	local _bm_user_weight_XX "`weight'"
-	local _bm_user_weight_var_XX ""
-	if "`weight'" != "" {
-		local _bm_user_weight_var_XX "`weight'"
-	}
-
-	* === Bootstrap rep loop ===
-	forvalues _bm_rep_XX = 1/`bootstrap_manual_B_XX' {
-
-		* (i) Import this rep's column from the CSV into a tempfile.
-		*     We avoid `preserve` here because the main program already has
-		*     an active preserve from earlier; nested preserves are illegal.
-		qui import delimited using "`_bm_csv_path_XX'", clear
-		qui keep cluster_id rep_`_bm_rep_XX'
-		qui rename cluster_id `_bm_cluster_XX'
-		qui rename rep_`_bm_rep_XX' _bm_count_XX
-		tempfile _bm_rep_data_XX
-		qui save "`_bm_rep_data_XX'", replace
-
-		* (ii) Load fresh original data and merge in this rep's per-cluster counts.
-		qui use "`data_bootstrap_XX'.dta", clear
-		qui merge m:1 `_bm_cluster_XX' using "`_bm_rep_data_XX'", nogen keep(match master)
-		qui replace _bm_count_XX = 0 if missing(_bm_count_XX)
-
-		* (iii) build the single bootstrap weight = original_weight * count
-		capture drop _bm_weight_XX
-		if "`_bm_user_weight_var_XX'" == "" {
-			gen double _bm_weight_XX = _bm_count_XX
-		}
-		else {
-			gen double _bm_weight_XX = `_bm_user_weight_var_XX' * _bm_count_XX
-		}
-
-		* (iv) recursive did_multiplegt_dyn call with the reweighted weight.
-		* Use cap to tolerate reps that fail (e.g., reghdfe singularity).
-		capture qui did_multiplegt_dyn `1' `2' `3' `4', ///
-			effects(`effects') placebo(`placebo')                                ///
-			`same_switchers' switchers(`switchers') `only_never_switchers'       ///
-			controls(`controls') trends_nonparam(`trends_nonparam')              ///
-			weight(_bm_weight_XX)                                                ///
-			`dont_drop_larger_lower' `drop_if_d_miss_before_first_switch'        ///
-			`normalized' `same_switchers_pl' `trends_lin'                        ///
-			continuous(`continuous') hdfe_controls(`hdfe_controls')              ///
-			cluster(`cluster') graph_off _no_updates
-
-		if _rc != 0 {
-			local _bm_failed_XX = `_bm_failed_XX' + 1
-			drop _bm_count_XX
-			continue
-		}
-
-		* (v) capture this rep's estimates into the storage matrix
-		forvalues _bm_i_XX = 1/`_bm_neff_XX' {
-			capture local _bm_val_XX = e(Effect_`_bm_i_XX')
-			if _rc == 0 {
-				matrix _bm_reps_XX[`_bm_rep_XX', `_bm_i_XX'] = `_bm_val_XX'
-			}
-		}
-		forvalues _bm_i_XX = 1/`_bm_npl_XX' {
-			capture local _bm_val_XX = e(Placebo_`_bm_i_XX')
-			if _rc == 0 {
-				matrix _bm_reps_XX[`_bm_rep_XX', `_bm_neff_XX' + `_bm_i_XX'] = `_bm_val_XX'
-			}
-		}
-		capture local _bm_val_XX = e(Av_tot_effect)
-		if _rc == 0 {
-			matrix _bm_reps_XX[`_bm_rep_XX', `_bm_nparam_XX'] = `_bm_val_XX'
-		}
-
-		drop _bm_count_XX
-	}
-
-	* === Report failed reps ===
-	if `_bm_failed_XX' > 0 {
-		di as text ""
-		di as text "bootstrap_manual: `_bm_failed_XX' of `bootstrap_manual_B_XX' reps failed and were skipped."
-	}
-
-	* === Compute bootstrap SE + covariance from per-rep matrix ===
-	* Drop rows that are all missing (failed reps)
-	mata: _bm_reps = st_matrix("_bm_reps_XX")
-	mata: _bm_keep = !rowmissing(_bm_reps)
-	mata: _bm_reps = select(_bm_reps, _bm_keep)
-	mata: st_local("_bm_B_eff_XX", strofreal(rows(_bm_reps)))
-	mata: _bm_mean = mean(_bm_reps)
-	mata: _bm_dev  = _bm_reps :- _bm_mean
-	mata: _bm_cov  = (_bm_dev' * _bm_dev) / (rows(_bm_reps) - 1)
-	mata: _bm_se   = sqrt(diagonal(_bm_cov))
-	mata: st_matrix("bs_var_cov_XX", _bm_cov)
-	mata: st_matrix("_bm_se_XX",    _bm_se)
-
-	* === Populate the bootstrap SE matrices the downstream code reads ===
-	matrix se_eff_bs_XX = J(`_bm_neff_XX', 1, .)
-	forvalues _bm_i_XX = 1/`_bm_neff_XX' {
-		matrix se_eff_bs_XX[`_bm_i_XX', 1] = _bm_se_XX[`_bm_i_XX', 1]
-	}
-	if `_bm_npl_XX' > 0 {
-		matrix se_pl_bs_XX = J(`_bm_npl_XX', 1, .)
-		forvalues _bm_i_XX = 1/`_bm_npl_XX' {
-			matrix se_pl_bs_XX[`_bm_i_XX', 1] = _bm_se_XX[`_bm_neff_XX' + `_bm_i_XX', 1]
-		}
-	}
-	matrix se_avg_eff_bs_XX = _bm_se_XX[`_bm_nparam_XX', 1]
-
-	* === Make bs_var_cov_XX look like the e(V) layout Stata's bootstrap produces ===
-	* Stata's bootstrap names rows/cols _bs_1, _bs_2, ... Downstream code at
-	* lines 2611 and 2744 selects submatrices via those names.
-	local _bm_rcnames_XX ""
-	forvalues _bm_i_XX = 1/`_bm_nparam_XX' {
-		local _bm_rcnames_XX "`_bm_rcnames_XX' _bs_`_bm_i_XX'"
-	}
-	matrix rownames bs_var_cov_XX = `_bm_rcnames_XX'
-	matrix colnames bs_var_cov_XX = `_bm_rcnames_XX'
-
-	* === Set bootstrap_XX so the existing SE override / joint test code fires ===
-	local bootstrap_XX = `bootstrap_manual_B_XX' - `_bm_failed_XX'
-
-	* === Restore pre-bootstrap data so the rest of the program continues ===
-	use "`data_pre_bootstrap_XX'.dta", clear
-	matrix mat_res_XX = mat_res_bs_XX
-	* Restore didmgt_results_no_avg_XX so e(b) at line ~3769 sees the outer's
-	* full-sample point estimates, not the last rep's.
-	matrix didmgt_results_no_avg_XX = didmgt_bs_results_no_avg_XX
-
-	* Restore the outer call's point-estimate scalars from the locals saved
-	* at the top of this block, so e(Effect_i), e(Placebo_i),
-	* e(Av_tot_effect), and the result table reflect the full-sample
-	* estimates instead of the last rep's.
-	forvalues _bm_i_XX = 1/`=l_XX' {
-		noi di as text "[bsmanual RESTORE] before: DID_`_bm_i_XX'_XX = " scalar(DID_`_bm_i_XX'_XX) "  | local _BSV_DID_`_bm_i_XX' = `_BSV_DID_`_bm_i_XX''"
-		scalar DID_`_bm_i_XX'_XX = `_BSV_DID_`_bm_i_XX''
-		noi di as text "[bsmanual RESTORE] after:  DID_`_bm_i_XX'_XX = " scalar(DID_`_bm_i_XX'_XX)
-	}
-	if (`=l_placebo_XX' > 0) {
-		forvalues _bm_i_XX = 1/`=l_placebo_XX' {
-			scalar DID_placebo_`_bm_i_XX'_XX = `_BSV_DIDpl_`_bm_i_XX''
-		}
-	}
-	scalar delta_XX = `_BSV_delta'
-	noi di as text "[bsmanual RESTORE] delta_XX = " scalar(delta_XX) "  (target `_BSV_delta')"
-}
-
-//// Add bootstrap
-if `bootstrap_XX'!=0 & `bootstrap_manual_B_XX' == 0 {
-
-	// Save "pre-bootstraped" results matrix so it does not get overwritten
+//// Add bootstrap 
+if `bootstrap_XX'!=0{
+	
+	// Save "pre-bootstraped" results matrix so it does not get overwritten 
 	matrix mat_res_bs_XX=mat_res_XX
 	
 	// Save "pre-bootstrap" data 
@@ -2342,11 +1997,9 @@ if `bootstrap_XX'!=0 & `bootstrap_manual_B_XX' == 0 {
 	
 	xtset, clear // need this to ensure bootstrap is running correctly
 	
-	// Save pre-bootstraped coefficients matrix for residualization (controls) and matrix for the actual coefficient matrix to be used in the ereturn post
-	if "`hdfe_controls'" == "" {
+	// Save pre-bootstraped coefficients matrix for residualization (controls) and matrix for the actual coefficient matrix to be used in the ereturn post 
 	foreach u of local levels_d_sq_XX {
 		matrix coefs_sq_bs_`u'_XX = coefs_sq_`u'_XX
-	}
 	}
 	matrix didmgt_bs_results_no_avg_XX=didmgt_results_no_avg_XX // Modif Felix
 	
@@ -2371,23 +2024,13 @@ if `bootstrap_XX'!=0 & `bootstrap_manual_B_XX' == 0 {
 	drop existing_pre_XX
 	
 	global bootstrap_on_XX "yes"
-
-	* On the hdfe path, add idcluster so each cluster appearance in a
-	* resample gets a fresh ID. The recursive call combines _bs_id_XX
-	* with the user's group var to produce distinct unit IDs per clone,
-	* which keeps xtset / reghdfe well-defined inside reps. OLD path
-	* keeps no idcluster (bit-exact preservation of validated behavior).
-	local idcl_opt_XX ""
-	if "`hdfe_controls'" != "" {
-		local idcl_opt_XX "idcluster(_bs_id_XX)"
-	}
-
+	
 	// bootstrap the whole command
 	if "`cluster'"==""{
-		bootstrap "`coefs'", reps(`bootstrap_XX') cluster(`2') `seed_XX' `idcl_opt_XX': did_multiplegt_dyn `1' `2' `3' `4', effects(`=l_XY') placebo(`=l_placebo_XY') `same_switchers' switchers(`switchers') `only_never_switchers' controls(`controls_bs_orig_XX') trends_nonparam(`trends_nonparam') weight(`weight') `dont_drop_larger_lower' `drop_if_d_miss_before_first_switch' `normalized' `same_switchers_pl' `trends_lin' continuous(`continuous') hdfe_controls(`hdfe_controls') graph_off
+		bootstrap "`coefs'", reps(`bootstrap_XX') cluster(`2') `seed_XX': did_multiplegt_dyn `1' `2' `3' `4', effects(`=l_XY') placebo(`=l_placebo_XY') `same_switchers' switchers(`switchers') `only_never_switchers' controls(`controls_bs_orig_XX') trends_nonparam(`trends_nonparam') weight(`weight') `dont_drop_larger_lower' `drop_if_d_miss_before_first_switch' `normalized' `same_switchers_pl' `trends_lin' continuous(`continuous') graph_off
 	}
 	else if "`cluster'"!=""{
-		bootstrap "`coefs'", reps(`bootstrap_XX') cluster(`cluster') `seed_XX' `idcl_opt_XX': did_multiplegt_dyn `1' `2' `3' `4', effects(`=l_XY') placebo(`=l_placebo_XY') `same_switchers' switchers(`switchers') `only_never_switchers' controls(`controls_bs_orig_XX') trends_nonparam(`trends_nonparam') weight(`weight') `dont_drop_larger_lower' `normalized' `same_switchers_pl' `drop_if_d_miss_before_first_switch' `trends_lin' continuous(`continuous') hdfe_controls(`hdfe_controls') graph_off
+		bootstrap "`coefs'", reps(`bootstrap_XX') cluster(`cluster') `seed_XX': did_multiplegt_dyn `1' `2' `3' `4', effects(`=l_XY') placebo(`=l_placebo_XY') `same_switchers' switchers(`switchers') `only_never_switchers' controls(`controls_bs_orig_XX') trends_nonparam(`trends_nonparam') weight(`weight') `dont_drop_larger_lower' `normalized' `same_switchers_pl' `drop_if_d_miss_before_first_switch' `trends_lin' continuous(`continuous') graph_off
 	}
 	
 	//global bootstrap_on_XX ""
@@ -2397,11 +2040,9 @@ if `bootstrap_XX'!=0 & `bootstrap_manual_B_XX' == 0 {
 	matrix bs_var_cov_XX=e(V) // Modif Felix: also fetch var/cov Matrix
 	
 	
-	// Restore residualization matrix
-	if "`hdfe_controls'" == "" {
+	// Restore residualization matrix 
 	foreach u of local levels_d_sq_XX {
 		matrix coefs_sq_`u'_XX = coefs_sq_bs_`u'_XX
-	}
 	}
 	matrix didmgt_results_no_avg_XX=didmgt_bs_results_no_avg_XX // Modif Felix
 	
@@ -2816,76 +2457,62 @@ if (l_placebo_XX!=0)&l_placebo_XX>1{
 	// Add condition with normalized
 	if (all_Ns_pl_not_zero==l_placebo_XX & "`normalized'"=="")|(all_Ns_pl_not_zero==l_placebo_XX & "`normalized'"!="" & all_delta_pl_not_zero==l_placebo_XX){
 
-	// Creating a vector with all placebo estimates (always works -- just point estimates).
+	// Creating a vector with all placebo estimates
 	matrix didmgt_Placebo=J(l_placebo_XX,1,0)
-	forvalue i=1/`=l_placebo_XX'{
-		matrix didmgt_Placebo[`i',1]=scalar(DID_placebo_`i'_XX)
-	}
-
-	// Build the analytical variance matrix only on the non-hdfe path.
-	// On the hdfe_controls path, the controls-adjustment block is gated
-	// off and the se_placebo_*_XX scalars can be missing -- so we skip
-	// the analytical construction and rely entirely on the bootstrap
-	// override below.
-	if "`hdfe_controls'" == "" {
-
+	
+	// Creating a matrix where the variances and the covariances of the placebos will be stored.
 	matrix didmgt_Var_Placebo=J(l_placebo_XX,l_placebo_XX,0)
-
+	
+	// Fill those matrices
 	forvalue i=1/`=l_placebo_XX'{
-
+		
+		matrix didmgt_Placebo[`i',1]=scalar(DID_placebo_`i'_XX)
 		matrix didmgt_Var_Placebo[`i',`i']= scalar(se_placebo_`i'_XX)^2
-
+	
 		if `i'<`=l_placebo_XX'{
 		forvalue j=`=`i'+1'/`=l_placebo_XX'{
-
+			
 			* Create variables necessary to compute the covariances
 			capture drop U_Gg_var_pl_`i'_`j'_XX
 			capture drop U_Gg_var_pl_`i'_`j'_2_XX
-
+					
 			if ("`normalized'"==""){
 			gen U_Gg_var_pl_`i'_`j'_XX = U_Gg_var_glob_pl_`i'_XX + U_Gg_var_glob_pl_`j'_XX
 		}
-
+			
 			if "`normalized'"!=""{
 			gen U_Gg_var_pl_`i'_`j'_XX = U_Gg_var_glob_pl_`i'_XX/scalar(delta_D_pl_`i'_global_XX) + U_Gg_var_glob_pl_`j'_XX/scalar(delta_D_pl_`j'_global_XX)
 		}
 
 			* Estimate the covariances
 			gen U_Gg_var_pl_`i'_`j'_2_XX = U_Gg_var_pl_`i'_`j'_XX^2*first_obs_by_gp_XX
-
+			
 			sum U_Gg_var_pl_`i'_`j'_2_XX
 			scalar var_sum_pla_`i'_`j'_XX=r(sum)/G_XX^2
-
+			
 			scalar cov_pl_`i'_`j'_XX = (scalar(var_sum_pla_`i'_`j'_XX) - scalar(se_placebo_`i'_XX)^2 - scalar(se_placebo_`j'_XX)^2)/2
-
+	
 			* Store the results
 			matrix didmgt_Var_Placebo[`i',`j']= scalar(cov_pl_`i'_`j'_XX)
 			matrix didmgt_Var_Placebo[`j',`i']= scalar(cov_pl_`i'_`j'_XX)
 
 		}
 	}
-
+	
 	}
-
-	} // end `if "`hdfe_controls'" == ""` (analytical-variance construction)
-
+	
 	*** Modif Felix: replace matrix with bootstrap
 	if `bootstrap_XX'!=0{
 		matrix didmgt_Var_Placebo=bs_var_cov_XX["_bs_`=l_XX+1'".."_bs_`=l_XX+l_placebo_XX'","_bs_`=l_XX+1'".."_bs_`=l_XX+l_placebo_XX'"]
-	}
+	}	
 	
-	// Compute P-value for the F-test on joint nullity of all placebos.
-	// Guard against hdfe_controls without bootstrap: in that case
-	// didmgt_Var_Placebo was never built (analytical skipped, no bootstrap
-	// override) and invsym would crash with "matrix has missing values".
-	capture confirm matrix didmgt_Var_Placebo
-	if _rc == 0 {
+	// Compute P-value for the F-test on joint nullity of all placebos
 	matrix didmgt_Var_Placebo_inv=invsym(didmgt_Var_Placebo)
 	matrix didmgt_Placebo_t=didmgt_Placebo'
 	matrix didmgt_chi2placebo=didmgt_Placebo_t*didmgt_Var_Placebo_inv*didmgt_Placebo
-
-
-
+	
+	
+	
 	*Modif David 05_02_2026: check that matrix has full rank before performing the test:
 	* Check rank of didmgt_Var_Placebo
 	matrix symeigen X_pl v_pl = didmgt_Var_Placebo
@@ -2898,17 +2525,10 @@ if (l_placebo_XX!=0)&l_placebo_XX>1{
 		scalar p_jointplacebo=.
 		ereturn scalar p_jointplacebo=.
 		}
-	}
-	else {
-		* hdfe_controls path without bootstrap -- joint placebo test unavailable.
-		scalar p_jointplacebo=.
-		* warning_pl must be defined so downstream display code doesn't fail.
-		scalar warning_pl=.
-	}
 
 	}
-
-	// Error message if not all of the specified placebos could be estimated
+	
+	// Error message if not all of the specified placebos could be estimated 
 	else{
 		di as error ""
 		di as error "Some placebos could not be estimated. Therefore, the test of joint nullity of the placebos could not be computed."
@@ -2950,69 +2570,56 @@ if l_XX>1{
 	// Add condition with normalized
 	if (all_Ns_not_zero==l_XX & "`normalized'"=="")|(all_Ns_not_zero==l_XX & "`normalized'"!="" & all_delta_not_zero==l_XX){
 
-	// Creating a vector with all effect estimates (always works).
+	// Creating a vector with all placebo estimates
 	matrix didmgt_effects=J(l_XX,1,0)
-	forvalue i=1/`=l_XX'{
-		matrix didmgt_effects[`i',1]=scalar(DID_`i'_XX)
-	}
-
-	// Build the analytical variance matrix only on the non-hdfe path.
-	// On the hdfe_controls path, the controls-adjustment block is gated
-	// off and se_*_XX scalars can be missing -- we skip the analytical
-	// construction and rely on the bootstrap override below.
-	if "`hdfe_controls'" == "" {
-
+	
+	// Creating a matrix where the variances and the covariances of the placebos will be stored.
 	matrix didmgt_Var_effects=J(l_XX,l_XX,0)
-
+	
+	// Fill those matrices
 	forvalue i=1/`=l_XX'{
-
+		
+		matrix didmgt_effects[`i',1]=scalar(DID_`i'_XX)
 		matrix didmgt_Var_effects[`i',`i']= scalar(se_`i'_XX)^2
-
+	
 		if `i'<`=l_XX'{
 		forvalue j=`=`i'+1'/`=l_XX'{
-
+			
 			* Create variables necessary to compute the covariances
 			capture drop U_Gg_var_`i'_`j'_XX
 			capture drop U_Gg_var_`i'_`j'_2_XX
-
+					
 			if ("`normalized'"==""){
 			gen U_Gg_var_`i'_`j'_XX = U_Gg_var_glob_`i'_XX + U_Gg_var_glob_`j'_XX
 		}
-
+			
 			if "`normalized'"!=""{
 			gen U_Gg_var_`i'_`j'_XX = U_Gg_var_glob_`i'_XX/scalar(delta_D_`i'_global_XX) + U_Gg_var_glob_`j'_XX/scalar(delta_D_`j'_global_XX)
 		}
 
 			* Estimate the covariances
 			gen U_Gg_var_`i'_`j'_2_XX = U_Gg_var_`i'_`j'_XX^2*first_obs_by_gp_XX
-
+			
 			sum U_Gg_var_`i'_`j'_2_XX
 			scalar var_sum_`i'_`j'_XX=r(sum)/G_XX^2
-
+			
 			scalar cov_`i'_`j'_XX = (scalar(var_sum_`i'_`j'_XX) - scalar(se_`i'_XX)^2 - scalar(se_`j'_XX)^2)/2
-
+	
 			* Store the results
 			matrix didmgt_Var_effects[`i',`j']= scalar(cov_`i'_`j'_XX)
 			matrix didmgt_Var_effects[`j',`i']= scalar(cov_`i'_`j'_XX)
 
 		}
 	}
-
+	
 	}
-
-	} // end `if "`hdfe_controls'" == ""` (analytical-variance construction)
-
+	
 	*** Modif Felix: replace matrix with bootstrap
-	* Fix: previously assigned to didmgt_Var_eff (typo) so the bootstrap
-	* override never actually replaced the matrix used by invsym below.
 	if `bootstrap_XX'!=0{
-		matrix didmgt_Var_effects=bs_var_cov_XX["_bs_`=1'".."_bs_`=l_XX'","_bs_`=1'".."_bs_`=l_XX'"]
-	}
-
-	// Compute P-value for the F-test on joint nullity of all effects.
-	// Guard against hdfe_controls without bootstrap.
-	capture confirm matrix didmgt_Var_effects
-	if _rc == 0 {
+		matrix didmgt_Var_eff=bs_var_cov_XX["_bs_`=1'".."_bs_`=l_XX'","_bs_`=1'".."_bs_`=l_XX'"]
+	}	
+	
+	// Compute P-value for the F-test on joint nullity of all effects
 	matrix didmgt_Var_effects_inv=invsym(didmgt_Var_effects)
 	matrix didmgt_effects_t=didmgt_effects'
 	matrix didmgt_chi2effects=didmgt_effects_t*didmgt_Var_effects_inv*didmgt_effects
@@ -3030,23 +2637,16 @@ if l_XX>1{
 		scalar p_jointeffects=.
 		ereturn scalar p_jointeffects=.
 		}
-	}
-	else {
-		* hdfe_controls path without bootstrap -- joint effects test unavailable.
-		scalar p_jointeffects=.
-		* warning_eff must be defined so downstream display code doesn't fail.
-		scalar warning_eff=.
-	}
 
 	}
-
-	// Error message if not all of the specified placebos could be estimated
+	
+	// Error message if not all of the specified placebos could be estimated 
 	else{
 		di as error ""
 		di as error "Some effects could not be estimated. Therefore, the test of joint nullity of the effects could not be computed."
 		di as input _continue ""
 	}
-
+	
 }
 
 // LBX change below 
@@ -4650,7 +4250,7 @@ capture program drop did_multiplegt_dyn_core_new
 
 program did_multiplegt_dyn_core_new, eclass
 	version 12.0
-	syntax varlist(min=4 max=4 numeric) [, effects(integer 1) placebo(integer 0) switchers(string) only_never_switchers controls(varlist numeric) trends_nonparam(varlist numeric) weight(varlist numeric) dont_drop_larger_lower NORMALIZED cluster(varlist numeric) graphoptions(string) SAVe_results(string) graph_off same_switchers same_switchers_pl drop_if_d_miss_before_first_switch trends_lin ci_level(integer 95) by(varlist numeric max=1) predict_het(string) design(string) date_first_switch(string) NORMALIZED_weights CONTinuous(string) switchers_core(string) less_conservative_se hdfe_controls(string)]
+	syntax varlist(min=4 max=4 numeric) [, effects(integer 1) placebo(integer 0) switchers(string) only_never_switchers controls(varlist numeric) trends_nonparam(varlist numeric) weight(varlist numeric) dont_drop_larger_lower NORMALIZED cluster(varlist numeric) graphoptions(string) SAVe_results(string) graph_off same_switchers same_switchers_pl drop_if_d_miss_before_first_switch trends_lin ci_level(integer 95) by(varlist numeric max=1) predict_het(string) design(string) date_first_switch(string) NORMALIZED_weights CONTinuous(string) switchers_core(string) less_conservative_se]
 	qui{
 		
 ////////// 1. Scalars initialization
@@ -5074,33 +4674,17 @@ bys group_XX: gegen in_sum_`count_controls'_`l'_XX = total(in_sum_temp_`count_co
 // Residualize the outcome difference wrt control differences:
 // Yg,t − Yg,t−ℓ − (Xg,t − Xg,t−ℓ)*θ_{Dg,1}
 
-foreach l of local levels_d_sq_XX {
+foreach l of local levels_d_sq_XX { 
 	if (scalar(useful_res_`l'_XX)>1){
-if "`hdfe_controls'" == "" {
-replace diff_y_`i'_XX = diff_y_`i'_XX - coefs_sq_`l'_XX[`=`count_controls'',1]*diff_X`count_controls'_`i'_XX if d_sq_int_XX==`l'
+replace diff_y_`i'_XX = diff_y_`i'_XX - coefs_sq_`l'_XX[`=`count_controls'',1]*diff_X`count_controls'_`i'_XX if d_sq_int_XX==`l' 
 * N.B. : in the above line, we do not add "&diff_X`count_controls'_`i'_XX!=." because we want to exclude from the estimation any first/long-difference for which the covariates are missing.
-}
 
-// Initialize intermediate Variable needed later (only used by analytical-SE path)
-capture drop in_brackets_`l'_`count_controls'_XX
+// Initialize intermediate Variable needed later
+capture drop in_brackets_`l'_`count_controls'_XX	
 gen in_brackets_`l'_`count_controls'_XX=0
 
 }
 }
-}
-}
-
-* hdfe_controls path: subtract the long-difference of the level prediction
-* once per baseline l (this replaces the per-control coefs_sq * diff_X loop above).
-* Fires for both controls!="" and controls=="" cases when hdfe_controls is set.
-if "`hdfe_controls'" != "" {
-xtset group_XX time_XX
-foreach l of local levels_d_sq_XX {
-    if (scalar(useful_res_`l'_XX) > 1) {
-        replace diff_y_`i'_XX = diff_y_`i'_XX ///
-            - (yhat_lvl_`l'_XX - L`i'.yhat_lvl_`l'_XX) ///
-            if d_sq_int_XX == `l'
-    }
 }
 }
 
@@ -5319,13 +4903,11 @@ gen U_Gg`i'_temp_var_XX = 0
 replace U_Gg`i'_temp_var_XX= dummy_U_Gg`i'_XX*(G_XX / N`=increase_XX'_`i'_XX) * [distance_to_switch_`i'_XX - (N`=increase_XX'_t_`i'_g_XX/N_gt_control_`i'_XX) * never_change_d_`i'_XX] * (time_XX>=`=`i'+1'&time_XX<=T_g_XX) * N_gt_XX * DOF_gt_`i'_XX *(diff_y_`i'_XX-E_hat_gt_`i'_XX)
 
 ///// Adding the additional part of U^(+,var,X)_{G,g,l}/U^(-,var,X)_{G,g,l} when controls are included:
-///// sum across values of baseline treatment d of M^+_(d,l)* a term in brackets in companion paper.
-///// Skipped on the hdfe_controls path: inv_Denom and coefs_sq are not produced there
-///// and analytical SE is not supported (use bootstrap for SE).
+///// sum across values of baseline treatment d of M^+_(d,l)* a term in brackets in companion paper. 
 
-if "`controls'"!="" & "`hdfe_controls'"==""{
+if "`controls'"!=""{
 
-// Loop over values of d_sq_int_XX:sum across values of baseline treatment
+// Loop over values of d_sq_int_XX:sum across values of baseline treatment  
 levelsof d_sq_int_XX, local(levels_d_sq_XX)
 
 foreach l of local levels_d_sq_XX {	
@@ -5591,29 +5173,14 @@ foreach var of varlist `controls'{
 	}
 
 	foreach l of local levels_d_sq_XX {
-		if (scalar(useful_res_`l'_XX)>1){
-			if "`hdfe_controls'" == "" {
-			replace diff_y_pl_`i'_XX = diff_y_pl_`i'_XX - coefs_sq_`l'_XX[`=`count_controls'',1]*diff_X_`count_controls'_placebo_`i'_XX if d_sq_int_XX==`l'
-			}
+		if (scalar(useful_res_`l'_XX)>1){ 
+			replace diff_y_pl_`i'_XX = diff_y_pl_`i'_XX - coefs_sq_`l'_XX[`=`count_controls'',1]*diff_X_`count_controls'_placebo_`i'_XX if d_sq_int_XX==`l' 
 
-			capture drop in_brackets_pl_`l'_`count_controls'_XX
+			capture drop in_brackets_pl_`l'_`count_controls'_XX	
 			gen in_brackets_pl_`l'_`count_controls'_XX=0
-
-		}
+							
+		}		
 	}
-}
-}
-
-* hdfe_controls path: subtract placebo long-difference of yhat_lvl once per baseline l.
-* Fires for both controls!="" and controls=="" when hdfe_controls is set.
-if "`hdfe_controls'" != "" {
-xtset group_XX time_XX
-foreach l of local levels_d_sq_XX {
-    if (scalar(useful_res_`l'_XX) > 1) {
-        replace diff_y_pl_`i'_XX = diff_y_pl_`i'_XX ///
-            - (L`i'.yhat_lvl_`l'_XX - L`=2*`i''.yhat_lvl_`l'_XX) ///
-            if d_sq_int_XX == `l'
-    }
 }
 }
 
@@ -5752,11 +5319,10 @@ gen U_Gg_pl_`i'_temp_var_XX =0
 
 replace U_Gg_pl_`i'_temp_var_XX= dummy_U_Gg_pl_`i'_XX*(G_XX / N`=increase_XX'_placebo_`i'_XX) * [dist_to_switch_pl_`i'_XX - (N`=increase_XX'_t_placebo_`i'_g_XX/N_gt_control_placebo_`i'_XX) * never_change_d_pl_`i'_XX] * (time_XX>=`=`i'+1'&time_XX<=T_g_XX) * N_gt_XX * DOF_gt_pl_`i'_XX *(diff_y_pl_`i'_XX-E_hat_gt_pl_`i'_XX)
 
-* skipped on the hdfe_controls path: inv_Denom and coefs_sq not produced.
-if "`controls'"!="" & "`hdfe_controls'"==""{
+if "`controls'"!=""{
 
 levelsof d_sq_int_XX, local(levels_d_sq_XX)
-foreach l of local levels_d_sq_XX {
+foreach l of local levels_d_sq_XX {	
 if (scalar(useful_res_`l'_XX)>1){ // MODIF FELIX
 	
 capture drop combined_pl`=increase_XX'_temp_`l'_`i'_XX	

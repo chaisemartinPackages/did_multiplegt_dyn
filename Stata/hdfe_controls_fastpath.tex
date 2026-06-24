@@ -1,0 +1,569 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{mathtools}
+\usepackage{bm}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage[most]{tcolorbox}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{listings}
+
+\hypersetup{colorlinks=true, linkcolor=blue!50!black, urlcolor=blue!50!black,
+            unicode=true, bookmarksdepth=2}
+
+\definecolor{codebg}{HTML}{F3F4F6}
+\definecolor{accent}{HTML}{C85020}
+\definecolor{navy}{HTML}{12264E}
+\definecolor{ok}{HTML}{1F7A4C}
+\definecolor{warn}{HTML}{B45309}
+
+\lstdefinestyle{stata}{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=none, breaklines=true, columns=fullflexible,
+  keepspaces=true, xleftmargin=4pt, framexleftmargin=4pt,
+  commentstyle=\color{gray!90!black}\itshape,
+  keywordstyle=\color{navy}\bfseries,
+  morekeywords={reghdfe, hdfe, gen, generate, replace, drop, capture,
+                bys, bysort, gegen, levelsof, forvalues, foreach, if,
+                local, scalar, matrix, predict, sum, total, accum, invsym,
+                det, import, use, save, tempfile, syntax, varlist},
+  morecomment=[l]{*},
+  morecomment=[l]{//},
+}
+\lstset{style=stata}
+
+\newcommand{\code}[1]{\texttt{\small #1}}
+\newcommand{\Adoref}[1]{\textcolor{accent}{\footnotesize\textbf{[ado L#1]}}}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\1}{\mathbb{1}}
+\newcommand{\Smpl}{\mathcal{S}}
+\newcommand{\thetad}{\widehat{\bm{\theta}}_d}
+\newcommand{\Ngt}{N_{g,t}}
+\newcommand{\Pproj}{P^{\!W}}
+\newcommand{\Mproj}{M^{\!W}}
+
+\title{\textbf{HDFE controls in \texttt{did\_multiplegt\_dyn}}\\[3pt]
+       \large A fast path that bypasses the per-control loop \\
+       \large for dummy-basis controls like \texttt{ac\_uq\_id\#monthyear}}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+% ============================================================================
+\section{What you are trying to do, and why it is slow today}
+
+You want to control for \code{ac\_uq\_id\#monthyear} on the
+\code{data\_test.csv} panel. \code{ac\_uq\_id} is a coarser group attribute
+(time-invariant at the group level), \code{monthyear} is the time index, and
+\code{ac\_uq\_id\#monthyear} produces one dummy per (cluster, month) cell.
+On the size of your data this means \textbf{12{,}000+ dummies} ---
+generated, first-differenced, residualized, fed to \code{matrix accum},
+and then to a per-baseline \code{invsym} of a $12000 \times 12000$ matrix.
+
+\begin{tcolorbox}[colback=codebg, colframe=warn, boxrule=0.6pt, arc=1pt,
+                  title=\textcolor{warn}{\textbf{Why naive \code{controls()} is intractable here}}]
+The existing path treats every control symmetrically:
+\begin{itemize}[leftmargin=*, itemsep=0pt]
+\item Stage 1, L902--941: generate one $\Delta X_k$ and one
+      $\widetilde{\Delta X}_k$ per control.
+\item Stage 1, L1018: \code{matrix accum} on $K+1$ residualized variables
+      \,---\, a matrix of size $K \times K$ when $K = 12000$.
+\item Stage 1, L1034: \code{invsym(didmgt\_XX)} \,---\, $O(K^3)$ in $K=12000$
+      is roughly $10^{12}$ flops per baseline cell.
+\item Stage 2, L4679: $K$ \code{replace} commands per horizon $\ell$.
+\item Stage 3, L4905--4954: a nested $K^2$ loop on $K=12000$ is $\sim 10^8$
+      iterations per horizon per baseline.
+\end{itemize}
+\textbf{This is the wrong tool for dummy-basis controls.} The right tool is
+fixed-effect absorption, and it gives the \emph{same estimator}.
+\end{tcolorbox}
+
+% ============================================================================
+\section{The math fact that powers the fast path: FWL}
+
+Take any partition of your dataset's columns into ``numeric controls'' $X$
+and ``dummy controls'' $Z$ (where $Z$ are the indicators of the cells
+$\mathrm{ac\_uq\_id}\times \mathrm{monthyear}$). The OLS of $\Delta Y$ on
+$\Delta X$ and $\Delta Z$ gives the same numeric-controls slope $\thetad$ as
+the OLS of $\Delta Y$ on $\Delta X$ after \emph{partialling out the column
+space of $\Delta Z$ from both sides}:
+
+\begin{equation}
+\Bigl[\underbrace{\Delta X\;\;\Delta Z}_{=:\,\mathbf{X}_{\text{full}}}\Bigr]^{\!\top}\!
+\mathbf{W}
+\mathbf{X}_{\text{full}}\!
+\begin{bmatrix}\thetad \\ \widehat{\phi}_d\end{bmatrix}
+\,=\, \mathbf{X}_{\text{full}}^{\!\top}\!\mathbf{W}\Delta Y
+\quad\iff\quad
+\thetad \,=\, \bigl((\Mproj_{Z}\!\Delta X)^{\!\top}\mathbf{W}(\Mproj_{Z}\!\Delta X)\bigr)^{\!-1}
+(\Mproj_{Z}\!\Delta X)^{\!\top}\mathbf{W}\Mproj_{Z}\!\Delta Y,
+\label{eq:fwl}
+\end{equation}
+where $\Mproj_{Z} = \mathbf{I} - \Pproj_Z$ is the (weighted) annihilator of
+$\Delta Z$. Frisch--Waugh--Lovell, exactly as in any textbook.
+
+\medskip\noindent
+\textbf{Reading.}\;The estimator we want \emph{never has to materialize}
+the 12{,}000 columns of $\Delta Z$. We only need their \emph{projection
+action}: ``demean by the column space of $\Delta Z$.'' For
+$Z = \1\{a_g = a_0\}\cdot \1\{t = t_0\}$, that action is computable in
+$O(N)$ per iteration of the alternating-projection algorithm used by
+\code{hdfe}/\code{reghdfe} \,---\, no $12000\times 12000$ inversion.
+
+\begin{tcolorbox}[colback=codebg, colframe=ok, boxrule=0.6pt, arc=1pt,
+                  title=\textcolor{ok}{\textbf{What the fast path is, in one line}}]
+``HDFE controls'' = the dummy columns of $\Delta Z$ are routed through
+\code{hdfe}'s projection instead of through \code{matrix accum}. By
+\eqref{eq:fwl} the $\thetad$ on the genuine numeric controls is unchanged.
+\end{tcolorbox}
+
+% ============================================================================
+\section{The two flavors you would pass, and what each does}
+
+The first-difference structure of \code{did\_multiplegt\_dyn} would seem to
+rule out dummies that do not vary over time \,---\, their FD is zero. But the
+help file already gives the workaround:
+\begin{quote}\itshape
+``To control for time-invariant covariates, one can for instance input the
+product of those covariates and of the time variable $T$ into the option.''
+\end{quote}
+We apply that trick to both flavors of HDFE the user might want to absorb.
+
+\subsection*{(A) Time-invariant dummies: \code{i.ac\_uq\_id} times \code{monthyear}}
+
+For a group-level attribute $a_g$ that does not change over $t$, the bare
+dummy has zero first difference:
+\begin{equation}
+\Delta \mathbf{1}\{a_g = a_0\} \,=\, \mathbf{1}\{a_g = a_0\} - \mathbf{1}\{a_g = a_0\} \,=\, 0.
+\label{eq:bareinvariant}
+\end{equation}
+\textbf{The fix is to multiply by time.}\;Define
+$\widetilde{Z}_{a_0}(g,t) := \mathbf{1}\{a_g = a_0\}\cdot t$. Then
+\begin{equation}
+\Delta \widetilde{Z}_{a_0}(g,t) \,=\, \mathbf{1}\{a_g = a_0\}\cdot t \,-\, \mathbf{1}\{a_g = a_0\}\cdot (t-1) \,=\, \mathbf{1}\{a_g = a_0\}.
+\label{eq:Ztime}
+\end{equation}
+The first difference is the original dummy itself \,---\, generically non-zero.
+So the construction is admissible as a control after all.
+
+\medskip\noindent
+\textbf{Interpretation.}\;Including
+$\widetilde{Z}_{a_0} = \mathbf{1}\{a_g = a_0\}\cdot t$ for every cluster
+level $a_0$ amounts to allowing each cluster to have its own
+\emph{linear time trend} in $Y$. The coefficient on $\widetilde{Z}_{a_0}$
+is the slope of cluster $a_0$'s trend relative to the omitted category.
+This is the \texttt{trends\_lin}-style assumption applied at the cluster
+level rather than the group level. With $A$ clusters this is $A$ extra
+columns, which is the column space we want \code{hdfe} to absorb.
+
+\subsection*{(B) Cluster-by-time dummies: \code{i.ac\_uq\_id\#i.monthyear} times \code{monthyear}}
+
+The same trick applies to a cluster-by-time indicator. The bare cell-dummy
+$\mathbf{1}\{a_g = a_0, t = t_0\}$ has a first difference that is non-zero
+in two adjacent periods,
+\begin{equation}
+\Delta \mathbf{1}\{a_g = a_0, t = t_0\} \,=\, \mathbf{1}\{a_g = a_0\}\cdot\bigl(\mathbf{1}\{t = t_0\} - \mathbf{1}\{t = t_0 - 1\}\bigr),
+\label{eq:cellfd}
+\end{equation}
+which already qualifies as a usable control. But to keep the construction
+\emph{symmetric} with case (A) and to give it a linear-trend interpretation
+inside each (cluster, time) cell, multiply by time:
+\begin{equation}
+\widetilde{Z}_{a_0, t_0}(g,t) := \mathbf{1}\{a_g = a_0, t = t_0\}\cdot t.
+\end{equation}
+The first difference is then
+\begin{equation}
+\Delta \widetilde{Z}_{a_0, t_0}(g,t) \,=\, \mathbf{1}\{a_g = a_0\}\cdot\bigl(t\cdot \mathbf{1}\{t = t_0\} - (t-1)\cdot \mathbf{1}\{t = t_0 - 1\}\bigr),
+\label{eq:cellfd_t}
+\end{equation}
+which is non-zero in exactly the same two periods as \eqref{eq:cellfd} but
+weighted by $t_0$ and $t_0 - 1$ respectively. The two specifications span
+the same column space when both $\widetilde{Z}_{a_0, t_0}$ for every
+$(a_0, t_0)$ \emph{and} the cluster-only $\widetilde{Z}_{a_0}$ are included
+\,---\, FD-of-time-times-dummy together with FD-of-dummy together saturate
+``cluster-by-time'' variation in linear trends.
+
+\medskip\noindent
+\textbf{Stata syntax for this object.}\;Either of the following two
+equivalent specs:
+\begin{lstlisting}
+* Cluster-specific linear trend + cluster x time interaction trend:
+hdfe_controls( i.ac_uq_id##c.monthyear )
+* Or, written out:
+hdfe_controls( i.ac_uq_id  i.ac_uq_id#c.monthyear )
+\end{lstlisting}
+The \code{c.monthyear} part is what implements the ``times year'' trick:
+\texttt{reghdfe} interprets \code{i.ac\_uq\_id\#c.monthyear} as the
+interaction of each cluster dummy with the continuous time variable,
+giving exactly $\widetilde{Z}_{a_0} = \mathbf{1}\{a_g = a_0\}\cdot
+\texttt{monthyear}$ for each $a_0$. The leading \code{i.ac\_uq\_id} would
+be the cluster fixed effect itself; in our FD setup that piece is
+absorbed by group differencing automatically and can be omitted (or kept
+in the absorb spec where \code{reghdfe} will detect the collinearity
+without error).
+
+\subsection*{Both flavors at once, in absorb syntax}
+
+When you want both case (A) and case (B) jointly, the natural absorb
+spec is:
+\begin{lstlisting}
+hdfe_controls( i.ac_uq_id##c.monthyear  i.ac_uq_id#i.monthyear )
+\end{lstlisting}
+where the first term ($\mathbf{1}\{a_g\}\!\cdot\!1$ and
+$\mathbf{1}\{a_g\}\!\cdot\!t$) gives cluster fixed effects and
+cluster-specific linear trends, and the second term gives full
+cluster-by-time intercepts. The two together span the column space of any
+``constant for $g$ within $(a_g, t)$''-style HDFE the user might want.
+
+\medskip
+\noindent
+This is the column space that \code{hdfe}'s projection is built to demean
+by, and the option \code{hdfe\_controls()} simply forwards the user's
+\code{reghdfe}-style spec into the \code{absorb()} argument of one
+\code{hdfe} call per baseline level.
+
+% ============================================================================
+\section{Strategy: a focused option \code{hdfe\_controls()}}
+
+\begin{lstlisting}
+did_multiplegt_dyn Y G T D, effects(L) [other options] ///
+                  controls(X1 X2)                       ///
+                  hdfe_controls(ac_uq_id#monthyear)
+\end{lstlisting}
+
+\noindent
+\textbf{Semantics.}\;The varlist in \code{hdfe\_controls()} is interpreted
+\emph{not} as numeric controls but as a recipe for the projection
+$\Pproj_Z$. Each entry is a categorical variable or interaction
+(\texttt{reghdfe}-style absorb syntax). For each baseline level $d$, we
+partial out the joint column space of these dummies from both $\Delta Y$ and
+each genuine numeric control $\Delta X_k$, then estimate $\thetad$ on the
+residualized inputs.
+
+\medskip
+\noindent
+\textbf{What this option does NOT do} (and why that is correct):
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+\item \textbf{No long-difference subtraction at L4679 for the HDFE part.}
+      L4679 subtracts $\thetad[k]\cdot \Delta X^{(\ell)}_{k,g,t}$ for each
+      \emph{numeric} control $k$. The HDFE projection is already taken out
+      of the comparison through the event-study estimator's structure: a
+      switcher's $\Delta Y^{(\ell)}$ is compared against not-yet-switchers
+      \emph{from the same control cells} via the demeaning at L4647--4664,
+      whose denominator $\widehat{E}^{(d)}_{g,t}$ is now built with the
+      HDFE-augmented projection. The HDFE long-difference is canceled by
+      the comparison itself, not by a separate subtraction.
+\item \textbf{No new variance correction $U^{\mathrm{var},X}$ for the HDFE.}
+      $U^{\mathrm{var},X}$ in the companion paper captures the noise from
+      estimating $\thetad$. We do not store ``one coefficient per HDFE
+      dummy'' \,---\, we treat the projection as a nuisance subspace, the
+      same way \code{trends\_nonparam} does. The asymptotics are the
+      \texttt{trends\_nonparam} asymptotics with a richer projector, which
+      Section 1.4 of dCdH (2024) covers verbatim for stratum$\times$time
+      structures.
+\end{itemize}
+
+% ============================================================================
+\section{Why this is the right answer mathematically}
+
+Two facts make the fast path identical to ``include them as controls'':
+
+\medskip
+\noindent
+\textbf{Fact 1 (FWL).}\;By \eqref{eq:fwl}, $\thetad$ on the genuine numeric
+controls is the same whether you (i) include $\Delta Z$ as columns of the
+design matrix or (ii) partial out $\Delta Z$ from both sides.
+
+\medskip
+\noindent
+\textbf{Fact 2 (Variance).}\;In the dCdH (2024) framework, the asymptotic
+variance with $K$ \emph{finite} numeric controls has the $U^{\mathrm{var},X}$
+correction. With $K \to \infty$ (the HDFE limit), the asymptotic framework
+treats the FE projection as a deterministic nuisance subspace and
+\textbf{does not} add a $K$-growing variance correction \,---\, that is the
+correct asymptotic posture for the absorbed dimensions. So when we route
+12{,}000 dummies through \code{hdfe}, we are simultaneously (a) computing
+the right point estimate by FWL and (b) using the right asymptotic variance
+by the FE-projection asymptotics.
+
+\medskip
+\noindent
+The \texttt{trends\_nonparam} option in the file is exactly this regime
+applied to one stratum. We are generalizing to many.
+
+% ============================================================================
+\section{What changes in the .ado, by stage}
+
+\subsection*{Stage 1 \,---\, the projection enlarges}
+
+The projector that residualizes $\Delta Y$ and each $\Delta X_k$ becomes:
+\begin{equation}
+\Mproj_{\mathcal{F}_d}
+\;,\quad
+\mathcal{F}_d \;=\; \mathrm{span}\bigl\{\,\1\{t=t_0\},\ \1\{s_g = s_0\}\cdot \1\{t=t_0\},\ Z^{(p)}_{g,t}\,\bigr\},
+\label{eq:Fd}
+\end{equation}
+where $Z^{(p)}$ ranges over the absorb terms in \code{hdfe\_controls()}.
+Within each baseline cell $d$, one \code{hdfe} call demeans $\Delta Y$ and
+all genuine $\Delta X_k$ by $\mathcal{F}_d$ in a single sweep.
+
+\medskip\noindent
+\textbf{Code touches.}\;The four substitutions are the same as in the
+``cluster\_time\_fe'' plan, but for a different conceptual reason:
+\begin{itemize}[leftmargin=*, itemsep=0pt]
+\item L941: $\widetilde{\Delta X}_k = \sqrt{N_{g,t}}\cdot [\Mproj_{\mathcal{F}_d}\Delta X_k]$.
+\item L955: $\widetilde{\Delta Y} = \sqrt{N_{g,t}}\cdot [\Mproj_{\mathcal{F}_d}\Delta Y]$.
+\item L958: $\mathrm{prod\_X}_{k,g,t} = N_{g,t}\cdot [\Mproj_{\mathcal{F}_d}\Delta X_k]$.
+\item L984--996: $\widehat{E}^{(d)}_{g,t} = [\Pproj_{\mathcal{F}_d}\Delta Y]$
+      via \code{reghdfe diff\_y\_XX `controlsXX', absorb(`hdfe\_set') residuals(...)}.
+\end{itemize}
+
+\subsection*{Stages 2 and 3 \,---\, unchanged}
+
+\begin{tcolorbox}[colback=codebg, colframe=ok, boxrule=0.6pt, arc=1pt,
+                  title=\textcolor{ok}{\textbf{Zero downstream code changes}}]
+Stages 2 and 3 read \code{coefs\_sq\_`d'\_XX} (numeric-controls slope only),
+\code{inv\_Denom\_`d'\_XX} (built off the augmented projection),
+\code{prod\_X*\_Ngt\_XX} (per numeric control only), and
+\code{E\_y\_hat\_gt\_int\_`d'\_XX} (now includes the HDFE part). All four are
+correctly rebuilt by the Stage-1 patch. The long-difference residualization
+at L4679 and the variance correction at L4905--4954 then run verbatim and
+produce the right event-study estimates and SEs.
+\end{tcolorbox}
+
+% ============================================================================
+\section{Performance estimate}
+
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Approach & Storage & Time per baseline $d$ & Numerical risk \\
+\midrule
+\code{controls(12000 dummies)}  &
+  $12000\,N$ cells\,$+$\,$144{\cdot}10^6$ matrix &
+  $O(K^3) = 10^{12}$ flops &
+  singular \code{didmgt\_XX} \\
+\code{hdfe\_controls(ac\_uq\_id\#monthyear)} &
+  $N$ cells per demeaned variable &
+  $O(N \cdot \text{iters})$, iters $\le 50$ &
+  none (alternating projections) \\
+\bottomrule
+\end{tabular}
+
+\medskip\noindent
+On a panel with $N = 200{,}000$, $K = 12{,}000$, and 4--5 baseline levels,
+the naive path is unrunnable in reasonable time on standard hardware. The
+HDFE path is seconds: \code{hdfe} typically converges in fewer than 30
+iterations, each linear in $N$.
+
+% ============================================================================
+\section{Stata patch}
+
+\subsection*{(A) Syntax + validation \Adoref{53\,/\,65--73}}
+
+\begin{lstlisting}
+* L53 -- add the option (note the string type to accept reghdfe absorb syntax):
+syntax varlist(min=4 max=4 numeric) [if] [in] [, /* ... */ hdfe_controls(string)]
+
+* After the gtools check at L65-73:
+if "`hdfe_controls'" != "" {
+    qui cap which reghdfe
+    if _rc { di as error "hdfe_controls() requires reghdfe. Run: ssc install reghdfe" ; exit 198 }
+    qui cap which hdfe
+    if _rc { di as error "hdfe_controls() requires hdfe. Run: ssc install hdfe" ; exit 198 }
+
+    * Warn if the user passes a purely time-invariant variable (no-op).
+    foreach a of local hdfe_controls {
+        capture confirm variable `a'
+        if !_rc {
+            tempvar sd_a
+            bys `2': egen `sd_a' = sd(`a')
+            sum `sd_a'
+            if r(max) == 0 {
+                di as text "Note: `a' is time-invariant within group; it is absorbed by " ///
+                           "differencing and will not contribute. Ignoring."
+                local hdfe_controls : subinstr local hdfe_controls "`a'" "", word
+            }
+            drop `sd_a'
+        }
+    }
+}
+\end{lstlisting}
+
+\subsection*{(B) Stage 1 \,---\, demean + theta + Den\_d (replaces L919--1098)}
+
+\begin{lstlisting}
+* Build the absorb spec: time FE, optional trends_nonparam x time, plus user's hdfe_controls.
+local fe_set "time_XX"
+if "`trends_nonparam'" != "" {
+    capture drop trends_nonparam_temp_XX
+    gegen trends_nonparam_temp_XX = group(`trends_nonparam')
+    local fe_set "`fe_set' i.trends_nonparam_temp_XX#i.time_XX"
+}
+if "`hdfe_controls'" != "" {
+    local fe_set "`fe_set' `hdfe_controls'"
+}
+
+* Allocate the residual containers used downstream.
+local mycontrols_XX ""
+local count_controls = 0
+foreach var of varlist `controls' {
+    local ++count_controls
+    cap drop resid_X`count_controls'_time_FE_XX
+    cap drop prod_X`count_controls'_Ngt_XX
+    gen resid_X`count_controls'_time_FE_XX = 0
+    gen prod_X`count_controls'_Ngt_XX = 0
+    local mycontrols_XX "`mycontrols_XX' resid_X`count_controls'_time_FE_XX"
+}
+cap drop diff_y_wXX
+gen diff_y_wXX = 0
+
+levelsof d_sq_int_XX, local(levels_d_sq_XX)
+
+foreach l of local levels_d_sq_XX {
+
+    * Control sample for baseline d = `l'.
+    tempvar smp
+    gen byte `smp' = (ever_change_d_XX == 0       ///
+                    & diff_y_XX != .              ///
+                    & fd_X_all_non_missing_XX==1  ///
+                    & d_sq_int_XX == `l'          ///
+                    & time_XX < F_g_XX)
+
+    * One hdfe call: demean DY and all numeric DX_k by F_d simultaneously.
+    local dvars "diff_y_XX"
+    forvalues k = 1/`count_controls' { local dvars "`dvars' diff_X`k'_XX" }
+
+    qui hdfe `dvars' [aw=N_gt_XX] if `smp', ///
+        absorb(`fe_set') generate(_resXX_)
+
+    * Pack residuals into the names the unchanged tail expects.
+    replace diff_y_wXX = sqrt(N_gt_XX) * _resXX_diff_y_XX ///
+        if d_sq_int_XX == `l' & `smp' == 1
+    forvalues k = 1/`count_controls' {
+        replace resid_X`k'_time_FE_XX = sqrt(N_gt_XX) * _resXX_diff_X`k'_XX ///
+            if d_sq_int_XX == `l' & `smp' == 1
+        replace prod_X`k'_Ngt_XX = sqrt(N_gt_XX) * resid_X`k'_time_FE_XX ///
+            if d_sq_int_XX == `l'
+    }
+    drop _resXX_*
+
+    * --- E_y_hat_gt_int_l_XX: the full fitted value used downstream at L4664 ---
+    cap drop E_y_hat_gt_int_`l'_XX
+    local numericsXX ""
+    forvalues k = 1/`count_controls' { local numericsXX "`numericsXX' diff_X`k'_XX" }
+
+    cap reghdfe diff_y_XX `numericsXX' [aw=N_gt_XX] ///
+        if d_sq_int_XX == `l' & time_XX < F_g_XX,  ///
+        absorb(`fe_set') noconstant residuals(_res_DY_l_XX)
+    scalar rc_XX = _rc
+    if rc_XX == 0 {
+        gen E_y_hat_gt_int_`l'_XX = diff_y_XX - _res_DY_l_XX ///
+            if d_sq_int_XX == `l' & time_XX < F_g_XX
+        drop _res_DY_l_XX
+        scalar df_a_`l'_XX = e(df_a)
+    }
+    else {
+        drop if d_sq_int_XX == `l'
+        noi di "Baseline `l' dropped because of insufficient observations."
+    }
+
+    drop `smp'
+
+    * The tail of the existing block (L1018-1098) runs verbatim from here:
+    * matrix accum overall_XX = diff_y_wXX `mycontrols_XX' if d_sq_int_XX==`l' & ...
+    * matrix coefs_sq_`l'_XX = invsym(didmgt_XX)*didmgt_Xy
+    * matrix inv_Denom_`l'_XX = invsym(didmgt_XX) * r(sum) * G_XX
+    * etc.
+}
+\end{lstlisting}
+
+\noindent
+The key efficiency point: \code{count\_controls} above is the number of
+\emph{genuine numeric controls only} (e.g.\ 2), not 12{,}000. The 12{,}000
+dummies enter solely through the \code{absorb(`fe\_set')} argument, which
+\code{hdfe} handles with $O(N)$-per-iteration alternating projections
+instead of an $O(K^3)$ matrix inversion.
+
+\subsection*{(C) Stages 2 and 3 \,---\, NO changes}
+
+The blocks at L4582--4689 (long-difference residualization for effects),
+L5145--5184 (placebos), and L4905--4954 (variance correction) compile and
+run as written. They consume the Stage-1 outputs which now incorporate
+the HDFE projection.
+
+% ============================================================================
+\section{End-to-end example}
+
+\begin{lstlisting}
+import delimited using "data_test.csv", clear
+
+* Numeric controls: X1 X2.
+* HDFE: ac_uq_id (time-invariant -> auto-dropped) and ac_uq_id#monthyear.
+did_multiplegt_dyn Y unique_small_grid_id monthyear D, ///
+    effects(4) placebo(2)                             ///
+    controls(X1 X2)                                   ///
+    hdfe_controls(ac_uq_id#monthyear)                 ///
+    cluster(ac_uq_id)
+\end{lstlisting}
+
+\noindent
+What is being estimated, per baseline $d$:
+\begin{equation}
+\thetad \;=\; \arg\min_{\bm{\theta},\,\alpha^{(d)}}
+\sum_{(g,t)\in\Smpl_d} \Ngt\Bigl(\Delta Y_{g,t} - \Delta X_{g,t}^{\!\top}\bm{\theta} - \alpha^{(d)}_{a_g,\,t}\Bigr)^{2},
+\label{eq:est}
+\end{equation}
+which is identical to what \code{controls(X1 X2 i.ac\_uq\_id\#i.monthyear)}
+\emph{would} compute, except that the 12{,}000-dimensional $\alpha^{(d)}$ is
+absorbed instead of materialized.
+
+% ============================================================================
+\section{Sanity checks}
+
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+\item \textbf{Single-attribute equivalence.}\;
+      \code{hdfe\_controls(i.ac\_uq\_id\#i.monthyear)} should give the same
+      coefficients and SEs as \code{trends\_nonparam(ac\_uq\_id)}, because
+      both produce the same projection $\Pproj_{\mathcal{F}_d}$ on
+      \code{data\_test.csv}.
+\item \textbf{Time-invariant drop.}\;
+      \code{hdfe\_controls(i.ac\_uq\_id)} should print a notice
+      ``time-invariant within group, ignoring'' and run as if no HDFE were
+      passed. The point estimates and SEs should match the no-controls-FE
+      command.
+\item \textbf{FWL self-check.}\;On a small sub-sample where 12{,}000
+      dummies actually fit in memory, \code{controls(X1 X2 d1 d2 ...
+      d12000)} and \code{hdfe\_controls(i.ac\_uq\_id\#i.monthyear)} should
+      give identical $\thetad$ on (X1, X2) up to floating-point precision.
+\end{enumerate}
+
+% ============================================================================
+\section{Summary}
+
+\begin{tcolorbox}[colback=codebg, colframe=navy, boxrule=0.6pt, arc=1pt,
+                  title=\textcolor{navy}{\textbf{The whole proposal in one paragraph}}]
+The user wants 12{,}000+ \code{ac\_uq\_id\#monthyear} dummies as controls.
+Including them via \code{controls()} is computationally infeasible
+($O(K^3)$ inverse), and time-invariant dummies inside that set are killed
+by differencing anyway. The fix is a new option
+\code{hdfe\_controls(spec)} accepting \code{reghdfe}-style absorb syntax.
+It enlarges Stage 1's projector $\mathcal{F}_d$ with the user's HDFE
+dimensions, uses one \code{hdfe} call per baseline level to demean
+$\Delta Y$ and the genuine numeric controls, then runs the existing
+\code{matrix accum}, $\thetad$, and $\mathrm{Den}_d^{-1}$ code unchanged.
+Stages 2 and 3 (L4582--4689 and L4905--4954) need no edits: they consume
+the rebuilt Stage-1 outputs. By Frisch--Waugh--Lovell the point estimates
+match the limit of ``infinitely many dummy controls,'' and the variance
+follows the \code{trends\_nonparam}-style nuisance-projection asymptotics
+of dCdH (2024) Sec.\,1.4.
+\end{tcolorbox}
+
+\end{document}

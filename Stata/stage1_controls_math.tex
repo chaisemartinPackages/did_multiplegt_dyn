@@ -1,0 +1,382 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{mathtools}
+\usepackage{bm}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage[most]{tcolorbox}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{listings}
+
+\hypersetup{colorlinks=true, linkcolor=blue!50!black, urlcolor=blue!50!black}
+
+\definecolor{codebg}{HTML}{F3F4F6}
+\definecolor{accent}{HTML}{C85020}
+\definecolor{navy}{HTML}{12264E}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=none,
+  breaklines=true,
+  columns=fullflexible,
+  keepspaces=true,
+  xleftmargin=4pt,
+  framexleftmargin=4pt,
+}
+
+\newtcolorbox{codeline}[1][]{
+  colback=codebg, colframe=accent, boxrule=0.4pt, arc=1pt,
+  left=4pt, right=4pt, top=2pt, bottom=2pt, #1
+}
+
+\newcommand{\code}[1]{\texttt{\small #1}}
+\newcommand{\Adoref}[1]{\textcolor{accent}{\footnotesize\textbf{[ado L#1]}}}
+
+% Math shortcuts
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\1}{\mathbb{1}}
+\newcommand{\Smpl}{\mathcal{S}}
+\newcommand{\thetad}{\widehat{\bm{\theta}}_d}
+\newcommand{\Ngt}{N_{g,t}}
+\newcommand{\dY}{\Delta Y_{g,t}}
+\newcommand{\dX}{\Delta X_{g,t}}
+\newcommand{\dXk}{\Delta X_{k,g,t}}
+\newcommand{\dYbar}{\overline{\Delta Y}}
+\newcommand{\dXbar}{\overline{\Delta X}}
+
+\title{\textbf{Stage 1 of \texttt{did\_multiplegt\_dyn}}: \\[2pt]
+       \large The math behind the \texttt{controls()} pre-estimation block}
+\author{Notes on lines L894--L1098 of \texttt{did\_multiplegt\_dyn.ado}}
+\date{}
+
+\begin{document}
+\maketitle
+
+\noindent
+\begin{tcolorbox}[colback=codebg, colframe=navy, boxrule=0.6pt, arc=1pt]
+\textbf{Goal of Stage 1.} Estimate, separately for each baseline-treatment
+level $d$, a slope vector $\thetad \in \R^{K}$ describing the linear
+relationship between the outcome's first difference $\dY$ and the controls'
+first differences $\dX$, partialling out time fixed effects (interacted with
+the \texttt{trends\_nonparam} stratum). Build the matrix $\mathrm{Den}_d^{-1}$
+used later in the variance correction. Save the per-cell residuals
+$\widetilde{\Delta X}_{k,g,t}$ that feed the score
+$\mathrm{in\_sum}_{k,d}$ in Stages~3--4.
+\end{tcolorbox}
+
+\section{Notation}
+
+\noindent
+\begin{tabular}{@{}p{4.6cm}p{10.4cm}@{}}
+\toprule
+$g \in \{1,\dots,G\}$ & group index (\code{group\_XX}).\\
+$t \in \{1,\dots,T\}$ & time index (\code{time\_XX}).\\
+$Y_{g,t}$ & outcome (\code{outcome\_XX}); $\dY = Y_{g,t}-Y_{g,t-1}$ is \code{diff\_y\_XX}.\\
+$D_{g,t}$ & treatment; $D_{g,1}$ is the period-one (baseline) treatment, denoted \code{d\_sq\_XX} (or \code{d\_sq\_int\_XX} when discretized to integer levels $1,\dots,L_D$).\\
+$d \in \{1,\dots,L_D\}$ & a value of the baseline treatment. $\theta_d$ is estimated once per $d$.\\
+$X_{1,g,t}, \dots, X_{K,g,t}$ & user-supplied controls (\code{`controls'}). $\dXk$ is \code{diff\_X{k}\_XX}.\\
+$\Delta\bm{X}_{g,t}\in\R^K$ & vector of controls' first differences, $(\Delta X_{1,g,t},\dots,\Delta X_{K,g,t})'$.\\
+$F_g$ & first time $g$'s treatment differs from $D_{g,1}$ (\code{F\_g\_XX}); $F_g = T+1$ if $g$ never switches.\\
+$\Ngt$ & weight of cell $(g,t)$ (\code{N\_gt\_XX}). Equals 1 with no weights and group$\times$time data; otherwise the sum of user weights, set to 0 when $Y_{g,t}$ or $D_{g,t}$ is missing.\\
+$s_g$ & the \texttt{trends\_nonparam} stratum of $g$ (time-invariant).\\
+$G$ & total number of groups (\code{G\_XX}).\\
+\bottomrule
+\end{tabular}
+
+\section[Step 1.1 -- Build first differences (L902--915)]{Step 1.1 \,---\, Build first differences \Adoref{902--915}}
+
+For each control $X_k$ and each $(g,t)$:
+\begin{align}
+\dXk &\;=\; X_{k,g,t} - X_{k,g,t-1}.
+\label{eq:fdX}
+\end{align}
+The outcome FD $\dY = Y_{g,t} - Y_{g,t-1}$ has been generated earlier (L891).
+
+\medskip\noindent\textbf{Joint non-missing flag.} Define
+\begin{equation}
+\Phi_{g,t} \;:=\; \prod_{k=1}^{K} \1\!\left\{\dXk \text{ is non-missing}\right\},
+\label{eq:phi}
+\end{equation}
+stored as \code{fd\_X\_all\_non\_missing\_XX}. Observations with $\Phi_{g,t}=0$
+are excluded from the conditional means below \Adoref{914}.
+
+\section[Step 1.2 -- The estimation sample S_d]{Step 1.2 \,---\, The estimation sample $\Smpl_d$}
+
+A cell $(g,t)$ enters the auxiliary regression for baseline level $d$ if and
+only if:
+\begin{equation}
+\Smpl_d \;=\; \big\{(g,t)\,:\, D_{g,1} = d,\ \ t < F_g,\ \ \dY \ne \text{miss},\ \ \Phi_{g,t} = 1 \big\}.
+\label{eq:sample}
+\end{equation}
+The constraint $t < F_g$ is the ``not-yet-switcher'' restriction
+(\code{ever\_change\_d\_XX==0\&time\_XX<F\_g\_XX}) -- it identifies the
+control sample used to estimate $\theta_d$.
+
+\section[Step 1.3 -- Conditional mean of Delta X_k by (d,t,s) (L931--934)]{Step 1.3 \,---\, Conditional mean of $\dXk$ by $(d,t,s)$ \Adoref{931--934}}
+
+For each baseline $d$, time $t$, and stratum $s$, define the
+weighted sample mean of $\dXk$ over $\Smpl_d$:
+\begin{equation}
+\dXbar_k(d, t, s)
+\;=\;
+\dfrac{
+  \displaystyle\sum_{g\,:\,(g,t)\in\Smpl_d,\ s_g = s} \Ngt \,\dXk
+}{
+  \displaystyle\sum_{g\,:\,(g,t)\in\Smpl_d,\ s_g = s} \Ngt
+}.
+\label{eq:dXbar}
+\end{equation}
+In Stata this is the two-line \code{bys time\_XX d\_sq\_XX `trends\_nonparam'
+: gegen avg\_diff\_X{k}\_XX = total(N\_gt\_XX * diff\_X{k}\_XX) / sum\_weights\_control\_XX}.
+
+\section[Step 1.4 -- Residualized FD of controls (L941)]{Step 1.4 \,---\, Residualized FD of controls \Adoref{941}}
+
+The within-$(d,t,s)$ deviation, scaled by $\sqrt{\Ngt}$:
+\begin{equation}
+\widetilde{\Delta X}_{k,g,t}
+\;=\;
+\sqrt{\Ngt}\,\bigl(\,\dXk \;-\; \dXbar_k(D_{g,1},\,t,\,s_g)\,\bigr)\cdot \1\{(g,t)\in\Smpl_{D_{g,1}}\}.
+\label{eq:resid}
+\end{equation}
+(Missing values are replaced by zero \Adoref{943}.)
+
+\medskip\noindent
+This is the Frisch--Waugh--Lovell residual of $\dXk$ on time fixed effects
+(interacted with the \texttt{trends\_nonparam} stratum), in the weighted
+sample $\Smpl_d$. The $\sqrt{\Ngt}$ factor is the standard trick to convert
+weighted least squares with weights $\Ngt$ into ordinary least squares on the
+scaled variables.
+
+\medskip\noindent
+Define analogously the scaled outcome FD \Adoref{955}:
+\begin{equation}
+\widetilde{\Delta Y}_{g,t} \;=\; \sqrt{\Ngt}\,\dY .
+\label{eq:residY}
+\end{equation}
+
+\section[Step 1.5 -- Per-control score variable (L958)]{Step 1.5 \,---\, Per-control score variable \Adoref{958}}
+
+For each $k$ define
+\begin{equation}
+\mathrm{prod\_X}_{k,g,t} \;:=\; \sqrt{\Ngt}\cdot\widetilde{\Delta X}_{k,g,t}
+\;=\; \Ngt\,\bigl(\dXk - \dXbar_k(D_{g,1},\,t,\,s_g)\bigr).
+\label{eq:prodX}
+\end{equation}
+This object is not used inside Stage 1 itself; it is the building block of the
+per-group score $\mathrm{in\_sum}_{k,d}$ that enters $U^{\mathrm{var},X}$ in
+Stages~3--4.
+
+\section[Step 1.6 -- OLS for theta_d via matrix accum (L1018--1034)]{Step 1.6 \,---\, OLS for $\thetad$ via \texttt{matrix accum} \Adoref{1018--1034}}
+
+Stack the residualized controls into a vector
+\[
+\widetilde{\Delta X}_{g,t} \;:=\; \bigl(\widetilde{\Delta X}_{1,g,t},\ \dots,\ \widetilde{\Delta X}_{K,g,t}\bigr)^{\!\top}\in\R^{K}.
+\]
+
+\noindent\textbf{The cross-product matrix.}
+\code{matrix accum overall\_XX = diff\_y\_wXX mycontrols\_XX} builds the
+$(K{+}1)\times(K{+}1)$ matrix
+\begin{equation}
+\bm{A}_d
+\;=\;
+\sum_{(g,t)\in\Smpl_d}
+\begin{pmatrix}
+\widetilde{\Delta Y}_{g,t} \\[2pt]
+\widetilde{\Delta X}_{g,t}
+\end{pmatrix}
+\begin{pmatrix}
+\widetilde{\Delta Y}_{g,t} \\[2pt]
+\widetilde{\Delta X}_{g,t}
+\end{pmatrix}^{\!\top}
+\;=\;
+\begin{pmatrix}
+\widetilde{Y}{}^{\!\top}\widetilde{Y} & \widetilde{Y}{}^{\!\top}\widetilde{X} \\[2pt]
+\widetilde{X}{}^{\!\top}\widetilde{Y} & \widetilde{X}{}^{\!\top}\widetilde{X}
+\end{pmatrix}.
+\label{eq:accum}
+\end{equation}
+
+\noindent The code slices out the two blocks needed for OLS:
+\begin{align}
+\bm{M}_d \;&:=\; \widetilde{X}{}^{\!\top}\widetilde{X} \;=\; \texttt{didmgt\_XX} \;=\; \texttt{overall\_XX[2..K+1, 2..K+1]}, \label{eq:Md}\\
+\bm{q}_d \;&:=\; \widetilde{X}{}^{\!\top}\widetilde{Y} \;=\; \texttt{didmgt\_Xy} \;=\; \texttt{overall\_XX[2..K+1, 1]}. \label{eq:qd}
+\end{align}
+
+\noindent\textbf{The estimator.}
+\begin{equation}
+\boxed{\;\thetad \;=\; \bm{M}_d^{-1}\,\bm{q}_d
+\;=\;
+\Bigl(\,\textstyle\sum_{(g,t)\in\Smpl_d}\widetilde{\Delta X}_{g,t}\widetilde{\Delta X}_{g,t}{}^{\!\top}\Bigr)^{\!-1}
+\sum_{(g,t)\in\Smpl_d}\widetilde{\Delta X}_{g,t}\,\widetilde{\Delta Y}_{g,t}.\;}
+\label{eq:thetad}
+\end{equation}
+Stored as \code{coefs\_sq\_`l'\_XX}, one $K\times 1$ matrix per baseline level
+$l=d$.
+
+\subsection*{Equivalence with weighted OLS plus time fixed effects (FWL)}
+
+The matrix-accum estimator \eqref{eq:thetad} is numerically identical to
+\begin{equation}
+\thetad \;=\; \arg\min_{\bm{\theta},\,\{\alpha_t^{(d,s)}\}}\;
+\sum_{(g,t)\in\Smpl_d} \Ngt\,\Bigl(\,\dY \;-\; \dX{}^{\!\top}\bm{\theta} \;-\; \alpha_t^{(d,s_g)}\Bigr)^{\!2},
+\label{eq:fwl}
+\end{equation}
+i.e.\ the weighted OLS of $\dY$ on $\dX$ plus a full set of time fixed effects
+$\alpha_t^{(d,s)}$ that are allowed to vary by baseline cell $d$ and
+\texttt{trends\_nonparam} stratum $s$. Equivalence follows from the
+Frisch--Waugh--Lovell theorem applied to the partial-out in
+\eqref{eq:dXbar}--\eqref{eq:resid}.
+
+\medskip
+\noindent
+The companion regression \code{reg diff\_y\_XX `controlsXX' ibn.time\_XX
+[aw=N\_gt\_XX] if d\_sq\_int\_XX==d \& time\_XX<F\_g\_XX, noconst}
+\Adoref{984--991} is run for a different purpose -- to produce the fitted
+values
+\begin{equation}
+\widehat{E}_{g,t}^{(d)} \;:=\; \widehat{\mathbb{E}}\!\left[\,\dY \,\Big|\, t,\ s_g,\ (g,t)\in\Smpl_d\right]
+\;\;\rightsquigarrow\;\; \texttt{E\_y\_hat\_gt\_int\_`d'\_XX},
+\label{eq:Ehat}
+\end{equation}
+which Stages~3--4 use inside $\mathrm{in\_sum}_{k,d}$ to demean $\dY$ within
+$(d,t,s)$ cells (the $(\dY - E_{y,gt})$ factor at L4664). With
+\texttt{trends\_nonparam} present, the regression uses
+\code{ibn.time\_XX\#ibn.trends\_nonparam\_temp\_XX} so $\widehat{E}^{(d)}_{g,t}$
+is the within-$(d,t,s)$ mean of $\dY$.
+
+\section[Step 1.7 -- The variance-denominator matrix Den_d^{-1} (L1052)]{Step 1.7 \,---\, The variance-denominator matrix $\mathrm{Den}_d^{-1}$ \Adoref{1052}}
+
+Define the total weight in the variance window for baseline $d$:
+\begin{equation}
+N_d^{\mathrm{tot}}
+\;:=\;
+\sum_{(g,t)}\Ngt\cdot\1\!\left\{\,2\le t\le \max_h F_h - 1,\ \ t<F_g,\ \ \dY \ne \text{miss},\ \ D_{g,1}=d\right\}.
+\label{eq:Ntot}
+\end{equation}
+The code computes this in two lines \Adoref{1049--1050}: \code{gen
+N\_c\_`l'\_temp\_XX = ...; sum N\_gt\_XX if N\_c\_`l'\_temp\_XX == 1}; then
+$N_d^{\mathrm{tot}} = r(\mathrm{sum})$.
+
+\medskip\noindent\textbf{The matrix.}
+\begin{equation}
+\boxed{\;\mathrm{Den}_d^{-1}
+\;:=\;
+\bm{M}_d^{-1}\cdot N_d^{\mathrm{tot}}\cdot G,\;}
+\label{eq:DenInv}
+\end{equation}
+stored as \code{inv\_Denom\_`l'\_XX}. The scalings $N_d^{\mathrm{tot}}$ and
+$G$ make $\mathrm{Den}_d^{-1}$ comparable across cells when it is multiplied
+by the per-group scores in the variance formula.
+
+\section[Step 1.8 -- Singularity guard (L1042--1090)]{Step 1.8 \,---\, Singularity guard \Adoref{1042--1090}}
+
+Compute $\det(\bm{M}_d)$. If $\lvert\det(\bm{M}_d)\rvert \le 10^{-16}$, flag
+baseline $d$ in \code{store\_singular\_XX} and emit the user warning at
+L1086--L1090. Two reasons can trigger this:
+\begin{enumerate}[leftmargin=*]
+\item Too few not-yet-switcher observations in cell $d$ relative to $K$
+(under-determined OLS).
+\item Perfect collinearity among the controls inside $\Smpl_d$ -- e.g.\ a
+time-invariant covariate has a first difference of zero everywhere.
+\end{enumerate}
+When this occurs, baseline cell $d$ keeps $\thetad = \bm{0}$ and a separate
+local \code{store\_noresidualization\_XX} causes those observations to be
+\emph{dropped} from estimation \Adoref{1094--1096}.
+
+\section[Step 1.9 -- The ``useful residualization'' gate (L1003--1010)]{Step 1.9 \,---\, The ``useful residualization'' gate \Adoref{1003--1010}}
+
+Before performing all of the above, the code checks
+\begin{equation}
+\mathrm{useful\_res}_d \;:=\; \#\{F_g : (g,\cdot)\in\Smpl_d\} \;>\; 1,
+\label{eq:useful}
+\end{equation}
+i.e.\ there exist at least two distinct switching dates in cell $d$ (computed
+as the number of $F_g$ levels in \code{tab F\_g\_XX if d\_sq\_int\_XX==d}).
+If $\mathrm{useful\_res}_d \le 1$, no residualization is performed for that
+cell, observations are dropped, and a console message is printed.
+
+\section{The Stage 1 output, in one box}
+
+\begin{tcolorbox}[colback=codebg, colframe=navy, boxrule=0.6pt, arc=1pt]
+For each baseline level $d$ such that
+$\mathrm{useful\_res}_d > 1$ and $\det(\bm{M}_d)\ne 0$, Stage 1 returns:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item the slope vector $\thetad \in \R^K$ -- \code{coefs\_sq\_`l'\_XX};
+  \item the variance-denominator matrix $\mathrm{Den}_d^{-1} \in \R^{K\times K}$ -- \code{inv\_Denom\_`l'\_XX};
+  \item the per-control score series $\mathrm{prod\_X}_{k,g,t}$ -- \code{prod\_X{k}\_Ngt\_XX};
+  \item the cell-mean fitted values $\widehat{E}_{g,t}^{(d)}$ -- \code{E\_y\_hat\_gt\_int\_`d'\_XX};
+  \item the residualized controls $\widetilde{\Delta X}_{k,g,t}$ -- \code{resid\_X{k}\_time\_FE\_XX} (already multiplied by $\sqrt{\Ngt}$).
+\end{itemize}
+Stages 2--4 consume these and never recompute them.
+\end{tcolorbox}
+
+\section{Compact algorithm (pseudo-code)}
+
+\begin{lstlisting}
+INPUT  : balanced panel of (Y, X_1..X_K, D, weights N_gt) by (g,t),
+         baseline treatment D_{g,1}, trends_nonparam stratum s_g, F_g
+OUTPUT : { theta_d, Den_d^{-1}, E_hat_gt^(d), prod_X_k, resid_X_k } for each d
+
+For k = 1..K :
+    DX_k_gt  <- X_{k,g,t} - X_{k,g,t-1}
+    Phi_gt   <- AND over k of (DX_k_gt is non-missing)
+
+For each baseline level d :
+    S_d <- { (g,t) : D_{g,1}=d, t<F_g, DY_gt != miss, Phi_gt=1 }
+    if #{F_g : (g,*) in S_d} <= 1 :
+        drop d ; continue
+
+    # conditional mean & residual of each control
+    For k = 1..K :
+        avg_DX_k(d,t,s) <- weighted mean of DX_k_gt over (g : (g,t) in S_d, s_g=s)
+        resid_X_k_gt    <- sqrt(N_gt) * (DX_k_gt - avg_DX_k(d,t,s_g))
+        prod_X_k_gt     <- sqrt(N_gt) * resid_X_k_gt
+
+    # weighted regression
+    Y_tilde_gt <- sqrt(N_gt) * DY_gt
+    M_d <- sum_{S_d} resid_X * resid_X'
+    q_d <- sum_{S_d} resid_X * Y_tilde
+    if |det(M_d)| <= 1e-16 :
+        flag d as singular ; drop d ; continue
+    theta_d <- M_d^{-1} * q_d
+
+    # variance-denominator matrix
+    N_tot_d <- sum N_gt over (g,t) with D_{g,1}=d, 2<=t<=max(F)-1, t<F_g, DY_gt!=miss
+    Den_d^{-1} <- M_d^{-1} * N_tot_d * G
+
+    # store cell-mean fitted value of DY (used in Stages 3-4)
+    E_hat_gt^(d) <- weighted mean of DY_gt over (g : (g,t) in S_d, s_g=s_g)
+\end{lstlisting}
+
+\section{Cross-reference table}
+
+\begin{tabular}{@{}lll@{}}
+\toprule
+Math symbol & \texttt{.ado} variable & First defined at \\
+\midrule
+$\dXk$                                       & \code{diff\_X{k}\_XX}              & L913 \\
+$\Phi_{g,t}$                                 & \code{fd\_X\_all\_non\_missing\_XX}& L900, L914 \\
+$\Smpl_d$                                    & (sample filter, not a variable)    & L931, L1014 \\
+$\dXbar_k(d,t,s)$                            & \code{avg\_diff\_X{k}\_XX}         & L932--934 \\
+$\widetilde{\Delta X}_{k,g,t}$               & \code{resid\_X{k}\_time\_FE\_XX}   & L941 \\
+$\widetilde{\Delta Y}_{g,t}$                 & \code{diff\_y\_wXX}                & L955 \\
+$\mathrm{prod\_X}_{k,g,t}$                   & \code{prod\_X{k}\_Ngt\_XX}         & L958 \\
+$\bm{A}_d$                                   & \code{overall\_XX}                 & L1018 \\
+$\bm{M}_d = \widetilde{X}^{\top}\widetilde{X}$ & \code{didmgt\_XX}                & L1030 \\
+$\bm{q}_d = \widetilde{X}^{\top}\widetilde{Y}$ & \code{didmgt\_Xy}                & L1031 \\
+$\thetad$                                    & \code{coefs\_sq\_`l'\_XX}          & L1034 \\
+$\det(\bm{M}_d)$                             & \code{det\_XX}                     & L1040 \\
+$N_d^{\mathrm{tot}}$                         & \code{r(sum)} from L1050           & L1049--1050 \\
+$\mathrm{Den}_d^{-1}$                        & \code{inv\_Denom\_`l'\_XX}         & L1052 \\
+$\widehat{E}_{g,t}^{(d)}$                    & \code{E\_y\_hat\_gt\_int\_`l'\_XX} & L996 \\
+$\mathrm{useful\_res}_d$                     & \code{useful\_res\_`l'\_XX}        & L1009 \\
+singular flag                                & \code{store\_singular\_`l'\_XX}    & L1006, L1043 \\
+\bottomrule
+\end{tabular}
+
+\end{document}

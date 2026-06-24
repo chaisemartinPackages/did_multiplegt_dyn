@@ -1,0 +1,408 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{mathtools}
+\usepackage{bm}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage[most]{tcolorbox}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{listings}
+
+\hypersetup{colorlinks=true, linkcolor=blue!50!black, urlcolor=blue!50!black,
+            unicode=true, bookmarksdepth=2}
+
+\definecolor{codebg}{HTML}{F3F4F6}
+\definecolor{accent}{HTML}{C85020}
+\definecolor{navy}{HTML}{12264E}
+
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  frame=none, breaklines=true, columns=fullflexible,
+  keepspaces=true, xleftmargin=4pt, framexleftmargin=4pt,
+}
+
+\newcommand{\code}[1]{\texttt{\small #1}}
+\newcommand{\Adoref}[1]{\textcolor{accent}{\footnotesize\textbf{[ado L#1]}}}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\1}{\mathbb{1}}
+\newcommand{\Smpl}{\mathcal{S}}
+\newcommand{\thetad}{\widehat{\bm{\theta}}_d}
+\newcommand{\Ngt}{N_{g,t}}
+
+\title{\textbf{Stages 2 and 3 of \texttt{did\_multiplegt\_dyn}}\\[2pt]
+       \large Where Stage 1's controls outputs are consumed: long-difference
+       residualization and the $U^{\mathrm{var},X}$ variance correction}
+\author{Notes on L4582--L4954 of \texttt{did\_multiplegt\_dyn.ado}}
+\date{}
+
+\begin{document}
+\maketitle
+
+\noindent
+\begin{tcolorbox}[colback=codebg, colframe=navy, boxrule=0.6pt, arc=1pt]
+Stage 1 (the previous note) produced, for each baseline level $d$,
+\begin{itemize}[leftmargin=*, itemsep=0pt]
+\item $\thetad \in \R^{K}$ \,---\, \code{coefs\_sq\_`d'\_XX};
+\item $\mathrm{Den}_d^{-1} \in \R^{K\times K}$ \,---\, \code{inv\_Denom\_`d'\_XX};
+\item the per-control score series $\mathrm{prod\_X}_{k,g,t}$ \,---\, \code{prod\_X{k}\_Ngt\_XX};
+\item the cell-mean fitted value $\widehat{E}^{(d)}_{g,t}$ \,---\, \code{E\_y\_hat\_gt\_int\_`d'\_XX}.
+\end{itemize}
+This note walks through how Stages 2 and 3 spend each of those four objects.
+\textbf{Stage 2} replaces the long-difference of $Y$ with a controls-residualized
+version; \textbf{Stage 3} adds a variance term that accounts for the fact that
+$\thetad$ is estimated, not known. Effects-side only; placebos are symmetric and
+covered briefly at the end.
+\end{tcolorbox}
+
+\section{Notation refresh}
+
+\noindent
+\begin{tabular}{@{}p{4.6cm}p{10.4cm}@{}}
+\toprule
+$\ell \in \{1,\dots,L\}$           & event-study horizon (\code{`i'} in the loop). \\
+$d \in \{1,\dots,L_D\}$            & baseline treatment level (\code{d\_sq\_int\_XX}).\\
+$F_g$                              & first switch date for group $g$ (\code{F\_g\_XX}); $F_g=T+1$ for never-switchers.\\
+$T_g$                              & last period where $g$ still has a control group (\code{T\_g\_XX}).\\
+$S_g \in \{0,1\}$                  & switcher direction: 1 = switcher-in ($\pm = +$), 0 = switcher-out ($\pm = -$).\\
+$D_{g,1}$                          & baseline treatment of group $g$.\\
+$Y_{g,t}, X_{k,g,t}$               & outcome and $k$-th control.\\
+$\Delta Y^{(\ell)}_{g,t} = Y_{g,t} - Y_{g,t-\ell}$ & long-difference of $Y$, \code{diff\_y\_`l'\_XX}.\\
+$\Delta X^{(\ell)}_{k,g,t} = X_{k,g,t} - X_{k,g,t-\ell}$ & long-difference of $X_k$, \code{diff\_X{k}\_`l'\_XX}.\\
+$\Ngt$                             & weight of cell $(g,t)$ (\code{N\_gt\_XX}).\\
+$G$                                & number of groups (\code{G\_XX}).\\
+$N^{\pm}_{\ell}$                   & number of switcher-$\pm$ groups eligible at horizon $\ell$ (\code{N`+\!-'\_`l'\_XX}).\\
+\bottomrule
+\end{tabular}
+
+\medskip\noindent
+Throughout, $\pm$ stands for ``$+$ for switchers-in (\code{increase\_XX==1}),
+$-$ for switchers-out (\code{increase\_XX==0})''. The code generates both
+families by setting \code{increase\_XX} in an outer loop, so the same lines
+build $+$ and $-$ versions in turn.
+
+% ============================================================================
+\section[Stage 2 -- Long-difference residualization (L4582--4689)]{Stage 2 \,---\, Long-difference residualization \Adoref{4582--4689}}
+
+\subsection*{Step 2.1 \,---\, Build the long differences of each control}
+
+For each horizon $\ell$ (looping over $\ell=1,\dots,L$ outside this block) and
+each control $k$ \Adoref{4586--4598}:
+\begin{align}
+\Delta X^{(\ell)}_{k,g,t} \;&=\; X_{k,g,t} - X_{k,g,t-\ell}, \label{eq:longDX}\\
+\Delta X^{(\ell),N}_{k,g,t} \;&=\; \Ngt\cdot \Delta X^{(\ell)}_{k,g,t}. \label{eq:longDXN}
+\end{align}
+Stored as \code{diff\_X{k}\_`l'\_XX} and \code{diff\_X{k}\_`l'\_N\_XX}.
+
+\subsection*{Step 2.2 \,---\, The treatment-side moment $M^{\pm}_{d,\ell,k}$ \Adoref{4611--4622}}
+
+The companion-paper vectors $\bm{m}^{\pm}_{g,d,\ell}$ have one coordinate per
+control $k$. The code builds them in three passes.
+
+\medskip
+\textbf{Per-$(g,t)$ summand} \Adoref{4612}:
+\begin{equation}
+m^{\pm}_{g,d,\ell,k,t} \;=\; \1\{\ell\le T_g - 2,\ D_{g,1}=d\}\cdot \frac{G}{N^{\pm}_{\ell}}\cdot
+\Bigl[\,\mathrm{dist}^{(\ell)}_{g,t} - \tfrac{N^{\pm,t}_{\ell,g}}{N^{\mathrm{c},(\ell)}_{g,t}}\cdot\mathrm{nc}^{(\ell)}_{g,t}\,\Bigr]\cdot \1\{\ell{+}1\le t\le T_g\}\cdot \Delta X^{(\ell),N}_{k,g,t}.
+\label{eq:msummand}
+\end{equation}
+The four named quantities (all built earlier in the file) are:
+\begin{itemize}[leftmargin=*, itemsep=0pt]
+\item $\mathrm{dist}^{(\ell)}_{g,t}$ \,---\, distance-to-switch indicator
+       (\code{distance\_to\_switch\_`l'\_XX}): equals 1 when $(g,t)$ is at
+       relative time $\ell$ for switcher $g$.
+\item $\mathrm{nc}^{(\ell)}_{g,t}$ \,---\, never-changer indicator
+       (\code{never\_change\_d\_`l'\_XX}): 1 if $g$ is still untreated at $t$
+       (control side).
+\item $N^{\pm,t}_{\ell,g}$ \,---\, cohort-size count
+       (\code{N`+\!-'\_t\_`l'\_g\_XX}).
+\item $N^{\mathrm{c},(\ell)}_{g,t}$ \,---\, count of controls available for $g$
+       at horizon $\ell$ (\code{N\_gt\_control\_`l'\_XX}).
+\end{itemize}
+
+\textbf{Sum across $t$ within $g$} \Adoref{4615}:
+\begin{equation}
+m^{\pm}_{g,d,\ell,k} \;=\; \sum_{t} m^{\pm}_{g,d,\ell,k,t},
+\label{eq:msumt}
+\end{equation}
+kept on the first row of each group (\code{... = . if \_n != 1}, L4616).
+
+\textbf{Average over groups} \Adoref{4620--4622}:
+\begin{equation}
+\boxed{\;M^{\pm}_{d,\ell,k} \;=\; \frac{1}{G}\sum_{g} m^{\pm}_{g,d,\ell,k}.\;}
+\label{eq:Mdlk}
+\end{equation}
+Stored as \code{M`+\!-'\_`d'\_`k'\_`l'\_XX}.
+
+\medskip\noindent
+\textbf{What this is.} $M^{\pm}_{d,\ell,k}$ is the cross-group average of the
+$k$-th control's long-difference, weighted by the residual of
+the distance-to-switch indicator on its control-group mean. It is the
+``treatment-side'' summary that the variance correction multiplies
+$(\mathrm{Den}_d^{-1}\cdot\mathrm{score}_d - \thetad)$ by.
+
+\subsection*{Step 2.3 \,---\, The cell-mean fitted value $\widehat{E}^{(d)}_{g,t}$ \Adoref{4625--4647}}
+
+The Stage-1 fitted value $\widehat{E}^{(d)}_{g,t,\mathrm{int}} =$
+\code{E\_y\_hat\_gt\_int\_`d'\_XX} is now masked to zero in
+cells with too few control groups:
+\begin{equation}
+\widehat{E}^{(d,\ell)}_{g,t} \;=\; \widehat{E}^{(d)}_{g,t,\mathrm{int}}\cdot \1\!\bigl\{E^{\mathrm{denom}}_{d,\ell}(t) \ge 2\bigr\},
+\label{eq:Ehat}
+\end{equation}
+where $E^{\mathrm{denom}}_{d,\ell}(t)$ counts the available not-yet-switcher
+control groups (or clusters, if \code{cluster()} is used) at time $t$ inside
+baseline $d$ \Adoref{4625--4641}. Stored as \code{E\_y\_hat\_gt\_`d'\_XX}.
+
+\subsection*{Step 2.4 \,---\, The per-group control-side score $\mathrm{in\_sum}_{k,d}$ \Adoref{4653--4669}}
+
+Two scalar building blocks. First, the within-baseline window-size weight
+\Adoref{4657--4659}:
+\begin{equation}
+N^{\mathrm{c}}_d \;=\; \sum_{(g,t)} \Ngt\cdot \1\!\left\{D_{g,1}=d,\ 2\le t\le T_d,\ t<F_g,\ \Delta Y_{g,t}\ne\text{miss}\right\},
+\label{eq:Nc}
+\end{equation}
+where $T_d = \max_{h:D_{h,1}=d} F_h - 1$ \Adoref{4578--4580}.
+
+\medskip
+Second, the per-$(g,t)$ score summand \Adoref{4664}:
+\begin{equation}
+\sigma^{(d)}_{k,g,t} \;=\; \frac{\mathrm{prod\_X}_{k,g,t}\cdot \delta^{(d)}_{g,t}\cdot \bigl(\Delta Y_{g,t} - \widehat{E}^{(d,\ell)}_{g,t}\bigr)\cdot \1\{2\le t\le F_g{-}1\}}{N^{\mathrm{c}}_d},
+\label{eq:sigma}
+\end{equation}
+with the DoF adjustment
+\begin{equation}
+\delta^{(d)}_{g,t} \;=\; 1 + \1\!\bigl\{E^{\mathrm{denom}}_{d,\ell}(t) \ge 2\bigr\}\cdot
+\left[\sqrt{\tfrac{E^{\mathrm{denom}}_{d,\ell}(t)}{E^{\mathrm{denom}}_{d,\ell}(t)-1}}-1\right]
+\label{eq:dof}
+\end{equation}
+\Adoref{4661--4663}. The adjustment is the standard small-sample correction
+when demeaning by an estimated cell mean.
+
+\medskip
+Then collapse to one observation per group \Adoref{4669}:
+\begin{equation}
+\boxed{\;\mathrm{in\_sum}_{k,d}(g) \;=\; \sum_{t}\sigma^{(d)}_{k,g,t}.\;}
+\label{eq:insum}
+\end{equation}
+Stored as \code{in\_sum\_`k'\_`d'\_XX}.
+
+\medskip\noindent
+\textbf{What this is.} $\mathrm{in\_sum}_{k,d}(g)$ is group $g$'s contribution
+to the score of the auxiliary regression of $\Delta Y$ on $\Delta X$ (with FEs)
+for baseline cell $d$, after double-residualization. It is the
+``control-side'' summary fed into $\mathrm{Den}_d^{-1}$ in Stage 3.
+
+\subsection*{Step 2.5 \,---\, The actual residualization of $\Delta Y^{(\ell)}$ \Adoref{4679}}
+
+\begin{equation}
+\boxed{\;\Delta Y^{(\ell)}_{g,t}\ \leftarrow\ \Delta Y^{(\ell)}_{g,t} - \sum_{k=1}^{K}\thetad[k]\cdot \Delta X^{(\ell)}_{k,g,t}\quad\text{if }D_{g,1}=d.\;}
+\label{eq:residY}
+\end{equation}
+In the code this is written as a loop over $k$ that subtracts one product at a
+time. Effectively $\Delta Y^{(\ell)}_{g,t}$ is overwritten in place with the
+controls-residualized long difference. After this line, the rest of the
+event-study machinery (the part not specific to controls) treats
+\code{diff\_y\_`l'\_XX} as if it were the raw outcome long-difference --
+controls have vanished from the surface.
+
+\medskip\noindent
+\textbf{Important nuance \Adoref{4680}.} The replacement is unconditional on
+$\Delta X^{(\ell)}_{k,g,t}$ being non-missing. If any control is missing,
+$\Delta Y^{(\ell)}_{g,t}$ becomes missing and the cell is silently excluded
+from the long-difference estimation. This is by design: it prevents the
+estimator from using $(g,t)$ cells where the residualization is undefined.
+
+% ============================================================================
+\section[Stage 3 -- Variance correction U-var-X (L4905--4954)]{Stage 3 \,---\, The $U^{\mathrm{var},X}$ correction \Adoref{4905--4954}}
+
+After Stage 2, the per-group variance score with no controls is, from L4904,
+\begin{equation}
+U^{(\pm,\mathrm{noX})}_{G,g,\ell}(t) \;=\; \1\!\bigl\{\ell\le T_g-1\bigr\}\cdot \frac{G}{N^{\pm}_{\ell}}\cdot \Bigl[\mathrm{dist}^{(\ell)}_{g,t} - \tfrac{N^{\pm,t}_{\ell,g}}{N^{\mathrm{c},(\ell)}_{g,t}}\mathrm{nc}^{(\ell)}_{g,t}\Bigr]\cdot \1\{\ell+1\le t\le T_g\}\cdot \Ngt\cdot \mathrm{DOF}^{(\ell)}_{g,t}\cdot \bigl(\Delta Y^{(\ell)}_{g,t} - \widehat{E}^{(\ell)}_{g,t}\bigr).
+\label{eq:UnoX}
+\end{equation}
+With controls, Stage 3 adds a second term coming from the fact that
+$\thetad$ is estimated. The block at L4908--4954 builds that second term,
+\code{part2\_switch`+\!-'\_`l'\_XX}, group by group.
+
+\subsection*{Step 3.1 \,---\, The bracketed score $\mathrm{br}_{d,j}$ \Adoref{4921--4938}}
+
+For each baseline $d$ and each control coordinate $j$, the inner loop over $k$
+\Adoref{4924--4935} computes
+\begin{equation}
+\bigl[\mathrm{Den}_d^{-1}\cdot \mathrm{in\_sum}_d\bigr]_{j}(g) \;=\; \sum_{k=1}^{K}\mathrm{Den}_d^{-1}[j,k]\cdot \mathrm{in\_sum}_{k,d}(g),
+\label{eq:braprod}
+\end{equation}
+restricted to $\1\{D_{g,1}=d,\ F_g\ge 3\}$ \Adoref{4929}.
+Then $\thetad[j]$ is subtracted \Adoref{4938}:
+\begin{equation}
+\boxed{\;\mathrm{br}_{d,j}(g) \;=\; \bigl[\mathrm{Den}_d^{-1}\cdot \mathrm{in\_sum}_d\bigr]_j(g) \,-\, \thetad[j].\;}
+\label{eq:bra}
+\end{equation}
+Stored as \code{in\_brackets\_`d'\_`j'\_XX}.
+
+\medskip\noindent
+\textbf{What this is.} The asymptotic linearization of
+$\thetad - \theta_d$ on the control sample is
+$\thetad - \theta_d \approx \mathrm{Den}_d^{-1}\cdot \mathrm{in\_sum}_d / G + o_p(\cdot)$.
+So $\mathrm{br}_{d,j}(g)$ is, up to sign, the influence-function coordinate of
+$\thetad - \theta_d$ attributable to group $g$.
+
+\subsection*{Step 3.2 \,---\, The per-group correction $\mathrm{part2}^{\pm}_{\ell}$ \Adoref{4941--4950}}
+
+Multiply the influence function by the treatment-side moment and sum across
+controls \Adoref{4942--4945}:
+\begin{equation}
+\mathrm{combined}^{\pm,d,\ell}(g) \;=\; \sum_{j=1}^{K} M^{\pm}_{d,\ell,j}\cdot \mathrm{br}_{d,j}(g),
+\label{eq:combined}
+\end{equation}
+then sum over baseline cells \Adoref{4950}:
+\begin{equation}
+\boxed{\;\mathrm{part2}^{\pm}_{\ell}(g) \;=\; \sum_{d}\mathrm{combined}^{\pm,d,\ell}(g).\;}
+\label{eq:part2}
+\end{equation}
+Stored as \code{part2\_switch`+\!-'\_`l'\_XX}.
+
+\subsection*{Step 3.3 \,---\, Per-group variance score $U^{\pm,\mathrm{var},X}_{G,g,\ell}$ \Adoref{4957\,+\,}}
+
+Sum the no-controls piece over $t$ within $g$ \Adoref{4957} and add the
+controls correction:
+\begin{equation}
+U^{\pm,\mathrm{var},X}_{G,g,\ell} \;=\; \underbrace{\sum_{t} U^{(\pm,\mathrm{noX})}_{G,g,\ell}(t)}_{\text{\code{U\_Gg`l'\_var\_XX}}} \;+\; \mathrm{part2}^{\pm}_{\ell}(g).
+\label{eq:UvarX}
+\end{equation}
+
+\subsection*{Step 3.4 \,---\, Asymptotic variance of the effect estimator}
+
+Once $U^{\pm,\mathrm{var},X}_{G,g,\ell}$ is built for every group $g$, the
+event-study variance of effect $\ell$ is the standard cross-group second
+moment:
+\begin{equation}
+\widehat{\mathrm{Var}}\!\bigl(\widehat{\mathrm{Effect}}^{\pm}_{\ell}\bigr) \;=\; \frac{1}{G^{2}}\sum_{g=1}^{G} \bigl(U^{\pm,\mathrm{var},X}_{G,g,\ell}\bigr)^{2}
+\;\;\stackrel{\text{cluster}(c)}{\longrightarrow}\;\;
+\frac{1}{G^{2}}\sum_{c} \Bigl(\sum_{g\in c} U^{\pm,\mathrm{var},X}_{G,g,\ell}\Bigr)^{2},
+\label{eq:Var}
+\end{equation}
+matching the cluster-robust convention implemented elsewhere in the file. The
+$\mathrm{part2}^{\pm}_{\ell}(g)$ term is what makes \eqref{eq:Var} the
+\emph{right} variance when controls are in the model; without it, the SEs
+would understate the noise arising from $\thetad$ estimation.
+
+% ============================================================================
+\section[Visualizing the dependency graph]{Visualizing the dependency graph}
+
+\begin{tcolorbox}[colback=codebg, colframe=navy, boxrule=0.6pt, arc=1pt]
+\textbf{Where each Stage 1 output enters Stages 2--3:}\\[2pt]
+\begin{tabular}{@{}l@{\;\;}c@{\;\;}l@{}}
+$\thetad$  &$\;\to\;$& \textbf{Stage 2}, eq.~\eqref{eq:residY}, the residualization of $\Delta Y^{(\ell)}$.\\
+           &$\;\to\;$& \textbf{Stage 3}, eq.~\eqref{eq:bra}, subtracted from the influence function.\\[3pt]
+$\mathrm{Den}_d^{-1}$ &$\;\to\;$& \textbf{Stage 3}, eq.~\eqref{eq:braprod}, scaling of the score.\\[3pt]
+$\mathrm{prod\_X}_{k,g,t}$ &$\;\to\;$& \textbf{Stage 2}, eq.~\eqref{eq:sigma}, the score summand.\\[3pt]
+$\widehat{E}^{(d)}_{g,t}$ &$\;\to\;$& \textbf{Stage 2}, eq.~\eqref{eq:Ehat}/\eqref{eq:sigma}, the demean inside the score.\\
+\end{tabular}
+\end{tcolorbox}
+
+% ============================================================================
+\section[Cross-reference table (Stage 2)]{Cross-reference table \,---\, Stage 2}
+
+\noindent\begin{tabular}{@{}lll@{}}
+\toprule
+Math symbol & \texttt{.ado} variable & Defined at \\
+\midrule
+$\Delta X^{(\ell)}_{k,g,t}$                & \code{diff\_X{k}\_`l'\_XX}           & L4593 \\
+$\Delta X^{(\ell),N}_{k,g,t}$              & \code{diff\_X{k}\_`l'\_N\_XX}        & L4598 \\
+$m^{\pm}_{g,d,\ell,k,t}$ (per-$t$)         & \code{m`+\!-'\_g\_`k'\_`d'\_`l'\_XX} & L4612 \\
+$m^{\pm}_{g,d,\ell,k}$ (sum over $t$)      & \code{m`+\!-'\_`d'\_`k'\_`l'\_XX}    & L4615 \\
+$M^{\pm}_{d,\ell,k}$ (avg over $g$)        & \code{M`+\!-'\_`d'\_`k'\_`l'\_XX}    & L4621 \\
+$E^{\mathrm{denom}}_{d,\ell}(t)$           & \code{E\_hat\_denom\_`k'\_`d'\_XX}   & L4635/L4640 \\
+$\widehat{E}^{(d,\ell)}_{g,t}$             & \code{E\_y\_hat\_gt\_`d'\_XX}        & L4647 \\
+$T_d = \max_{h:D_{h,1}=d} F_h - 1$         & \code{T\_d\_XX}                      & L4579 \\
+$N^{\mathrm{c}}_d$                         & \code{N\_c\_`d'\_XX}                 & L4659 \\
+$\delta^{(d)}_{g,t}$ (DoF adjustment)      & \code{in\_sum\_temp\_adj\_`k'\_`d'\_XX} & L4662--4663 \\
+$\sigma^{(d)}_{k,g,t}$ (score summand)     & \code{in\_sum\_temp\_`k'\_`d'\_XX}   & L4664 \\
+$\mathrm{in\_sum}_{k,d}(g)$                & \code{in\_sum\_`k'\_`d'\_XX}         & L4669 \\
+residualization $\Delta Y^{(\ell)} \mathrel{-}{=} \theta_d^{(k)}\Delta X^{(\ell)}_k$ & (overwrites \code{diff\_y\_`l'\_XX}) & L4679 \\
+\bottomrule
+\end{tabular}
+
+\section[Cross-reference table (Stage 3)]{Cross-reference table \,---\, Stage 3}
+
+\noindent\begin{tabular}{@{}lll@{}}
+\toprule
+Math symbol & \texttt{.ado} variable & Defined at \\
+\midrule
+$[\mathrm{Den}_d^{-1}\cdot \mathrm{in\_sum}_d]_{j,k}$ (term)  & \code{in\_brackets\_`d'\_`j'\_`k'\_temp\_XX} & L4929 \\
+$[\mathrm{Den}_d^{-1}\cdot \mathrm{in\_sum}_d]_{j}$ (sum over $k$) & \code{in\_brackets\_`d'\_`j'\_XX} (incremented) & L4934 \\
+$\mathrm{br}_{d,j}(g)$ (subtract $\thetad[j]$) & \code{in\_brackets\_`d'\_`j'\_XX} (final) & L4938 \\
+$M^{\pm}_{d,\ell,j}\cdot \mathrm{br}_{d,j}(g)$ & \code{combined`+\!-'\_temp\_`d'\_`j'\_`l'\_XX} & L4942 \\
+$\mathrm{combined}^{\pm,d,\ell}(g)$ (sum over $j$) & \code{combined`+\!-'\_temp\_`d'\_`l'\_XX} & L4945 \\
+$\mathrm{part2}^{\pm}_{\ell}(g)$ (sum over $d$) & \code{part2\_switch`+\!-'\_`l'\_XX} & L4950 \\
+$U^{(\pm,\mathrm{noX})}_{G,g,\ell}(t)$ summand & \code{U\_Gg`l'\_temp\_var\_XX} & L4904 \\
+$U^{\pm,\mathrm{var},X}_{G,g,\ell}$ & \code{U\_Gg`l'\_var\_XX} (+ \code{part2\_switch`+\!-'\_`l'\_XX}) & L4957\,+\,$\dots$ \\
+\bottomrule
+\end{tabular}
+
+% ============================================================================
+\section[Placebos -- the symmetric story (L5145+)]{Placebos \,---\, the symmetric story \Adoref{5145+}}
+
+The placebo path repeats Stages 2 and 3 with three substitutions:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+\item \textbf{Long differences are flipped in time.} \Adoref{5156}
+      \[
+      \Delta X^{(\ell),\mathrm{pl}}_{k,g,t} \;=\; X_{k,g,t-\ell} - X_{k,g,t-2\ell},
+      \]
+      so the placebo lives entirely \emph{before} the switch date.
+\item \textbf{$\thetad$ is reused.} \Adoref{5177}
+      The same \code{coefs\_sq\_`d'\_XX} computed in Stage 1 multiplies
+      $\Delta X^{(\ell),\mathrm{pl}}_{k,g,t}$ to residualize
+      \code{diff\_y\_pl\_`l'\_XX}. There is no separate ``placebo
+      $\theta_d$''. This is by design: under parallel trends and
+      no-anticipation, $\theta_d$ is identified pre-switch, exactly where
+      placebos live.
+\item \textbf{$\mathrm{Den}_d^{-1}$ and $\mathrm{in\_sum}_{k,d}$ are reused.}
+      The placebo variance correction
+      \code{part2\_pl\_switch`+\!-'\_`l'\_XX}
+      multiplies the same influence function $\mathrm{br}_{d,j}$ by a placebo
+      treatment-side moment $M^{\pm,\mathrm{pl}}_{d,\ell,j}$ \Adoref{5165--5172}.
+\end{itemize}
+The bookkeeping renames (\code{m\_pl}, \code{M\_pl}, \code{in\_sum\_pl},
+\code{part2\_pl}) but the math is identical to \eqref{eq:bra}--\eqref{eq:part2}
+with the placebo $\Delta X^{(\ell),\mathrm{pl}}$ replacing the effect
+$\Delta X^{(\ell)}$.
+
+% ============================================================================
+\section[Why this design is elegant]{Why this design is elegant}
+
+Three properties make this implementation robust:
+
+\begin{enumerate}[leftmargin=*, itemsep=3pt]
+\item \textbf{Stage 1 is computed once.} $\thetad$, $\mathrm{Den}_d^{-1}$,
+      $\mathrm{prod\_X}_{k,g,t}$, $\widehat{E}^{(d)}_{g,t,\mathrm{int}}$
+      depend only on $(g,t)$ data, not on the horizon $\ell$. They are
+      recycled across every $\ell$ and across effects vs.\ placebos with no
+      additional cost.
+\item \textbf{Stage 2 is just an additive shift.} The residualization at
+      L4679 overwrites $\Delta Y^{(\ell)}$ in place. After it, every
+      downstream piece of code that has nothing to do with controls
+      consumes the residualized long-difference as if it were the raw one.
+      Adding HDFE (the previous note) requires no change to that
+      downstream code.
+\item \textbf{Stage 3 is a clean additive correction.} The
+      $U^{\mathrm{var},X}$ term \eqref{eq:UvarX} is added to the no-controls
+      variance score in one line at L4957$+$. Switching off controls
+      (\code{`controls'==\!""}) skips L4908--4954 entirely and recovers the
+      no-controls variance unchanged.
+\end{enumerate}
+
+The cost of this elegance is two nested loops over $K^{2}$ at L4921--4946,
+which is fine for typical $K \le 5$ and dominates only when the user passes
+many controls. If you ever add HDFE-derived controls (e.g.\ thousands of
+dummies via \code{absorb()}), keep the absorbed dimensions out of $K$ -- that
+is exactly what the HDFE plan does.
+
+\end{document}
