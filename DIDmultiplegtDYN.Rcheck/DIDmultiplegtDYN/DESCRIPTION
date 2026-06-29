@@ -1,7 +1,9 @@
 Package: DIDmultiplegtDYN
-Title: Estimation in Staggered First Switch Designs, where Groups Experience their First Treatment Change at Different Points in Time
+Title: Estimation in Staggered First Switch Designs, where Groups
+        Experience their First Treatment Change at Different Points in
+        Time
 Version: 2.4.0
-Authors@R:
+Authors@R: 
     c(person("Anzony", "Quispe", role = c("aut", "cre"), email = "anzony.quispe@gmail.com"),
       person("Diego", "Ciccia", role = "aut", email = "diego.ciccia@kellogg.northwestern.edu"),
       person("Felix", "Knau", role = "aut", email = "felix.knau@sciencespo.fr"),
@@ -14,10 +16,20 @@ License: MIT + file LICENSE
 LazyData: true
 URL: https://github.com/Credible-Answers/did_multiplegt_dyn
 Encoding: UTF-8
-Imports: data.table, MASS, fixest, dplyr, ggplot2, openxlsx, stats, car, lmtest, sandwich, haven, cowplot, rnames, Rcpp
+Imports: data.table, MASS, fixest, dplyr, ggplot2, openxlsx, stats,
+        car, lmtest, sandwich, haven, cowplot, rnames, Rcpp
 Suggests: polars, callr, rlang
 LinkingTo: Rcpp
 Roxygen: list(markdown = TRUE)
 Additional_repositories: https://rpolars.r-universe.dev
 Config/roxygen2/version: 8.0.0
 RoxygenNote: 7.3.3
+NeedsCompilation: yes
+Packaged: 2026-06-29 17:37:44 UTC; anzony.quisperojas
+Author: Anzony Quispe [aut, cre],
+  Diego Ciccia [aut],
+  Felix Knau [aut],
+  Mélitine Malezieux [aut],
+  Doulo Sow [aut],
+  Clément de Chaisemartin [aut]
+Built: R 4.5.2; aarch64-apple-darwin20; 2026-06-29 17:38:05 UTC; unix
