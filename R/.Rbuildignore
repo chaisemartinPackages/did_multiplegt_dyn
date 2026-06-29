@@ -1,0 +1,12 @@
+^\.DS_Store$
+^\.Rhistory$
+^\.Rproj\.user$
+^.*\.Rproj$
+^DIDmultiplegtDYN\.Rcheck$
+^did_multiplegt_dyn\.pdf$
+^cran-comments\.md$
+^tests_R$
+^_data$
+^\.claude$
+^\.github$
+^Examples did_multiplegt_dyn on various designs$

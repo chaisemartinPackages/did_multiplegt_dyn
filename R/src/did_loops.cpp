@@ -330,10 +330,6 @@ NumericVector shift_by_group_cpp(NumericVector x, IntegerVector group, int perio
 
   if (n == 0) return result;
 
-  int current_group = group[0];
-  int group_start = 0;
-  int group_end = 0;
-
   // Find group boundaries
   std::vector<int> group_starts;
   std::vector<int> group_ends;
@@ -1559,5 +1555,254 @@ List bootstrap_compute_ci_cpp(NumericVector estimates,
   return List::create(
     Named("lb") = lb,
     Named("ub") = ub
+  );
+}
+
+// ============================================================================
+// avg_time_periods option: ports of Mata _compute_Tg and _avg_cumul
+//
+// Inputs are sorted by (group, time). We precompute, per group, the
+// time -> row_idx map so the inner control-search lookups are O(1) instead
+// of the O(T) scans the Mata code does.
+// ============================================================================
+
+namespace did_avg_cumul_detail {
+
+struct GroupInfo {
+  int i_start;            // first row index (inclusive)
+  int i_end;              // last row index (inclusive)
+  std::unordered_map<int, int> time_to_row;
+};
+
+inline bool is_na_d(double x) { return NumericVector::is_na(x); }
+
+static std::vector<GroupInfo> build_group_index(const IntegerVector& G,
+                                                const IntegerVector& Tvec) {
+  int n = G.size();
+  std::vector<GroupInfo> out;
+  if (n == 0) return out;
+  int start = 0;
+  for (int i = 1; i <= n; ++i) {
+    if (i == n || G[i] != G[i - 1]) {
+      GroupInfo gi;
+      gi.i_start = start;
+      gi.i_end   = i - 1;
+      gi.time_to_row.reserve(gi.i_end - gi.i_start + 1);
+      for (int r = gi.i_start; r <= gi.i_end; ++r) {
+        gi.time_to_row[Tvec[r]] = r;
+      }
+      out.push_back(std::move(gi));
+      start = i;
+    }
+  }
+  return out;
+}
+
+} // namespace did_avg_cumul_detail
+
+// [[Rcpp::export]]
+NumericVector compute_Tg_cpp(IntegerVector G, IntegerVector Tvec,
+                             NumericVector Y, NumericVector F_vec,
+                             NumericVector TGC, IntegerVector EV,
+                             IntegerVector CLS, IntegerVector NGT) {
+  using did_avg_cumul_detail::GroupInfo;
+  using did_avg_cumul_detail::build_group_index;
+  using did_avg_cumul_detail::is_na_d;
+
+  int n = G.size();
+  NumericVector out(n);
+
+  auto groups = build_group_index(G, Tvec);
+  int Gc = (int)groups.size();
+
+  // Per-class buckets so we only scan candidate control groups in the same cls
+  std::unordered_map<int, std::vector<int>> cls_to_groups;
+  for (int gi = 0; gi < Gc; ++gi) {
+    cls_to_groups[CLS[groups[gi].i_start]].push_back(gi);
+  }
+
+  for (int gi = 0; gi < Gc; ++gi) {
+    const GroupInfo& g = groups[gi];
+    int i = g.i_start;
+    double Fg  = F_vec[i];
+    double Tgc = TGC[i];
+    int    ev  = EV[i];
+    int    cls = CLS[i];
+    double refp_d = Fg - 1.0;
+    double last_P = Fg - 1.0;
+
+    bool fg_ok = !is_na_d(Fg) && ev == 1;
+
+    if (fg_ok) {
+      int refp = (int)refp_d;
+
+      bool own_ref = false;
+      auto it = g.time_to_row.find(refp);
+      if (it != g.time_to_row.end()) {
+        int rr = it->second;
+        if (NGT[rr] == 1 && !is_na_d(Y[rr])) own_ref = true;
+      }
+
+      if (own_ref) {
+        int Fg_i  = (int)Fg;
+        int Tgc_i = is_na_d(Tgc) ? Fg_i - 1 : (int)Tgc;
+
+        const auto& candidates = cls_to_groups[cls];
+
+        for (int P = Fg_i; P <= Tgc_i; ++P) {
+          bool own_P = false;
+          auto itp = g.time_to_row.find(P);
+          if (itp != g.time_to_row.end()) {
+            int pr = itp->second;
+            if (NGT[pr] == 1 && !is_na_d(Y[pr])) own_P = true;
+          }
+          if (!own_P) continue;
+
+          bool has_ctrl = false;
+          for (int sgi : candidates) {
+            if (sgi == gi) continue;
+            const GroupInfo& sg = groups[sgi];
+            double c_fe = F_vec[sg.i_start];
+            if (is_na_d(c_fe) || c_fe <= (double)P) continue;
+
+            auto it_ref = sg.time_to_row.find(refp);
+            if (it_ref == sg.time_to_row.end()) continue;
+            int ur = it_ref->second;
+            if (NGT[ur] != 1 || is_na_d(Y[ur])) continue;
+
+            auto it_P = sg.time_to_row.find(P);
+            if (it_P == sg.time_to_row.end()) continue;
+            int up = it_P->second;
+            if (NGT[up] != 1 || is_na_d(Y[up])) continue;
+
+            has_ctrl = true;
+            break;
+          }
+          if (has_ctrl) last_P = (double)P;
+        }
+      }
+    }
+
+    for (int r = g.i_start; r <= g.i_end; ++r) out[r] = last_P;
+  }
+
+  return out;
+}
+
+// [[Rcpp::export]]
+List avg_cumul_cpp(IntegerVector G, IntegerVector Tvec, NumericVector D,
+                   NumericVector Y, NumericVector D1, NumericVector F_vec,
+                   NumericVector Tg_ph, IntegerVector EV, IntegerVector CLS,
+                   NumericVector Mg_ph, IntegerVector NGT, NumericVector SG,
+                   NumericVector W, int ell, int ssw_flag,
+                   std::string sw_dir) {
+  using did_avg_cumul_detail::GroupInfo;
+  using did_avg_cumul_detail::build_group_index;
+  using did_avg_cumul_detail::is_na_d;
+
+  auto groups = build_group_index(G, Tvec);
+  int Gc = (int)groups.size();
+
+  std::unordered_map<int, std::vector<int>> cls_to_groups;
+  for (int gi = 0; gi < Gc; ++gi) {
+    cls_to_groups[CLS[groups[gi].i_start]].push_back(gi);
+  }
+
+  double num = 0.0;
+  double den = 0.0;
+  NumericVector nswitch(ell, 0.0);
+
+  for (int gi = 0; gi < Gc; ++gi) {
+    const GroupInfo& g = groups[gi];
+    int i = g.i_start;
+    double d1   = D1[i];
+    double Fg   = F_vec[i];
+    double Tg   = Tg_ph[i];
+    int    ev   = EV[i];
+    double Mg   = Mg_ph[i];
+    int    cls  = CLS[i];
+    double sg_v = SG[i];
+
+    bool elig = ev == 1 && !is_na_d(Fg) && !is_na_d(Tg) && Fg <= Tg;
+    if (elig && ssw_flag != 0) {
+      if (is_na_d(Mg) || Mg < (double)ell) elig = false;
+    }
+    if (elig && sw_dir == "in"  && (is_na_d(sg_v) || sg_v != 1.0)) elig = false;
+    if (elig && sw_dir == "out" && (is_na_d(sg_v) || sg_v != 0.0)) elig = false;
+    if (!elig) continue;
+
+    int Fg_i = (int)Fg;
+    int refp = Fg_i - 1;
+
+    double y_ref = NA_REAL;
+    int d_ref_real = 0;
+    auto it_ref = g.time_to_row.find(refp);
+    if (it_ref != g.time_to_row.end()) {
+      int rr = it_ref->second;
+      if (NGT[rr] == 1) { y_ref = Y[rr]; d_ref_real = 1; }
+    }
+    if (d_ref_real != 1) continue;
+
+    int kmax = (int)Mg - 1;
+    if (kmax < 0) continue;
+
+    const auto& candidates = cls_to_groups[cls];
+
+    for (int k = 0; k <= kmax; ++k) {
+      int period = Fg_i + k;
+
+      double dval = NA_REAL;
+      double y_hor = NA_REAL;
+      int hor_ok = 0;
+      int r_period = -1;
+      auto it_p = g.time_to_row.find(period);
+      if (it_p != g.time_to_row.end()) {
+        int pr = it_p->second;
+        if (NGT[pr] == 1) {
+          dval = D[pr]; y_hor = Y[pr]; hor_ok = 1; r_period = pr;
+        }
+      }
+      if (is_na_d(dval) || hor_ok != 1 ||
+          is_na_d(y_ref) || is_na_d(y_hor)) continue;
+
+      bool has_ctrl = false;
+      for (int sgi : candidates) {
+        if (sgi == gi) continue;
+        const GroupInfo& sg = groups[sgi];
+        double c_fe = F_vec[sg.i_start];
+        if (is_na_d(c_fe) || c_fe <= (double)period) continue;
+
+        auto itr = sg.time_to_row.find(refp);
+        if (itr == sg.time_to_row.end()) continue;
+        int ur = itr->second;
+        if (NGT[ur] != 1 || is_na_d(Y[ur])) continue;
+
+        auto itp = sg.time_to_row.find(period);
+        if (itp == sg.time_to_row.end()) continue;
+        int up = itp->second;
+        if (NGT[up] != 1 || is_na_d(Y[up])) continue;
+
+        has_ctrl = true;
+        break;
+      }
+      if (!has_ctrl) continue;
+
+      double incr   = std::fabs(dval - d1);
+      double weight = Mg - (double)k;
+      num += incr * weight;
+      den += incr;
+      if (r_period >= 0) {
+        double w_r = W[r_period];
+        if (!is_na_d(w_r)) nswitch[k] += w_r;
+      }
+    }
+  }
+
+  double avg = (den != 0.0) ? num / den : NA_REAL;
+  return List::create(
+    Named("avg_cumul") = avg,
+    Named("num")       = num,
+    Named("den")       = den,
+    Named("nswitch")   = nswitch
   );
 }
