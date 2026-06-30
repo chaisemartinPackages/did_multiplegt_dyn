@@ -1,0 +1,3 @@
+src/*.so
+src/*.o
+src/*.dll

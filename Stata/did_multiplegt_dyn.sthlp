@@ -36,6 +36,7 @@ affect the current outcome.
 {cmd:by_path(}{it:#}{cmd:)}
 {cmd:switchers(}{it:string}{cmd:)}
 {cmd:date_first_switch(}[by_baseline_treat]{it:,string}{cmd:)}
+{cmd:avg_time_periods}
 {cmd:controls(}{it:varlist}{cmd:)}
 {cmd:trends_lin}
 {cmd:trends_nonparam(}{it:varlist}{cmd:)}
@@ -223,20 +224,23 @@ than the number of effects requested.
 
 
 {p 4 8}
-{cmd:reset(}{it:#}{cmd:)} specifies that treatment spells are reset after # consecutive periods 
-without a treatment change. When this option is used, the command 
+{cmd:reset(}{it:#}{cmd:)}: when this option is used, the command 
 partitions each original group into a sequence of subgroups. 
-A new subgroup starts whenever the treatment has remained unchanged for # consecutive periods since the last treatment change. 
-For example, {cmd:reset(5)} starts a new subgroup whenever a group's treatment has not changed for five consecutive 
-periods. Treatment changes occurring after such a reset are treated as belonging to a new treatment spell. 
-Thus, a group that has experienced its last treatment change more than # periods ago can again be used 
-as a control group by the command. This option can be useful in long panels where all groups eventually 
-experience a treatment change. Without that option, treatment effects can only be estimated until there 
+A new subgroup starts whenever the group's treatment has remained unchanged for # consecutive periods since its last treatment change. 
+For example, {cmd:reset(5)} starts a new subgroup whenever a group's treatment has not changed for five consecutive  periods. Thus, a group that has experienced its last treatment change more than # periods ago can again be used as a control group by the command. This option can be useful in long panels where all groups eventually experience a treatment change. Without that option, treatment effects can only be estimated until there 
 is still one group that has never experienced a treatment change, while with this option it may 
 be possible to estimate treatment effects throughout the panel. With this option, 
 the estimators computed by the command allow for effects of the first # treatment lags on the outcome, 
 but they assume that older lags do not affect the outcome (instead, without this option the command allows 
-for effects of lagged treatments up to any lag). 
+for effects of lagged treatments up to any lag). For instance, if one seeks
+to estimate the effect of heatwaves using a yearly municipality-level panel, it
+may be that at some point, all municipalities have 
+experienced a heatwave. If one is ready to assume
+that heatwaves no longer affect the outcome after a few years, 
+one may specify the reset option. This will ensure that effects 
+can be estimated throughout the panel, 
+using municipalities which did not experience a heatwave for a few years as the control group 
+at year t, even if those municipalities did experience heatwaves further back into the past.
 When this option is specified, standard errors remain clustered at the level of the original groups, or at 
 a coarser level if the user specifies a coarser clustering variable in the {cmd:cluster()} option.
 When this option is specified, the command restricts the estimation sample to groups whose treatment is observed at all dates.
@@ -285,17 +289,6 @@ only for switchers for which all the requested effects and placebos can be estim
 the command estimates the event-study effects using only
 never-switchers as control units, instead of using all not-yet-switchers (a larger control group than just never-switchers).
 {p_end}
-
-
-{p 4 8}
-{cmd:avg_time_periods}: if this option is specified,
-the command reports the average number of time 
-periods over which the effect of a treatment dose is cumulated. Each time a switcher group receives an 
-incremental dose of treatment relative to its baseline, the effect of that dose is tracked from the
-period it is received until the last period for which a valid control group exists for that switcher. 
-Groups that can be followed for longer, or that receive more doses, contribute more to this average. The result is stored in e(avg_cumul)
-{p_end}
-
 
 {marker options_PT}{...}
 {title:Options to understand and leverage your design}
@@ -350,6 +343,21 @@ tables are displayed for each level of the period-one treatment.
 Results can be printed in the Stata console specifying {it:console} in
 the second argument. Alternatively, the output can be stored in an 
 Excel file providing a valid file path in the second argument.
+{p_end}
+
+{p 4 8}
+{cmd:avg_time_periods}: if this option is specified,
+the command reports the average number of time 
+periods over which the effect of a treatment dose is cumulated. Each time a switcher receives an 
+incremental dose of treatment relative to its baseline, that dose can affect its outcome from the
+period it is received until the last period for which a valid control group exists for that switcher.
+This option averages the number of periods over which an incremental dose can affect the outcome, across
+all incremental doses received by switchers. 
+The result is stored in e(avg_cumul). By dividing 
+the average cumulative effect by the average number of periods across 
+which a dose is affecting the outcome, 
+one can get an estimator of the effect of being exposed to 
+one more dose of current or lagged treatment for one period.  
 {p_end}
 
 {marker options_PT}{...}
